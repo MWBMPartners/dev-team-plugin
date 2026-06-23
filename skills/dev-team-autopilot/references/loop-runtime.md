@@ -1,0 +1,125 @@
+# Loop Runtime
+
+The operating manual for the conductor's loop. This is what makes `dev-team-autopilot` survive a long, unattended, interruptible run: a machine-authoritative state file, a strict per-iteration protocol, clean stop semantics, an atomic lock against overlapping firings, and context hygiene. Read it at bootstrap and treat it as the loop's contract.
+
+## The state file: `.dev-team/autopilot.json`
+
+This is the **single source of truth**. You read it *first* every iteration and rewrite it *last*. A fresh conductor with zero memory must be able to read this file and know the one next thing to do. `PROJECT.md` is the human narrative; this is the machine state.
+
+```json
+{
+  "mission": "production-ready + feature-complete (in scope)",
+  "aim": "<confirmed 1-2 sentence product purpose — the yardstick for purpose-fit>",
+  "definition_of_done": ["builds+runs from clean checkout", "core task works e2e", "tests cover core flows & pass", "no unresolved Critical/High security finding", "no High correctness/UX backlog item", "docs enough to run it", "every High in-scope feature gap built-or-queued"],
+  "plan": [
+    {"phase": "DISCOVER",  "mode": "featurefind+iterate-audit", "exit": "work queue seeded", "status": "done"},
+    {"phase": "STABILIZE", "mode": "iterate",  "exit": "no High correctness/test gap",       "status": "in-progress"},
+    {"phase": "SECURE",    "mode": "security", "exit": "Phase-0 done; no unresolved Critical/High finding; rounds dry", "status": "pending"},
+    {"phase": "COMPLETE",  "mode": "orchestrator(feature)", "exit": "every High in-scope gap built-or-queued", "status": "pending"},
+    {"phase": "POLISH",    "mode": "iterate",  "exit": "no High UX/perf item",                 "status": "pending"},
+    {"phase": "VERIFY",    "mode": "review",   "exit": "complete review pass: overall PASS @ last_commit", "status": "pending"}
+  ],
+  "phase_cursor": 1,
+  "state": "RUNNING",                         // RUNNING | BLOCKED | DONE
+  "cursor": "B-014",                            // the work item currently in flight, or null
+  "next_action": "STABILIZE: run a cycle fixing B-014 (unhandled error on empty import) + B-017",
+  "queue": {"backlog": "PROJECT.md#Backlog", "feature_gaps": "FEATURES.md", "findings": "SECURITY.md#Findings"},
+  "gate_ledger": [
+    {"id": "G-001", "kind": "feature", "title": "bulk import", "spec_ref": "PROJECT.md#spec-G-001", "status": "awaiting-user"},
+    {"id": "G-002", "kind": "dep-upgrade", "title": "framework v3 major", "status": "awaiting-user"}
+  ],                                            // status: awaiting-user | approved | auto-cleared | built | dropped  (auto-cleared carries cleared_by:autonomy-test + justification)
+  "blocked": {"is": false, "reason": null, "since": null},
+  "cycle": 7,
+  "cap": 30,                                    // convergence backstop — stops a loop that can't reach done; NOT cost control
+  "verify": {"commit": null, "claim_groups": [], "integration": "pending", "completeness_critic": "pending"},
+  "verified_at_commit": "a1b2c3d",              // last_commit at which the most recent VERIFY produced overall PASS; null until then
+  "lock": {"holder": null, "ts": null, "stale_after_min": 90},
+  "branch": "autopilot/2026-06-22",
+  "last_commit": "a1b2c3d",
+  "trajectory_ref": "PROJECT.md#Trajectory-ledger",
+  "terminal": false,
+  "updated": "2026-06-22T14:05:00Z"
+}
+```
+
+Keep it small and current. Anything that needs prose (decision rationale, what a cycle changed, the trajectory table) lives in `PROJECT.md` via the documentarian; this file holds only what the *loop* needs to decide the next move. The **token allowance of the user's plan is the real spend ceiling** (the platform hard-cuts there); `cap` exists only as a *convergence* backstop so a loop that genuinely can't reach done stops honestly instead of spinning. Note `cap` counts every loop iteration — including doc-only setup (e.g. security Phase-0) and read-only VERIFY workstreams (a full VERIFY pass is several) — so size it larger for big or verification-heavy products.
+
+## The per-iteration protocol
+
+Run these steps in order, every firing. Steps 2 and 8 are where the loop continues or ends.
+
+### 1. REHYDRATE (and ingest any user input)
+Read `.dev-team/autopilot.json` cold. Read only the *slices* of `PROJECT.md` / `FEATURES.md` / `SECURITY.md` you need for the selected move — not the whole files. **Do not reconstruct state from your conversation memory**; the file is authoritative because memory may have been compacted away. If the file is missing, this is iteration 0 → go to **Bootstrap** (`mission-and-done.md`).
+
+**Then ingest user input, because this is the only place out-of-band decisions enter the loop.** If this firing carries a user message (a re-fire with text, not the bare self-scheduled prompt), parse it for directives and apply them to `autopilot.json` **before** the guard, persisting the file:
+- **Gate-ledger decisions by id** — `approve G-001`, `drop G-002`, or an edited spec → set that item's `status` to `approved` / `dropped` (and update `spec_ref` if the user edited the spec). A hand-edited `status: approved` in the file is honored the same way. If the run is `BLOCKED` with reason `awaiting-approvals`, approving (or dropping) an item also clears the block here — set `blocked={is:false,reason:null,since:null}`, `state:"RUNNING"` — since there is now safe work to select.
+- **Block resolution** — if `state` is `BLOCKED` and the input answers the blocker → set `blocked = {is:false, reason:null, since:null}`, `state:"RUNNING"`, persist, then continue. (This is the durable write-path out of BLOCKED; without it the next rehydrate would re-trip the guard.)
+- **Re-fire reclaim** — if this firing carries user input AND the lock dir is present, the user is re-firing into a session they themselves interrupted — there is no concurrent conductor (a self-scheduled wakeup carries no user text). Confirm no live process is still advancing (working tree quiescent), then reclaim the lock (`rmdir`/recreate) and continue without waiting out `stale_after_min`.
+
+### 2. GUARD — decide whether the loop should stop *before* doing work
+Evaluate, in order; the first that trips ends the loop (report, then **omit `ScheduleWakeup`**):
+
+- **terminal / DONE** — `terminal: true` or `state: "DONE"` → final report, stop.
+- **cap hit** — `cycle >= cap` → stop; report where it landed and the residual queue. A convergence backstop, not a failure.
+- **blocked & unresolved** — `state: "BLOCKED"` and step 1 did *not* clear it → re-surface the blocker and stop. (A re-fire whose input resolves it was already cleared in step 1 and falls through.)
+- **lock held by a live iteration** — the lock directory exists and its heartbeat `ts` is within `stale_after_min` (compare against `date`) → another iteration is mid-cycle; stop quietly without double-running. (A stale lock is reclaimed in step 3. A re-fire that carries user text is handled in step 1 and may reclaim early — see Crash/interruption recovery.)
+- **only-gated-work-left** — no safe autonomous (Bucket-1) work remains — including no pending or re-opened/forced VERIFY phase on the cursor and no phase-cursor work — AND no `gate_ledger` item is `approved` or `auto-cleared`, but items remain `awaiting-user` → nothing safe left to do without approvals → surface the approval queue, set `blocked={is:true, reason:"awaiting-approvals", since:<now>}` and `state:"BLOCKED"` (both fields, persisted — keep them consistent), and stop. (A re-fire that approves an item clears this via step 1.)
+
+If none trip, continue.
+
+### 3. LOCK — atomically
+Acquire the lease with an **atomic** primitive, not a read-then-write (two near-simultaneous firings must not both pass): `mkdir .dev-team/loop.lock` — this fails if the directory already exists. Proceed only if the `mkdir` succeeded. If it failed, the lock is held: stop — *unless* the holder's heartbeat `ts` (stored in `.dev-team/loop.lock/holder`) is older than `stale_after_min`, in which case treat the prior cycle as crashed, reclaim (`rmdir`/recreate), and continue. The cold-acquire `mkdir` is atomic, but the stale-reclaim path is read-then-act, so guard it with a compare-and-swap: after recreating the dir, immediately write your unique `holder` token and re-read it; proceed only if your own token survived — otherwise another firing reclaimed first, so back off and stop (treat as lock-held). This stays best-effort, not a hard mutex. Either way (cold acquire or reclaim), write `holder` (branch + cycle + a `date` timestamp) and `ts` into the lock dir. Release it in step 7.
+
+### 4. SELECT — pick the ONE next move
+From the `plan`, the `phase_cursor`, the work queue, and the `gate_ledger`, choose a single `{phase, mode, item(s)}` by the priority floor (`mission-and-done.md`): correctness/security first; then **any `approved` or `auto-cleared` gate-ledger feature not yet `built`** (promote it ahead of phase-cursor work, subject to the safety floor); then phase-cursor work; polish then verify. Features that are still `awaiting-user` are never selected. Bundle items only if they share a theme and don't touch the same files. Write the choice into `next_action` *before* running, so a crash mid-cycle leaves a breadcrumb.
+
+### 5. RUN ONE CYCLE
+Play lead for the selected mode, following that sibling skill's protocol for **exactly one cycle** (see `modes-and-gates.md` for what "one cycle" is in each mode):
+- write the cycle contract, delegate the wave with full briefs, run the checker/validator, engage only with NEEDS-LEAD-REVIEW, checkpoint, **commit one commit on the run branch.**
+- **Branch override:** do NOT run the sibling's own branch-creation step. The single run branch was created at bootstrap; every mode cycle commits there and records `last_commit`. (Details in `modes-and-gates.md`.)
+- **Heartbeat the lease:** re-stamp the lock `ts` at each sub-step (after the contract, after the delegate wave, after the checker) so a healthy-but-slow cycle never looks crashed.
+- **VERIFY mode is report-only:** run review with `remediate=report` on the run branch — verdicts only, no fix phase, no `review-fix` branch. Accumulate its workstream results into `verify` (claim-groups done, integration, completeness_critic). A VERIFY *phase* completes only when a full review pass at the current `last_commit` reports overall PASS (see `mission-and-done.md`); on that completion set `verified_at_commit = last_commit`.
+
+Keep your own context thin (see Context hygiene).
+
+### 6. GATE CHECK
+Apply the hybrid policy to whatever this cycle surfaced (`modes-and-gates.md` has the full table):
+- a **net-new feature** → run the feature autonomy test (`modes-and-gates.md`, all four criteria): if it passes, author the full spec + a logged justification, mark it `status: auto-cleared` (`cleared_by: autonomy-test`), **build it** (→ `built` when its stages complete), surface it; if it fails (differentiator, `risk`≥Med, out-of-scope-leaning, large/architectural), author the full spec, queue it (`status: awaiting-user`) with the reservation, surface it, **don't build**. A feature that is itself **Bucket-3-class** (destructive/irreversible/external-touching) → Bucket 3 (queue or hard-pause, never auto-build). A **major dep-upgrade / risky-architectural** item → always author the spec, queue (`status: awaiting-user`), surface, do not build;
+- an **active-compromise / incident signal**, or another **hard blocker** (contradiction, destructive op, two-strike failure, unestablishable safety net) → set `blocked = {is:true, reason, since}` and `state:"BLOCKED"`. For an active-compromise signal, do **not** auto-fix or patch (it can destroy forensic evidence) even if the remediation looks clear — the next GUARD will stop and surface it as an incident;
+- otherwise the work was autonomous and already done — nothing to gate.
+
+### 7. RECORD
+Have the documentarian update `PROJECT.md` (narrative + trajectory row + checkpoint). Then update `autopilot.json`: advance `phase_cursor`/`plan[].status` if the phase's exit criterion is now met, set `cursor` and a fresh `next_action`, append `last_commit`, increment `cycle`, update `gate_ledger` (a feature whose build stages just completed → `status: built`), when the conductor has authored a full feature spec this cycle, instruct the documentarian to write it to `PROJECT.md`'s `## Feature Specs` section at the `#spec-<id>` anchor and set the gate_ledger item's `spec_ref` to that anchor, **if this firing resolved a prior block set `blocked={is:false,reason:null,since:null}` and `state:"RUNNING"`**, set `verified_at_commit`/`verify` if a VERIFY cycle advanced, **release the lock** (`rmdir .dev-team/loop.lock`), bump `updated`. Keep the two files consistent.
+
+### 8. RE-EVALUATE TERMINAL, then YIELD
+Recompute the done checklist from the ledgers (`mission-and-done.md`) — including the **freshness binding**: the "builds & runs from clean checkout" and "core task works e2e" boxes count as met only when `verified_at_commit == last_commit`; if a cycle has landed a commit since the last VERIFY, those boxes are *unknown* and a fresh VERIFY phase is forced (re-open VERIFY) before `terminal` can be set. If every criterion is met → set `terminal: true` / `state: "DONE"` and **omit `ScheduleWakeup`** — the loop ends; give the final report now. Otherwise call:
+
+```
+ScheduleWakeup(
+  delaySeconds: <delay arg, ~90>,
+  reason: "autopilot cycle <N> done (<phase>); next: <next_action one-liner>",
+  prompt: "<the exact same /loop input that fired this iteration>"   // verbatim — this is what continues the loop
+)
+```
+
+Passing the **same `/loop` prompt** back is what makes the next firing re-enter this skill and run the next cycle. Omitting the call is the *only* way the loop stops — so every terminal/blocked/capped path must reach step 8 and deliberately not schedule.
+
+## Why self-paced, and how to pick the delay
+
+Cycle length varies from a few minutes to tens of minutes, so a fixed interval would fire mid-cycle or waste time — **self-pace.** Cycles are CPU-bound work, not waiting on external state, so you want them roughly back-to-back: use a short `delaySeconds` (~60–120). The loop's bounds clamp it. The small gap between cycles is negligible over a long run and buys you a clean re-entry point each time.
+
+## Context hygiene (load-bearing for durability)
+
+The main loop's context is the scarce resource — it accumulates across iterations until the harness compacts it. Protect it:
+
+- **Delegate everything heavy.** Builders, scouts, researchers, the checker, the documentarian all run as subagents whose context is discarded. You never read a full diff or a full file; you read the checker's triage and the agent's thin report.
+- **Summarize to disk, not to context.** The moment a cycle finishes, its durable result is in `PROJECT.md` + `autopilot.json` + the commit. The next iteration rehydrates from disk.
+- **Rehydrate, don't remember.** Treat each iteration as if you cold-started. This is what guarantees that when the harness *does* compact your context (or the session restarts), the loop continues correctly.
+
+A conductor that reads every diff and keeps everything in context will not survive ten iterations. One that pushes to subagents and disk can run indefinitely.
+
+## Crash / interruption recovery
+
+Because `next_action` is written *before* the cycle runs and the lock carries a heartbeat timestamp, recovery is automatic. A firing that finds the lock dir present but its heartbeat older than `stale_after_min` treats the prior cycle as crashed, reclaims the lock, and either resumes the in-flight item (if the commit didn't land) or moves on (if it did — check `git log` against `last_commit`). The run branch's per-cycle commits make "did the last cycle actually finish?" a checkable question, not a guess. A stale cycle reclaimed before its commit landed is always restarted from `next_action`; any uncommitted working-tree changes are reset to `last_commit` and discarded, because a tree left by a crashed wave is of unknown integrity. Cold-resume is correct-but-lossy by design for the not-yet-committed case — it guarantees a known-good restart, not partial-work salvage. Reclamation is a best-effort compare-and-swap, not a hard mutex.
+
+**Only reset on confirmed death, not on tree-dirtiness alone.** A healthy-but-slow cycle keeps its lease fresh via the step-5 heartbeat, so it never looks crashed. Reset a dirty working tree to `last_commit` *only after* the lock is confirmed stale by its last heartbeat (no live process is still producing output) — never while a heartbeat is still advancing, or you'd wipe a long cycle's uncommitted work.

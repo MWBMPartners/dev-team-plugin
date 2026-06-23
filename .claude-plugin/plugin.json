@@ -1,0 +1,16 @@
+{
+  "name": "dev-team",
+  "version": "1.0.0",
+  "description": "A suite of team-lead/product-owner skills that delegate software work to a team of Opus 4.8 subagents: orchestrator (build), iterate (improve), security (adversarial audit), review (QA), featurefind (competitive gap analysis), autopilot (autonomous drive to production), and stripe (payments build/review).",
+  "author": {
+    "name": "xm987"
+  },
+  "keywords": [
+    "orchestrator",
+    "subagents",
+    "dev-team",
+    "code-review",
+    "security",
+    "stripe"
+  ]
+}
