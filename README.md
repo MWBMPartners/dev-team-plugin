@@ -16,10 +16,10 @@ A private Claude Code plugin bundling the **dev-team** skill suite — team-lead
 
 ## Install (private)
 
-This is a private marketplace repo — only GitHub accounts with read access to it can install.
+This is a private marketplace repo under the **MWBMPartners** org — only org members (or collaborators) with read access can install.
 
 ```
-/plugin marketplace add xm987/dev-team-plugin
+/plugin marketplace add MWBMPartners/dev-team-plugin
 /plugin install dev-team@dev-team
 ```
 
@@ -32,5 +32,5 @@ To update later, after pulling new commits:
 
 ## Privacy
 
-Distribution is controlled entirely by GitHub repo access (collaborators / org teams).
+Distribution is controlled by GitHub access to the **MWBMPartners** org repo — org members (and any teams/collaborators granted read) can install; nobody else can.
 Skill files are plaintext — keep secrets (API keys, tokens) out of them.
