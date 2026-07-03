@@ -1,6 +1,6 @@
 ---
 name: dev-team-featurefind
-description: Research similar/competitor products and find the features your implementation is MISSING, then score each gap by how important it is to add within the project's aim — producing a scored feature-gap ledger (FEATURES.md) for you and the dev-team conductor to act on. Run as a team lead delegating to a team of Opus 4.8 subagents: scouts read your current feature set, market researchers map comparables with citations, a skeptic validates every claimed gap, and a documentarian writes the ledger. Use this skill whenever the user asks "what features am I missing", "what should I add", "how do I compare to competitor X", wants a "competitive analysis", "feature gap analysis", "feature ideas", to "benchmark against similar products", or mentions "featurefind". Also use it as the discovery front-end before a feature-building push. Sibling of dev-team-orchestrator/iterate/security. Do NOT use it to BUILD features (that goes through dev-team-orchestrator/autopilot and the Feature Spec Gate), for a general "improve my app" request (use dev-team-iterate), for a factual product question like "what does X support" (just answer it), for market research unrelated to a codebase, or for one-off questions.
+description: Research similar/competitor products and find the features your implementation is MISSING, then score each gap by how important it is to add within the project's aim — producing a scored feature-gap ledger (FEATURES.md) for you and the dev-team conductor to act on. Run as a team lead delegating to a team of opus-builder subagents (Opus tier): scouts read your current feature set, market researchers map comparables with citations, a skeptic validates every claimed gap, and a documentarian writes the ledger. Use this skill whenever the user asks "what features am I missing", "what should I add", "how do I compare to competitor X", wants a "competitive analysis", "feature gap analysis", "feature ideas", to "benchmark against similar products", or mentions "featurefind". Also use it as the discovery front-end before a feature-building push. Sibling of dev-team-orchestrator/iterate/security. Do NOT use it to BUILD features (that goes through dev-team-orchestrator/autopilot and the Feature Spec Gate), for a general "improve my app" request (use dev-team-iterate), for a factual product question like "what does X support" (just answer it), for market research unrelated to a codebase, or for one-off questions.
 ---
 
 # Dev Team Feature Find
@@ -17,14 +17,14 @@ A competitor has a hundred features. Most of them are **not** gaps in your produ
 
 ## Your team
 
-Same lead-delegates-to-Opus model as the orchestrator, with research-specific roles:
+Same lead-delegates-to-`opus-builder` model as the orchestrator, with research-specific roles (model routing: `skills/dev-team-orchestrator/references/model-routing.md`):
 
-- **Scouts** — Opus 4.8, read-only. Map the **current implementation's feature set**: what the app actually does today, surface by surface. If a prior `dev-team-iterate` run wrote a **Codebase Map** to `PROJECT.md`, don't blindly reuse it — first run `dev-team-iterate`'s Step-0 freshness check (`references/audit-and-backlog-protocol.md` Step 0) before trusting it (see the freshness rule under Phase 0).
-- **Market researchers** — Opus 4.8, with web access (`WebSearch`/`WebFetch`). Each owns a slice — one comparable product, or one feature domain across several products — and returns its feature inventory **with a source citation per feature**. Reasoning alone hallucinates competitor features; citations are this skill's evidence-not-claims rule.
-- **Synthesizer / scorer** — Opus 4.8. Diffs competitor features against the current feature set, dedups, and scores each candidate gap with the rubric in `references/gap-scoring-rubric.md`.
-- **Validator (skeptic)** — Opus 4.8. The false-positive gate. For each candidate gap it tries to **refute**: does the citation actually support "competitor has this"? Is the feature genuinely *absent* from our app (not just named differently)? Is it *in scope* for our aim? Defaults to dropping/down-scoping when unconfirmed. See `references/research-and-comparable-protocol.md`.
-- **Completeness critic** — Opus 4.8, end of run. Asks "which obvious comparable or feature category did we never look at?" against the coverage list; gaps it finds become another research round.
-- **Documentarian** — Sonnet (`claude-sonnet-4-6`). Owns **`FEATURES.md`**, the feature-gap ledger (external memory for this and future runs), and syncs the top in-scope gaps into `PROJECT.md`'s Proposed-Features ledger if that file exists.
+- **Scouts** — the `opus-builder` agent (Opus tier), read-only. Map the **current implementation's feature set**: what the app actually does today, surface by surface. If a prior `dev-team-iterate` run wrote a **Codebase Map** to `PROJECT.md`, don't blindly reuse it — first run `dev-team-iterate`'s Step-0 freshness check (`references/audit-and-backlog-protocol.md` Step 0) before trusting it (see the freshness rule under Phase 0).
+- **Market researchers** — the `opus-builder` agent (Opus tier), with web access (`WebSearch`/`WebFetch`). Each owns a slice — one comparable product, or one feature domain across several products — and returns its feature inventory **with a source citation per feature**. Reasoning alone hallucinates competitor features; citations are this skill's evidence-not-claims rule.
+- **Synthesizer / scorer** — the `opus-builder` agent (Opus tier). Diffs competitor features against the current feature set, dedups, and scores each candidate gap with the rubric in `references/gap-scoring-rubric.md`.
+- **Validator (skeptic)** — the `opus-builder` agent (Opus tier). The false-positive gate. For each candidate gap it tries to **refute**: does the citation actually support "competitor has this"? Is the feature genuinely *absent* from our app (not just named differently)? Is it *in scope* for our aim? Defaults to dropping/down-scoping when unconfirmed. See `references/research-and-comparable-protocol.md`. This gate stays on the Opus/frontier tier — never routed cheaper (model-routing.md, invariant 1).
+- **Completeness critic** — the `opus-builder` agent (Opus tier), end of run. Asks "which obvious comparable or feature category did we never look at?" against the coverage list; gaps it finds become another research round.
+- **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Owns **`FEATURES.md`**, the feature-gap ledger (external memory for this and future runs), and syncs the top in-scope gaps into `PROJECT.md`'s Proposed-Features ledger if that file exists.
 
 ## The operating loop
 
@@ -63,7 +63,7 @@ Take their edits, then run the rest autonomously to the ledger. (If invoked by t
 
 ### Research — discover comparables and enumerate features
 
-Follow `references/research-and-comparable-protocol.md`. In short: spawn market researchers (Opus 4.8, web-enabled), each owning a slice — a single comparable product, or one feature domain across the set. Each returns a **feature inventory with a citation per claimed feature** (a docs page, a pricing/features page, a changelog — prefer the vendor's own product docs over third-party listicles). Parallelize across non-overlapping slices. Target ~4–6 comparables by default (`count` arg tunes it); breadth across the category beats exhaustive depth on one competitor.
+Follow `references/research-and-comparable-protocol.md`. In short: spawn market researchers as the `opus-builder` agent (Opus tier, web-enabled), each owning a slice — a single comparable product, or one feature domain across the set. Each returns a **feature inventory with a citation per claimed feature** (a docs page, a pricing/features page, a changelog — prefer the vendor's own product docs over third-party listicles). Parallelize across non-overlapping slices. Target ~4–6 comparables by default (`count` arg tunes it); breadth across the category beats exhaustive depth on one competitor.
 
 **Citation discipline is the evidence rule here.** "Competitor X has feature Y" with no source is an unconfirmed claim, not a finding — the validator will drop it. Marketing copy is weaker evidence than product docs; note which you have.
 
@@ -126,7 +126,7 @@ Optional run arguments (defaults in brackets):
 - **Brief discipline** — `references/task-brief-template.md`; full briefs, and **evidence-not-claims becomes citation-per-feature**.
 - **The skeptic/validator gate** — same false-positive discipline as `dev-team-security`'s validator.
 - **Completeness critic** — same end-of-run "what did we miss" pass.
-- **Documentarian** — `references/documentarian-protocol.md`; Sonnet owns the ledger doc (`FEATURES.md` here).
+- **Documentarian** — `references/documentarian-protocol.md`; the `sonnet-scribe` agent owns the ledger doc (`FEATURES.md` here).
 - **Composing other skills** — route any product/market skill the user has to the researchers.
 
 ## References (read at the matching step)

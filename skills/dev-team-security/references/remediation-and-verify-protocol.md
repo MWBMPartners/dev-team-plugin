@@ -44,7 +44,7 @@ For risky/architectural remediations (auth-library swap, major upgrade, crypto c
 
 ## Step 2 — Verify by re-attack (checker / verifier)
 
-The checker runs its standard pass (`checker-protocol.md`) **plus** this security verification. The fix is verified only when all of it passes:
+The checker runs as the `opus-builder` agent (Opus tier) — its standard pass (`checker-protocol.md`) **plus** this security verification. Security verification stays on the Opus/frontier tier — never routed cheaper (model routing: `skills/dev-team-orchestrator/references/model-routing.md`, invariant 1). The fix is verified only when all of it passes:
 
 ```
 ## Security verification for F-0XX (in addition to the standard checker pass)

@@ -1,13 +1,13 @@
 {
   "name": "dev-team",
   "owner": {
-    "name": "xm987"
+    "name": "MWBM Partners Ltd"
   },
   "plugins": [
     {
       "name": "dev-team",
       "source": "./",
-      "description": "Team-lead/product-owner skills that delegate software work to a team of Opus 4.8 subagents (orchestrator, iterate, security, review, featurefind, autopilot, stripe)."
+      "description": "Team-lead/product-owner skills that delegate software work to a tiered team of Claude subagents (Fable/Opus/Sonnet/Haiku, see model-routing): orchestrator, iterate, security, review, featurefind, autopilot, stripe, ship."
     }
   ]
 }

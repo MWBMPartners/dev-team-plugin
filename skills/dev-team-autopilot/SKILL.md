@@ -7,7 +7,7 @@ description: Drive a product all the way to PRODUCTION-READY and as FEATURE-COMP
 
 You are the **conductor**. One product, one long-running mission: take it from where it is now to **production-ready and as feature-complete as its scope allows** — without the user babysitting it. You do this by running the dev-team suite as an **autonomous loop**: each iteration does one small, resumable cycle of work, writes down exactly where things stand, and schedules the next iteration. A run can span many iterations, survive context compaction and restarts, and be interrupted by the user at any point — an interrupt between cycles resumes immediately, and a re-fire into a mid-cycle interrupt reclaims the lease rather than waiting out the lease interval.
 
-You are still the **team lead** every iteration — you delegate all implementation to Opus 4.8 subagents and never write production code yourself. What's new is that you also own a **loop** and a **mission state machine**, and you must be able to **cold-resume**: a fresh conductor with no memory should read the state file and know the single next thing to do.
+You are still the **team lead** every iteration — you delegate all implementation to `opus-builder` subagents (Opus tier; model routing: `skills/dev-team-orchestrator/references/model-routing.md`) and never write production code yourself. What's new is that you also own a **loop** and a **mission state machine**, and you must be able to **cold-resume**: a fresh conductor with no memory should read the state file and know the single next thing to do.
 
 > **Read `dev-team-orchestrator/SKILL.md` first** — locate it via your `available_skills` registry (it lives under `~/.claude/skills/` for a user install or `.claude/skills/` for a project install). The team model, briefs, the checker, debates, the documentarian, evidence-not-claims, and rollback commits all apply unchanged — every cycle you run *is* an orchestrator/iterate/security/review cycle. This file adds the layer on top: the loop, the state machine, mode selection, and the gate policy that make it run unattended.
 
@@ -68,6 +68,8 @@ Fire it as a self-paced loop — **omit the interval** so cycles pace themselves
 
 Each iteration, the conductor does one cycle and calls `ScheduleWakeup` to fire the **same `/loop` prompt** again — that's what continues the loop. When the mission is done (or a cap/blocker stops it), the conductor **omits** `ScheduleWakeup`, which ends the loop. The user can interrupt between any two cycles; the next firing just rehydrates and continues. (You can also wrap it in a fixed interval, but self-paced is the intended mode.)
 
+Between cycles the user doesn't have to interrupt the loop to see or steer it: `/dev-team-status` prints a read-only dashboard (mission, phase, `next_action`, gate ledger, budget) straight off `.dev-team/autopilot.json`, and `/dev-team-approve <G-id> approve|reject` resolves a queued gate-ledger item so the next iteration builds or drops it. Both are the operable surface for a run in progress.
+
 ## The hybrid gate policy (default)
 
 Unattended autonomy is only safe if the loop knows what it may *not* do alone. Three buckets, detailed in `references/modes-and-gates.md`:
@@ -80,7 +82,7 @@ This is the answer to "how does a loop that runs while I sleep handle things tha
 
 ## Machine-authoritative state
 
-The loop's source of truth is `.dev-team/autopilot.json` — a parseable state object you read *first* every iteration and rewrite at the end. It holds the mission, the definition of done, the phase plan + cursor, the current `next_action`, the work-queue references, the gate-ledger, the blocked flag, the cycle count + cap, the lock/lease, the VERIFY progress + the commit it was verified at, the run branch, and the last commit. The schema and the read/write rules are in `references/loop-runtime.md`. `PROJECT.md` (Sonnet documentarian) stays the **human-readable narrative + trajectory**; `autopilot.json` stays the **machine state** two cold starts can agree on. Keep them consistent; never let memory be the authority.
+The loop's source of truth is `.dev-team/autopilot.json` — a parseable state object you read *first* every iteration and rewrite at the end. It holds the mission, the definition of done, the phase plan + cursor, the current `next_action`, the work-queue references, the gate-ledger, the blocked flag, the cycle count + cap, the lock/lease, an informational `budget` block (spawn counts by tier — a trend signal only, never an auto-actuator; see `references/loop-runtime.md`), the VERIFY progress + the commit it was verified at, the run branch, and the last commit. The schema and the read/write rules are in `references/loop-runtime.md`. `PROJECT.md` (the `sonnet-scribe` documentarian, Sonnet tier) stays the **human-readable narrative + trajectory**; `autopilot.json` stays the **machine state** two cold starts can agree on. Keep them consistent; never let memory be the authority.
 
 ## Anti-runaway (non-negotiable)
 
@@ -111,7 +113,7 @@ Optional run arguments (defaults in brackets):
 - **Failed/stuck agents:** diagnose, re-brief, two strikes then re-scope or escalate (and two strikes is a hard-pause trigger).
 - **Debate mode** for consequential, contested decisions surfaced mid-loop.
 - **Composing other skills** — route the user's UI/testing/style skills to the relevant agents and have the checker verify conformance (unchanged).
-- **Documentarian** (Sonnet) owns `PROJECT.md`; the conductor additionally owns `autopilot.json`.
+- **Documentarian** (`sonnet-scribe`, Sonnet tier) owns `PROJECT.md`; the conductor additionally owns `autopilot.json`.
 
 ## References (read at the matching step)
 

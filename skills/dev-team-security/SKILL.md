@@ -1,6 +1,6 @@
 ---
 name: dev-team-security
-description: Run an advanced, adversarial security audit and remediation loop on a codebase as a team lead delegating to a team of Opus 4.8 subagents. It threat-models the app, maps every vulnerability surface, runs red-team agents that actively try to exploit the code (producing proof-of-concept evidence), scores findings by severity, then fixes them via the orchestrator workflow and re-attacks to confirm each hole is closed. Use when the user wants to "security audit", "pentest", "harden", "find vulnerabilities", "attack/hack my own code", or "fix all security issues" in a codebase they own or are authorized to test. Sibling of dev-team-orchestrator/dev-team-iterate. Do NOT use for attacking systems the user does not own, one-file scripts, or questions. If the work centers on Stripe / payments / billing / subscriptions / Connect / webhooks, use dev-team-stripe instead (it carries the payments-specific correctness and security rules).
+description: Run an advanced, adversarial security audit and remediation loop on a codebase as a team lead delegating to a team of `opus-builder` subagents (Opus tier). It threat-models the app, maps every vulnerability surface, runs red-team agents that actively try to exploit the code (producing proof-of-concept evidence), scores findings by severity, then fixes them via the orchestrator workflow and re-attacks to confirm each hole is closed. Use when the user wants to "security audit", "pentest", "harden", "find vulnerabilities", "attack/hack my own code", or "fix all security issues" in a codebase they own or are authorized to test. Sibling of dev-team-orchestrator/dev-team-iterate. Do NOT use for attacking systems the user does not own, one-file scripts, or questions. If the work centers on Stripe / payments / billing / subscriptions / Connect / webhooks, use dev-team-stripe instead (it carries the payments-specific correctness and security rules).
 ---
 
 # Dev Team Security
@@ -25,15 +25,15 @@ If the target isn't clearly the user's own / authorized code, confirm authorizat
 
 ## Your team
 
-Same roles as the orchestrator, plus an explicit red/blue split:
+Same roles as the orchestrator, plus an explicit red/blue split (model routing: `skills/dev-team-orchestrator/references/model-routing.md`):
 
-- **Scouts** — Opus 4.8, read-only. Map the app and its attack surface, **run the security scanners** (SCA/SAST/secret/container — see Phase 0), and stand up the sandbox + multi-role test fixtures.
-- **Red-team agents** — Opus 4.8. Adversarially probe each surface and **try to exploit it**, producing PoC evidence + CWE/CVSS, augmented by the scanner leads. Follow `references/red-team-protocol.md`. They modify nothing but may add isolated PoC/repro artifacts in a sandbox/test dir.
-- **Validator (skeptic)** — Opus 4.8. Before any fix effort, tries to **refute** each finding — is the sink really reachable, is the PoC real, is the severity right? Defaults to rejected/downgraded when unconfirmed. This is the false-positive gate; see `red-team-protocol.md`.
-- **Builders (blue team)** — Opus 4.8. Implement the fixes (orchestrator's `task-brief-template.md`), defense-in-depth, no regressions.
-- **Checker / verifier** — Opus 4.8. Standard checker pass **plus** re-runs the red-team PoC and bypass variants to confirm the vuln is actually closed (not just moved), **red-teams the fix diff for newly-introduced vulns**, and confirms no regression. Uses `references/remediation-and-verify-protocol.md` on top of `checker-protocol.md`.
-- **Completeness critic** — Opus 4.8, end of run. Asks "what class/surface did we *not* test, what claim is unverified?" against the coverage ledger; what it finds becomes the next round.
-- **Documentarian** — Sonnet (`claude-sonnet-4-6`). Owns `SECURITY.md` (the audit's external memory): threat model, the **coverage ledger**, the **findings register** (with CWE/CVSS), severity, status, fixes, and verification results.
+- **Scouts** — the `opus-builder` agent (Opus tier), read-only. Map the app and its attack surface, **run the security scanners** (SCA/SAST/secret/container — see Phase 0), and stand up the sandbox + multi-role test fixtures.
+- **Red-team agents** — the `opus-builder` agent (Opus tier). Adversarially probe each surface and **try to exploit it**, producing PoC evidence + CWE/CVSS, augmented by the scanner leads. Follow `references/red-team-protocol.md`. They modify nothing but may add isolated PoC/repro artifacts in a sandbox/test dir. Security verification stays on the Opus/frontier tier — never routed cheaper (model-routing.md, invariant 1).
+- **Validator (skeptic)** — the `opus-builder` agent (Opus tier). Before any fix effort, tries to **refute** each finding — is the sink really reachable, is the PoC real, is the severity right? Defaults to rejected/downgraded when unconfirmed. This is the false-positive gate; see `red-team-protocol.md`. Same invariant: never routed cheaper than Opus.
+- **Builders (blue team)** — the `opus-builder` agent (Opus tier). Implement the fixes (orchestrator's `task-brief-template.md`), defense-in-depth, no regressions.
+- **Checker / verifier** — the `opus-builder` agent (Opus tier). Standard checker pass **plus** re-runs the red-team PoC and bypass variants to confirm the vuln is actually closed (not just moved), **red-teams the fix diff for newly-introduced vulns**, and confirms no regression. Uses `references/remediation-and-verify-protocol.md` on top of `checker-protocol.md`. Verification stays on the Opus/frontier tier — never routed cheaper (model-routing.md, invariant 1).
+- **Completeness critic** — the `opus-builder` agent (Opus tier), end of run. Asks "what class/surface did we *not* test, what claim is unverified?" against the coverage ledger; what it finds becomes the next round.
+- **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Owns `SECURITY.md` (the audit's external memory): threat model, the **coverage ledger**, the **findings register** (with CWE/CVSS), severity, status, fixes, and verification results.
 
 ## The operating loop
 
@@ -132,7 +132,7 @@ Optional run arguments (defaults in brackets):
 - Checker triage (`checker-protocol.md`) — you read only NEEDS-LEAD-REVIEW; here the checker also re-attacks.
 - Failed/stuck agents: diagnose, re-brief, two strikes then re-scope.
 - Debate mode (`debate-protocol.md`) for contested remediation strategies.
-- Documentarian (`documentarian-protocol.md`) — Sonnet owns the security doc (`SECURITY.md` here).
+- Documentarian (`documentarian-protocol.md`) — the `sonnet-scribe` agent owns the security doc (`SECURITY.md` here).
 - Composing other skills: route any security/testing skill the user has to the relevant agents.
 
 ## References (new — read at the matching step)

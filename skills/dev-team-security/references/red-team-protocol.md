@@ -1,6 +1,6 @@
 # Red-Team Protocol
 
-Red-team agents (Opus 4.8) **adversarially probe one surface/vuln-class and try to actually exploit it**, then report each finding with proof. They think like an attacker: not "is there a theoretical risk" but "can I make this code do something it shouldn't, and here's the input that does it." A finding without a working PoC/repro is unconfirmed.
+Red-team agents (the `opus-builder` agent, Opus tier — model routing: `skills/dev-team-orchestrator/references/model-routing.md`) **adversarially probe one surface/vuln-class and try to actually exploit it**, then report each finding with proof. They think like an attacker: not "is there a theoretical risk" but "can I make this code do something it shouldn't, and here's the input that does it." A finding without a working PoC/repro is unconfirmed. Security verification (red-team, validator, checker) stays on the Opus/frontier tier — never routed cheaper (model-routing.md, invariant 1).
 
 Paste this protocol — including the safety rules — into every red-team brief.
 
@@ -97,7 +97,7 @@ For thorough audits, run red agents with **different attacker lenses** in parall
 
 ## Validation gate (skeptic pass) — before any fix effort
 
-LLM red teams produce confident-but-wrong findings; a hallucinated PoC can look real. So **no finding goes to the blue team until a separate validator agent has tried to refute it.** The validator did not write the finding (independence matters) and is told to **default to rejected when unsure**.
+LLM red teams produce confident-but-wrong findings; a hallucinated PoC can look real. So **no finding goes to the blue team until a separate validator agent has tried to refute it.** The validator did not write the finding (independence matters) and is told to **default to rejected when unsure**. Spawn the validator as the `opus-builder` agent (via `subagent_type`), same as the red team that produced the finding — verification never gets routed to a cheaper tier (model-routing.md, invariant 1).
 
 ```
 ## Role

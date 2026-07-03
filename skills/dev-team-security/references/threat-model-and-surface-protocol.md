@@ -8,7 +8,7 @@ All work here is read-only and against a **local/sandboxed instance** the user o
 
 ## Step 1 — Security scout (read-only)
 
-Spawn scout agent(s) (Opus 4.8, modify nothing) to answer:
+Spawn scout agent(s) (the `opus-builder` agent, Opus tier, modify nothing — model routing: `skills/dev-team-orchestrator/references/model-routing.md`) to answer:
 
 **Architecture & trust boundaries**
 - Stack, frameworks, runtime; how it's built, run, and deployed; how to stand up a **local sandbox instance** for safe testing.

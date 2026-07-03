@@ -1,6 +1,6 @@
 # dev-team
 
-A private Claude Code plugin bundling the **dev-team** skill suite — team-lead / product-owner skills that delegate software work to a team of Opus 4.8 subagents instead of coding alone.
+A private Claude Code plugin bundling the **dev-team** skill suite — team-lead / product-owner skills that delegate software work to a tiered team of Claude subagents (Fable / Opus / Sonnet / Haiku — see [Model routing](#model-routing)) instead of coding alone.
 
 ## Skills
 
@@ -13,21 +13,111 @@ A private Claude Code plugin bundling the **dev-team** skill suite — team-lead
 | `dev-team-featurefind` | Competitive feature-gap analysis producing a scored `FEATURES.md` ledger. |
 | `dev-team-autopilot` | Autonomous, self-paced `/loop` drive of the whole suite to production-ready. |
 | `dev-team-stripe` | Stripe/payments build + review with payments-specific correctness/security rules. |
+| `dev-team-ship` | Take a working repo to a shipping one — CI, branch protection, secret scanning, releases. |
+
+### Which skill when
+
+A quick decision guide — pick the first row that fits:
+
+| If you want to… | Use | Notes |
+|---|---|---|
+| Build something new from a goal/spec (a feature, component, or whole project) | `dev-team-orchestrator` | The hub skill; everything else assumes you've read its `SKILL.md` first. |
+| Polish/harden an existing codebase with no fixed spec ("make it better") | `dev-team-iterate` | Self-directed loop over correctness/UX/efficiency; reuses the Codebase Map for cheap re-runs. |
+| Get an adversarial security pass with real exploit evidence | `dev-team-security` | Red-team subagents + remediation; writes `SECURITY.md`. |
+| Independently verify claims a prior run made ("did it actually work?") | `dev-team-review` | Fresh evidence only — never rubber-stamps prior output; writes `VERIFICATION.md`. |
+| See what competitors have that you don't | `dev-team-featurefind` | Produces a scored `FEATURES.md` gap ledger. |
+| Build or audit Stripe/payments code | `dev-team-stripe` | Payments-specific correctness + security checklist on top of the standard build/review cycle. |
+| Get CI, branch protection, secret scanning, and a release flow in place | `dev-team-ship` | `setup` mode from scratch, or `audit` mode to catch drift/orphaned checks in an existing pipeline. |
+| Drive all the way to production-ready with no babysitting | `dev-team-autopilot` | Fires the whole suite autonomously; run it via `/loop dev-team-autopilot <mission>`, not directly. |
+
+Unsure, or your request doesn't map cleanly onto one row? Run `/dev-team` — it asks one clarifying question and routes you.
+
+## Artifacts glossary
+
+The suite communicates through a small set of plain files it reads and writes in your repo (its "external memory," so a fresh agent can resume cold):
+
+| Artifact | Written by | Purpose |
+|---|---|---|
+| `PROJECT.md` | `sonnet-scribe` | Goal, definition of done, decisions, and a tight, always-overwritten `Current status` — the single next action + where to look. |
+| `FEATURES.md` | `sonnet-scribe` | Scored feature/gap ledger from `dev-team-featurefind` (and proposed-features backlog from other runs). |
+| `SECURITY.md` | `sonnet-scribe` | Findings + remediation record from `dev-team-security`. |
+| `VERIFICATION.md` | `sonnet-scribe` | Independent QA evidence from `dev-team-review`. |
+| `.dev-team/autopilot.json` | `sonnet-scribe` | Autopilot run state: mission, phase, cycle count/cap, gate ledger (`G-` items), lock/lease, and an informational `budget` block (spawns per model tier — a trend indicator, never an auto-actuator). |
+| `skills/dev-team-orchestrator/references/model-routing.md` | (static reference) | The roster — which endpoint agent/model tier handles which kind of work. See below. |
+
+There is deliberately no separate `HANDOFF.md` — `PROJECT.md#Current status` is the handoff file, kept lean rather than accumulated.
+
+## Model routing
+
+Claude Code has no automatic per-task model router — the only thing that actually binds a model to work is a named agent's frontmatter `model:` field. So "routing" here means **steer-and-bias**: the lead chooses which of the four endpoint agents to spawn (`subagent_type`) for each workstream — `deep-architect` (Fable, hard reasoning), `opus-builder` (Opus, the default build/verify workhorse — and where ALL verification stays, never routed cheaper), `sonnet-scribe` (Sonnet, the documentarian), or `quick-edits` (Haiku, mechanical work) — guided by each agent's `description` and by the roster.
+
+The suite also follows **plan expensive, execute cheap**: a higher tier (Fable/Opus, or the lead) writes a dense, self-contained execution spec once — exact signatures, target files, acceptance criteria, edge cases — and a cheaper tier executes it without re-deriving context, so you pay for reasoning once and amortize it across cheap execution.
+
+Full routing table, model ids/aliases, and both invariants (verification never cheapens; plan expensive/execute cheap) live in one place: [`skills/dev-team-orchestrator/references/model-routing.md`](skills/dev-team-orchestrator/references/model-routing.md) — every skill points here instead of restating a model name inline.
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `/dev-team [what you want to do]` | Entry point/router — explains which skill fits and kicks it off, or asks one clarifying question. |
+| `/dev-team-status` | Read-only dashboard of the current run: mission, phase, next action, gate ledger, budget trend — changes nothing on disk. |
+| `/dev-team-approve <gate-id> approve\|reject [notes]` | Resolves a queued autopilot gate-ledger item (a deferred feature/dependency/architecture decision) so the next iteration builds or skips it. |
+| `/dev-team-update` | Checks whether a newer plugin version is available and prints the exact update commands. |
 
 ## Install (private)
 
 This is a private marketplace repo under the **MWBMPartners** org — only org members (or collaborators) with read access can install.
 
-```
+```text
 /plugin marketplace add MWBMPartners/dev-team-plugin
 /plugin install dev-team@dev-team
 ```
 
-To update later, after pulling new commits:
+## Updating / auto-update
 
+There are two layers — use the first; the second exists so you're never caught unaware if you haven't.
+
+**1. Built-in marketplace auto-update (primary).** Claude Code can auto-update a plugin at the marketplace level. Turn it on either way:
+
+- **`/plugin` UI:** Marketplaces tab → select `dev-team` → **Enable auto-update**. Updates then download at startup with no commands needed.
+- **Managed `settings.json`** — add this snippet:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "dev-team": {
+      "source": { "source": "github", "repo": "MWBMPartners/dev-team-plugin" },
+      "autoUpdate": true
+    }
+  }
+}
 ```
+
+Two global env vars affect this: `DISABLE_AUTOUPDATER=1` turns off Claude Code auto-updates entirely (including plugins); `FORCE_AUTOUPDATE_PLUGINS=1` keeps plugin updates going even if Claude Code's own auto-update is otherwise disabled.
+
+If auto-update is off, update manually after pulling/whenever a new version ships:
+
+```text
 /plugin marketplace update dev-team
 /plugin update dev-team
+```
+
+**2. SessionStart notifier (fallback).** A hook checks, at session start, whether a newer version exists — cached for 24h, silent when you're current, and it never runs an update itself (only prints a `systemMessage` with the two commands above). It needs `gh` authenticated against this private repo to reach the network at all; if that's unavailable it just stays quiet. Disable it with:
+
+```text
+export DEV_TEAM_NO_UPDATE_CHECK=1
+```
+
+Or check on demand any time with `/dev-team-update`, which also summarizes what's new from `CHANGELOG.md` when reachable.
+
+## Hooks (optional guardrails)
+
+The plugin ships one opt-in-by-scope safety hook (`hooks/guard-dev-team.sh`, `PreToolUse`/`Bash`). It's a best-effort string-match layer, not a security boundary, and it's **fail-open**: any error, or no active dev-team run, and it allows the command. It only engages while `.dev-team/autopilot.json` exists (i.e. an autopilot run is active), blocking a short deny-list of unrecoverable actions — pushes/force-pushes to `main`/`master`, and live (`sk_live_`/`rk_live_`/`pk_live_`) Stripe keys, since dev-team is test-mode only.
+
+To force the guard on even outside an active run:
+
+```text
+export DEV_TEAM_GUARD=1
 ```
 
 ## Privacy
