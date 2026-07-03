@@ -1,0 +1,17 @@
+# Dependabot configuration.
+# This repo is a markdown/shell plugin with no package manifest, so the only
+# "dependencies" are the GitHub Actions used in workflows. Dependabot ALERTS +
+# SECURITY UPDATES for vulnerable deps are enabled at the repo level; this file
+# adds routine version-update PRs for the Actions ecosystem so pinned actions
+# (actions/checkout, etc.) stay current. Activates once merged to the default branch.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+    open-pull-requests-limit: 5
