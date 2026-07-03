@@ -69,6 +69,15 @@ Any skill that takes arguments also accepts a run-level `models=economy|balanced
 | `/dev-team-status` | Read-only dashboard of the current run: mission, phase, next action, gate ledger, budget trend — changes nothing on disk. |
 | `/dev-team-approve <gate-id> approve\|reject [notes]` | Resolves a queued autopilot gate-ledger item (a deferred feature/dependency/architecture decision) so the next iteration builds or skips it. |
 | `/dev-team-update` | Checks whether a newer plugin version is available and prints the exact update commands. |
+| `/dev-team-sync-branches [--apply] [--no-fetch]` | Safely aligns local branches with their remotes — prunes stale remote-tracking refs and deletes local branches whose remote was merged/deleted, confirm-first. Never touches unpushed or unmerged work. |
+
+## Branch hygiene
+
+`/dev-team-sync-branches` keeps your local branches aligned with GitHub without risking work. It `git fetch --prune`es, then buckets local branches: **fully merged** (deleted with `git branch -d`), **remote-deleted with a confirmed-merged PR** (squash/rebase — force-deleted only after the merge is verified via `gh`), and **remote-deleted but no merged PR found** — which it **leaves alone** (that may be unpushed work). It shows the plan and waits for your confirmation before deleting anything; it never pushes, never deletes remote branches, and never force-deletes unproven work.
+
+A SessionStart notifier (`hooks/sync-branches-check.sh`) flags, at session start, how many local branches have a deleted upstream — network-free, fail-open, silent when there's nothing to clean, and it deletes nothing. Disable it with `export DEV_TEAM_NO_BRANCH_CHECK=1`.
+
+The non-destructive half is native to git — enable it yourself so stale remote-tracking refs prune automatically (and the notifier stays accurate): `git config --global fetch.prune true`.
 
 ## Install (private)
 

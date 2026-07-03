@@ -14,5 +14,5 @@ Route them to the right skill (activate it by following its SKILL.md), or if unc
 - Set up CI/CD, branch protection, secret scanning, releases → dev-team-ship
 - Drive all the way to production-ready, autonomously → dev-team-autopilot (fire via `/loop dev-team-autopilot <mission>`)
 
-Also: `/dev-team-status` shows a live run dashboard; `/dev-team-approve <G-id> approve|reject` resolves a queued gate item; `/dev-team-update` checks for a newer plugin version.
+Also: `/dev-team-status` shows a live run dashboard; `/dev-team-approve <G-id> approve|reject` resolves a queued gate item; `/dev-team-update` checks for a newer plugin version; `/dev-team-sync-branches` safely prunes local branches whose remote was merged/deleted.
 If the request clearly matches one skill, name it and proceed; otherwise ask one question.

@@ -38,6 +38,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   when forced on via `DEV_TEAM_GUARD`. Fail-open by design.
 - `hooks/check-update.sh`: a SessionStart auto-update notifier — cached for 24h, fail-open,
   silent when the plugin is already current; disable with `DEV_TEAM_NO_UPDATE_CHECK`.
+- `/dev-team-sync-branches` + `scripts/branch-hygiene.sh` + `hooks/sync-branches-check.sh`:
+  safely align local branches with their remotes. Prunes stale remote-tracking refs and, with
+  confirmation, deletes local branches whose remote was merged/deleted — `git branch -d` for
+  fully-merged branches and `git branch -D` only for branches whose PR is verified MERGED via
+  `gh` (catches squash/rebase-merges). Remote-deleted branches with no merged PR are left alone
+  (possible unpushed work); it never pushes or force-deletes unproven work. A network-free
+  SessionStart notifier flags cleanup candidates; disable with `DEV_TEAM_NO_BRANCH_CHECK`.
 - `.github/workflows/plugin-audit.yml` + `scripts/audit-model-ids.sh`: CI audit (job name
   `audit`, the required-check context) that fails the build if a dated `claude-*` model id
   appears outside the roster, either manifest is invalid JSON, an endpoint agent file is
