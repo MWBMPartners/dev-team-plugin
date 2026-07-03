@@ -14,6 +14,7 @@ A private Claude Code plugin bundling the **dev-team** skill suite — team-lead
 | `dev-team-autopilot` | Autonomous, self-paced `/loop` drive of the whole suite to production-ready. |
 | `dev-team-stripe` | Stripe/payments build + review with payments-specific correctness/security rules. |
 | `dev-team-ship` | Take a working repo to a shipping one — CI, branch protection, secret scanning, releases. |
+| `dev-team-ci-medic` | Watch this repo's open PRs for failing CI checks and resolve them by class — auto-fix safe ones, propose the rest. |
 
 ### Which skill when
 
@@ -28,6 +29,7 @@ A quick decision guide — pick the first row that fits:
 | See what competitors have that you don't | `dev-team-featurefind` | Produces a scored `FEATURES.md` gap ledger. |
 | Build or audit Stripe/payments code | `dev-team-stripe` | Payments-specific correctness + security checklist on top of the standard build/review cycle. |
 | Get CI, branch protection, secret scanning, and a release flow in place | `dev-team-ship` | `setup` mode from scratch, or `audit` mode to catch drift/orphaned checks in an existing pipeline. |
+| Watch open PRs and clear up failing CI checks | `dev-team-ci-medic` | Auto-fixes SAFE-AUTO classes (lint/format) once the checker verifies; proposes real failures via a gated remediation cycle; never games tests or pushes to `main`. |
 | Drive all the way to production-ready with no babysitting | `dev-team-autopilot` | Fires the whole suite autonomously; run it via `/loop dev-team-autopilot <mission>`, not directly. |
 
 Unsure, or your request doesn't map cleanly onto one row? Run `/dev-team` — it asks one clarifying question and routes you.
@@ -70,6 +72,7 @@ Any skill that takes arguments also accepts a run-level `models=economy|balanced
 | `/dev-team-approve <gate-id> approve\|reject [notes]` | Resolves a queued autopilot gate-ledger item (a deferred feature/dependency/architecture decision) so the next iteration builds or skips it. |
 | `/dev-team-update` | Checks whether a newer plugin version is available and prints the exact update commands. |
 | `/dev-team-sync-branches [--apply] [--no-fetch]` | Safely aligns local branches with their remotes — prunes stale remote-tracking refs and deletes local branches whose remote was merged/deleted, confirm-first. Never touches unpushed or unmerged work. |
+| `/dev-team-watch-prs [pr=<n>] [autofix=safe\|off]` | Watches this repo's open PRs for failing CI checks and resolves them safely — auto-fixes safe classes (lint/format), proposes the rest. Loopable via `/loop`. |
 
 ## Branch hygiene
 
@@ -78,6 +81,14 @@ Any skill that takes arguments also accepts a run-level `models=economy|balanced
 A SessionStart notifier (`hooks/sync-branches-check.sh`) flags, at session start, how many local branches have a deleted upstream — network-free, fail-open, silent when there's nothing to clean, and it deletes nothing. Disable it with `export DEV_TEAM_NO_BRANCH_CHECK=1`.
 
 The non-destructive half is native to git — enable it yourself so stale remote-tracking refs prune automatically (and the notifier stays accurate): `git config --global fetch.prune true`.
+
+## PR monitoring (CI medic)
+
+`/dev-team-watch-prs` watches this repo's open PRs for failing CI checks and resolves each failure by class: **SAFE-AUTO** (a formatter diff, an autofix-capable linter, import-sort, a deterministically-regenerable generated file/lockfile) is fixed, verified by the checker, and pushed to the PR's own head branch; **FLAKY** gets a `gh run rerun --failed` and is re-evaluated; **REAL** (a genuine test/type/build/logic failure) is diagnosed and a concrete fix is proposed — built only on confirmation via a gated remediation cycle, and the test itself is never edited to make it pass; **BLOCKED** (missing secret, runner/infra error, permissions, outage) is reported as not code-fixable. It only ever pushes to the PR branch it's watching, never `main`/`master`, and only touches PRs in this repo that you own unless you opt in per PR.
+
+Run it interactively, loop it (`/loop <interval> /dev-team-watch-prs`), or hand it to a scheduled routine (`/schedule`). A scheduled/cloud routine that pushes with the default `GITHUB_TOKEN` will **not** re-trigger downstream CI on its own push — the same anti-recursion trap `dev-team-ship` documents — so bridge it with a PAT-backed push or a follow-up `gh workflow run` re-dispatch.
+
+See `skills/dev-team-ci-medic/SKILL.md` for the full classification rubric and remediation protocol.
 
 ## Install (private)
 

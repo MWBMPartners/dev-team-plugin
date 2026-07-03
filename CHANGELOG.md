@@ -60,6 +60,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   verification, and surfaces the change in the iteration report.
 - `HANDOFF.md`: a derived, always-regenerated one-glance resume card, never a source of
   truth.
+- `skills/dev-team-ci-medic/SKILL.md` (+ references) and `commands/dev-team-watch-prs.md`:
+  new skill to watch this repo's open PRs for failing CI checks and resolve them by class —
+  auto-fixing SAFE-AUTO classes (formatters, autofix linters, import-sort, deterministically
+  regenerable generated files/lockfiles) once the checker verifies and pushes to the PR
+  branch, rerunning FLAKY failures, diagnosing and proposing REAL failures via a gated
+  remediation cycle (the test under scrutiny is never edited to make it pass), and reporting
+  BLOCKED ones outright. Runs interactively, via `/loop <interval> /dev-team-watch-prs`, or as
+  a scheduled routine; only ever pushes to the PR branch it's watching, never `main`, and
+  documents the `GITHUB_TOKEN` anti-recursion trap for scheduled/cloud pushes.
 
 ### Changed
 
