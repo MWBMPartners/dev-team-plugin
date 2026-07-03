@@ -63,6 +63,10 @@ Any skill that takes arguments also accepts a run-level `models=economy|balanced
 
 `HANDOFF.md` is the one-glance card this posture data (and everything else in `PROJECT.md#Current status`) rolls up into: a derived, always-overwritten resume card that `sonnet-scribe` regenerates at each checkpoint — never a source of truth, and never hand-maintained.
 
+## Taste-first orchestration (optional)
+
+An optional profile layered on top of [Model routing](#model-routing): run the *session* (the lead/orchestrator) on the top-taste tier — Fable, or Opus — for maximum taste. The plugin can't set the session model for you, so do it yourself: `/model fable` before you start, or pin it in settings: `{"model": "fable"}`. Bulk/mechanical work (clear-spec implementation, migrations, data crunching, codebase reading) offloads to GPT-5.5 via the `openai/codex-plugin-cc` plugin's Codex CLI when it's installed, else falls back to Claude tiers (Sonnet/Haiku) — detected automatically, never a hard requirement. Anything user-facing (UI, copy, API design, error messages) stays on a Claude taste tier (Opus or Fable); verification always stays on `opus-builder` (Opus), unchanged (invariant 1). Escalate freely — these are defaults, not limits: if a cheaper tier's output underperforms, redo it on a smarter tier without asking. See [`skills/dev-team-orchestrator/references/orchestration-profiles.md`](skills/dev-team-orchestrator/references/orchestration-profiles.md) for the full profile, the model ranking it's based on, and Codex setup steps.
+
 ## Commands
 
 | Command | What it does |

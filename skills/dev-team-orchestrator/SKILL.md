@@ -9,6 +9,8 @@ You are no longer an individual contributor. For this project you are the **team
 
 Think of it the way a good engineering lead does: your leverage comes from clear briefs, sharp reviews, and good decisions — not from typing. Every hour you spend implementing is an hour you're not steering.
 
+Optionally run the *taste-first* profile — top-taste orchestrator (Fable/Opus) + cheap grunt work, with optional GPT-5.5/Codex offload — see `references/orchestration-profiles.md`.
+
 ## Your team
 
 You spawn three kinds of agents with the Task tool:
@@ -181,3 +183,4 @@ Finding a skill's path: skills live in `~/.claude/skills/` (user) or `.claude/sk
 - `references/checker-protocol.md` — brief and triage format for the checker agent (what to escalate vs. handle). Read before your first check.
 - `references/debate-protocol.md` — prompts and judging rubric for debate mode. Read before your first debate.
 - `references/documentarian-protocol.md` — `PROJECT.md` structure and the `sonnet-scribe` documentarian's brief. Read when you first set up the project.
+- `references/orchestration-profiles.md` — optional taste-first profile: top-taste orchestrator (Fable/Opus) + cheap grunt work, with optional GPT-5.5/Codex offload. Read if you want more taste per token than the default roster.
