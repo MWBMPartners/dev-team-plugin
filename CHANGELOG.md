@@ -25,8 +25,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Lean-memory conventions for the documentarian: `## Current status` is always overwritten
   rather than appended, and closed backlog items / superseded decisions are summarized
   instead of accumulated verbatim, so a fresh agent can rehydrate cheaply.
-- Informational `budget` block in autopilot's `.dev-team/autopilot.json` (spawn counts by
-  tier). It is a trend indicator only — it never auto-drops a tier or actuates anything.
+- A `budget` block in autopilot's `.dev-team/autopilot.json` (spawn counts by tier). It is a
+  spawn-count trend heuristic, not a credit meter; by default it only informs, and it can
+  optionally drive the auto-tighten below (which never touches the verification tier).
 - `commands/dev-team.md`, `commands/dev-team-status.md`, `commands/dev-team-approve.md`,
   `commands/dev-team-update.md`: command entrypoints for routing to a skill, viewing a
   read-only run dashboard, resolving a queued autopilot gate, and checking for plugin
@@ -44,6 +45,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `skills/dev-team-ship/SKILL.md` (+ references): new skill to take a working repo to a
   shipping one — CI, branch protection/rulesets with byte-for-byte required-check names,
   gitleaks-CLI secret scanning, and a release/versioning flow.
+- Cost-posture `models=economy|balanced|max` knob plus a new `sonnet-builder` (Sonnet)
+  economy build endpoint — verification stays on `opus-builder` in every posture
+  (`model-routing.md`, "Cost posture").
+- Autopilot budget auto-tighten (`budget-autotighten`): steps the build tier down one
+  notch when frontier spend runs heavy, floored at `economy`, never downgrades
+  verification, and surfaces the change in the iteration report.
+- `HANDOFF.md`: a derived, always-regenerated one-glance resume card, never a source of
+  truth.
 
 ### Changed
 

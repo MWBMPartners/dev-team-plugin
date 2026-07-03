@@ -5,6 +5,7 @@ The cross-cutting contracts every skill in the dev-team suite shares. The orches
 ## Roles & models
 
 - The canonical roster and routing table lives in `skills/dev-team-orchestrator/references/model-routing.md` — the ONLY file allowed to name a dated model id. Builders / scouts / checker / red-team / validator / verifier run on the Build/Verify tier (the `opus-builder` agent); the documentarian runs on the Scribe tier (the `sonnet-scribe` agent) — recording state doesn't need a frontier model. See that file for the full tier → endpoint agent → model mapping and the two routing invariants.
+- `sonnet-builder` is the economy build endpoint; cost postures (`models=economy|balanced|max`) are defined in `model-routing.md`.
 - The lead (you) never writes production code; you delegate via the Task tool. Exceptions are narrow: trivial integration glue (wiring/imports/config — never new logic) and a one-line fix surfaced in the checker's NEEDS-LEAD-REVIEW list.
 
 ## The flattening rule
@@ -20,6 +21,7 @@ Subagents are **leaves** — they cannot spawn their own subagents. When one ski
 | `SECURITY.md` | security | `dev-team-security/references/threat-model-and-surface-protocol.md` | review, autopilot, a later security resume |
 | `VERIFICATION.md` + `verdict.json` | review | `dev-team-review/references/verdict-and-report-protocol.md` | user, autopilot (VERIFY phase) |
 | `.dev-team/autopilot.json` | autopilot conductor | `dev-team-autopilot/references/loop-runtime.md` | autopilot (cold-resume) |
+| `HANDOFF.md` | sonnet-scribe (all modes) | `handoff-template.md` | user + a resuming lead — DERIVED convenience card, not a source of truth |
 
 `PROJECT.md` is the human-readable source of truth; `autopilot.json` is the machine state the conductor's loop reads first each iteration. Keep the two consistent.
 

@@ -45,7 +45,7 @@ The suite communicates through a small set of plain files it reads and writes in
 | `.dev-team/autopilot.json` | `sonnet-scribe` | Autopilot run state: mission, phase, cycle count/cap, gate ledger (`G-` items), lock/lease, and an informational `budget` block (spawns per model tier — a trend indicator, never an auto-actuator). |
 | `skills/dev-team-orchestrator/references/model-routing.md` | (static reference) | The roster — which endpoint agent/model tier handles which kind of work. See below. |
 
-There is deliberately no separate `HANDOFF.md` — `PROJECT.md#Current status` is the handoff file, kept lean rather than accumulated.
+`HANDOFF.md` (see [Cost posture](#cost-posture) below) is a derived, always-overwritten one-glance resume card regenerated from `PROJECT.md#Current status`, which remains the source of truth it's built from.
 
 ## Model routing
 
@@ -54,6 +54,12 @@ Claude Code has no automatic per-task model router — the only thing that actua
 The suite also follows **plan expensive, execute cheap**: a higher tier (Fable/Opus, or the lead) writes a dense, self-contained execution spec once — exact signatures, target files, acceptance criteria, edge cases — and a cheaper tier executes it without re-deriving context, so you pay for reasoning once and amortize it across cheap execution.
 
 Full routing table, model ids/aliases, and both invariants (verification never cheapens; plan expensive/execute cheap) live in one place: [`skills/dev-team-orchestrator/references/model-routing.md`](skills/dev-team-orchestrator/references/model-routing.md) — every skill points here instead of restating a model name inline.
+
+## Cost posture
+
+Any skill that takes arguments also accepts a run-level `models=economy|balanced|max` cost-posture knob (or plain language, e.g. "keep costs down" → `economy`); default is `balanced`. `economy` moves build/scout work to the new `sonnet-builder` (Sonnet) endpoint — but verification (checker/red-team/validator/reviewer) always stays on `opus-builder` (Opus), in every posture, no exceptions. `dev-team-autopilot` can auto-tighten this on its own: `budget-autotighten` steps the posture down one notch (floored at `economy`) when frontier (Fable+Opus) spend runs heavy for a cycle, surfaces the change in its iteration report line, and never touches the verification tier — it's a heuristic based on spawn counts, not a billing figure. See the full remap table and both invariants in [`model-routing.md`](skills/dev-team-orchestrator/references/model-routing.md#cost-posture--the-models-knob-optional).
+
+`HANDOFF.md` is the one-glance card this posture data (and everything else in `PROJECT.md#Current status`) rolls up into: a derived, always-overwritten resume card that `sonnet-scribe` regenerates at each checkpoint — never a source of truth, and never hand-maintained.
 
 ## Commands
 

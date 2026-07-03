@@ -140,6 +140,8 @@ This skill accepts optional arguments to tune a run (defaults in brackets):
 - `propose-threshold=small|medium|large` — for NON-FEATURE work, how big a change must be before it's propose-only instead of built [medium: small/isolated improvements build; large refactors/perf/dep-changes propose]. Features are out of scope for this knob — they always go through the Feature Spec Gate (see "Build small · spec-gate every feature").
 - `focus=<dimension(s)>` — **drive** the run toward one or more dimensions (`features`, `ux`, `correctness`, `efficiency`, `redundancy`, `security`, `docs`), not just bias scoring. Accepts the flag form *or plain language in the invocation* — "focus on adding features", "improve the UX", "make it faster", "clean up the duplication" all set it. Multiple allowed ("features and ux"). [default: none — balanced, UX-first.] See **Running with a focus** below.
 - `branch=<name>` — override the default `iterate/<date>` branch name.
+- `models=economy|balanced|max` — cost posture biasing which tier does build work; verification
+  always stays frontier (model-routing.md, "Cost posture"). [balanced]
 
 ## Running with a focus
 

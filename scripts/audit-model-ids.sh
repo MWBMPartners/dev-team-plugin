@@ -25,7 +25,7 @@ if command -v jq >/dev/null 2>&1; then
 fi
 
 # 3) Every endpoint agent must exist with a model: field.
-for a in deep-architect opus-builder sonnet-scribe quick-edits; do
+for a in deep-architect opus-builder sonnet-scribe quick-edits sonnet-builder; do
   [ -f "agents/$a.md" ] || note "missing agent file: agents/$a.md"
   grep -q '^model:' "agents/$a.md" 2>/dev/null || note "agent agents/$a.md has no model: field"
 done

@@ -82,7 +82,7 @@ This is the answer to "how does a loop that runs while I sleep handle things tha
 
 ## Machine-authoritative state
 
-The loop's source of truth is `.dev-team/autopilot.json` — a parseable state object you read *first* every iteration and rewrite at the end. It holds the mission, the definition of done, the phase plan + cursor, the current `next_action`, the work-queue references, the gate-ledger, the blocked flag, the cycle count + cap, the lock/lease, an informational `budget` block (spawn counts by tier — a trend signal only, never an auto-actuator; see `references/loop-runtime.md`), the VERIFY progress + the commit it was verified at, the run branch, and the last commit. The schema and the read/write rules are in `references/loop-runtime.md`. `PROJECT.md` (the `sonnet-scribe` documentarian, Sonnet tier) stays the **human-readable narrative + trajectory**; `autopilot.json` stays the **machine state** two cold starts can agree on. Keep them consistent; never let memory be the authority.
+The loop's source of truth is `.dev-team/autopilot.json` — a parseable state object you read *first* every iteration and rewrite at the end. It holds the mission, the definition of done, the phase plan + cursor, the current `next_action`, the work-queue references, the gate-ledger, the blocked flag, the cycle count + cap, the lock/lease, a `budget` block (spawn counts by tier — a heuristic trend, never a spend figure; it can auto-tighten the build tier when frontier spend runs heavy, but never verification, and the tightening is always surfaced in the report line; see `references/loop-runtime.md`), the VERIFY progress + the commit it was verified at, the run branch, and the last commit. The schema and the read/write rules are in `references/loop-runtime.md`. `PROJECT.md` (the `sonnet-scribe` documentarian, Sonnet tier) stays the **human-readable narrative + trajectory**; `autopilot.json` stays the **machine state** two cold starts can agree on. Keep them consistent; never let memory be the authority.
 
 ## Anti-runaway (non-negotiable)
 
@@ -100,6 +100,9 @@ Optional run arguments (defaults in brackets):
 
 - `mission=<text>` — what production-ready means for *this* product; refines the done checklist [inferred at bootstrap, confirmed with the user].
 - `cap=N` — convergence backstop: max cycles before the loop stops honestly if it can't reach done [~30]. Not cost control — your plan's token allowance is the real ceiling.
+- `models=economy|balanced|max` — cost posture biasing which tier does build work [balanced] (see `model-routing.md`, "Cost posture").
+- `budget-autotighten=on|off` — step the posture down one when frontier spend runs heavy; never downgrades verification [on].
+- `budget-threshold=N` — frontier spawns-per-cycle before "heavy" [~6].
 - `gates=hybrid|pause-all|autonomy-envelope` — the gate policy [hybrid]. `hybrid` runs the feature autonomy test (build obvious in-scope features, ask on the doubtful); `pause-all` asks before *any* feature (most conservative); `autonomy-envelope` widens what auto-builds via a scope you pre-grant, pausing only on destructive/irreversible ops.
 - `feature-completeness=in-scope|core-only|off` — how far to push features [in-scope]. `core-only` builds only table-stakes; `off` skips the COMPLETE phase (production-readiness only).
 - `phases=<subset>` — restrict the mission (e.g. `phases=stabilize,secure,verify` to harden without feature work).

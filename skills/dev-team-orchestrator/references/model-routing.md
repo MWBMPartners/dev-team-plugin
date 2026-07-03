@@ -52,6 +52,27 @@ criteria, and edge cases — that a cheaper tier then executes without re-derivi
 `task-brief-template.md` (the "Execution spec" section). This is how "plan with Fable/Opus,
 build with Sonnet/Haiku" is realized in the suite.
 
+## Cost posture — the models= knob (optional)
+A run-level knob biasing the whole table above: set `models=economy|balanced|max` on any skill
+that takes arguments, or use plain language ("keep costs down" → `economy`); default is `balanced`.
+
+| Work | balanced (default) | economy | max |
+|---|---|---|---|
+| Build / scout | `opus-builder` (Opus) | `sonnet-builder` (Sonnet) | `opus-builder` (Opus) |
+| Hard reasoning / debate | `deep-architect` (Fable) | `opus-builder` (Opus) | `deep-architect` (Fable), used liberally |
+| Verification (checker/red-team/validator/reviewer) | `opus-builder` (Opus) | `opus-builder` (Opus) | `opus-builder` (Opus) |
+| Documentation / state | `sonnet-scribe` (Sonnet) | `sonnet-scribe` (Sonnet) | `sonnet-scribe` (Sonnet) |
+| Mechanical | `quick-edits` (Haiku) | `quick-edits` (Haiku) | `quick-edits` (Haiku) |
+
+**Invariant 1 holds in every posture: verification never drops below Opus, even in `economy`** —
+that, plus the escalation rule below (capability failure escalates Haiku → Sonnet → Opus → Fable),
+is the safety net for an economy build-tier misroute. Honest tradeoff: `economy` trades some
+first-pass build quality for cost; the frontier checker plus escalation keep it safe. `max` never
+economizes and never auto-tightens (see `loop-runtime.md`).
+
+`sonnet-builder` (alias `sonnet`) is the economy build endpoint — it shares the Sonnet model with
+`sonnet-scribe` but is build-framed, not scribe-framed.
+
 ## Escalation — the dynamic part
 Start a mechanical-looking workstream on `quick-edits` (Haiku); on a genuine CAPABILITY
 failure (not a brief-quality failure), escalate one tier: Haiku → Opus → Fable. This reuses

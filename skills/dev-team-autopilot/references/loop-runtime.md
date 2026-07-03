@@ -33,7 +33,15 @@ This is the **single source of truth**. You read it *first* every iteration and 
   "cap": 30,                                    // convergence backstop — stops a loop that can't reach done; NOT cost control
   "verify": {"commit": null, "claim_groups": [], "integration": "pending", "completeness_critic": "pending"},
   "verified_at_commit": "a1b2c3d",              // last_commit at which the most recent VERIFY produced overall PASS; null until then
-  "budget": {"spawns_by_tier": {"fable": 0, "opus": 0, "sonnet": 0, "haiku": 0}, "cycles": 0, "note": "informational trend only — never auto-drops a tier"},
+  "budget": {
+    "posture": "balanced",            // active models= cost posture (economy|balanced|max)
+    "autotighten": true,              // step posture down one step when frontier spend runs heavy
+    "threshold_per_cycle": 6,         // heuristic: frontier (opus+fable) spawns/cycle before "heavy"
+    "spawns_by_tier": { "fable": 0, "opus": 0, "sonnet": 0, "haiku": 0 },
+    "cycles": 0,
+    "spend_posture": "nominal",       // nominal | heavy | tighten
+    "note": "spawns, not credits — a heuristic trend, never authoritative; verification tier is NEVER downgraded (invariant 1)"
+  },
   "lock": {"holder": null, "ts": null, "stale_after_min": 90},
   "branch": "autopilot/2026-06-22",
   "last_commit": "a1b2c3d",
@@ -45,9 +53,18 @@ This is the **single source of truth**. You read it *first* every iteration and 
 
 Keep it small and current. Anything that needs prose (decision rationale, what a cycle changed, the trajectory table) lives in `PROJECT.md` via the `sonnet-scribe` documentarian (Sonnet tier; model routing: `skills/dev-team-orchestrator/references/model-routing.md`); this file holds only what the *loop* needs to decide the next move. The **token allowance of the user's plan is the real spend ceiling** (the platform hard-cuts there); `cap` exists only as a *convergence* backstop so a loop that genuinely can't reach done stops honestly instead of spinning. Note `cap` counts every loop iteration — including doc-only setup (e.g. security Phase-0) and read-only VERIFY workstreams (a full VERIFY pass is several) — so size it larger for big or verification-heavy products.
 
-### The `budget` block — informational only, never an actuator
+### The `budget` block — a heuristic trend that can auto-tighten the build tier (never verification)
 
-`budget` is a spawn-count trend, not a bill: `spawns_by_tier` tallies how many `deep-architect`/`opus-builder`/`sonnet-scribe`/`quick-edits` subagents this run has spawned so far, and `cycles` tracks how many loop iterations contributed to that tally. The `sonnet-scribe` documentarian increments it during **RECORD** (step 7) each cycle, from the spawns that cycle actually made. Two things it is explicitly **not**: it counts **spawns, not credits** — there is no billing API to reconcile against, so don't read it as spend; and it **never actuates a tier change** — nothing in the loop reads `budget` to drop a tier, throttle spawns, or gate a decision (that's excluded by decision; see `model-routing.md`). If a heavy Fable/Opus lean is worth knowing, it shows up here for the user to see in `/dev-team-status` — the loop itself never acts on it.
+`budget` is a spawn-count trend, not a bill: `spawns_by_tier` tallies how many `deep-architect`/`opus-builder`/`sonnet-scribe`/`quick-edits` subagents this run has spawned so far, and `cycles` tracks how many loop iterations contributed to that tally. The `sonnet-scribe` documentarian increments it during **RECORD** (step 7) each cycle, from the spawns that cycle actually made. It counts **spawns, not credits** — there is no billing API to reconcile against, so never read it as spend, only as a coarse trend.
+
+`posture` mirrors the active `models=` cost posture (see `model-routing.md`, "Cost posture") and `spend_posture` (`nominal | heavy | tighten`) reflects whether frontier spend is running hot. When `autotighten` is `true` (the default; set `budget-autotighten=off` to disable), the RECORD step can act on that trend:
+
+- The `sonnet-scribe` increments `spawns_by_tier` and `cycles` each cycle, then computes the frontier (Fable + Opus) spawns for that cycle.
+- If that count exceeds `threshold_per_cycle` (default ~6) on a sustained basis, set `spend_posture: "heavy"`.
+- If `spend_posture` is `"heavy"`, `autotighten` is `true`, and `posture` is above `economy`, step `posture` DOWN one notch (`max` → `balanced` → `economy`, floored at `economy` — it never goes lower) for **BUILD work only**, set `spend_posture: "tighten"`, and **surface it** in the iteration's report line, e.g. "budget: auto-tightened balanced→economy at cycle 14 (frontier spend heavy)".
+- This **never** changes the verification tier — checker/red-team/validator/reviewer work stays on `opus-builder` in every posture (invariant 1, `model-routing.md`); only the build/scout tier steps down.
+
+Caveat, always: this is spawns, not credits — a coarse heuristic trend, never an authoritative spend figure. It shows up in `/dev-team-status` either way; auto-tighten just means the loop can also *act* on it for build work, not only display it.
 
 ## The per-iteration protocol
 
@@ -94,7 +111,7 @@ Apply the hybrid policy to whatever this cycle surfaced (`modes-and-gates.md` ha
 - otherwise the work was autonomous and already done — nothing to gate.
 
 ### 7. RECORD
-Have the `sonnet-scribe` documentarian update `PROJECT.md` (narrative + trajectory row + checkpoint) — **and keep it lean: overwrite `## Current status` every cycle (never append) to a tight "single next action + where to look" block**, so a fresh cheap agent can resume cold from it; append-only is for the trajectory/decision logs, not this section. Then update `autopilot.json`: advance `phase_cursor`/`plan[].status` if the phase's exit criterion is now met, set `cursor` and a fresh `next_action`, append `last_commit`, increment `cycle`, **have the `sonnet-scribe` documentarian increment `budget.spawns_by_tier` for each endpoint agent spawned this cycle and bump `budget.cycles`** (informational only — see above), update `gate_ledger` (a feature whose build stages just completed → `status: built`), when the conductor has authored a full feature spec this cycle, instruct the documentarian to write it to `PROJECT.md`'s `## Feature Specs` section at the `#spec-<id>` anchor and set the gate_ledger item's `spec_ref` to that anchor, **if this firing resolved a prior block set `blocked={is:false,reason:null,since:null}` and `state:"RUNNING"`**, set `verified_at_commit`/`verify` if a VERIFY cycle advanced, **release the lock** (`rmdir .dev-team/loop.lock`), bump `updated`. Keep the two files consistent.
+Have the `sonnet-scribe` documentarian update `PROJECT.md` (narrative + trajectory row + checkpoint) — **and keep it lean: overwrite `## Current status` every cycle (never append) to a tight "single next action + where to look" block**, so a fresh cheap agent can resume cold from it; append-only is for the trajectory/decision logs, not this section. Then update `autopilot.json`: advance `phase_cursor`/`plan[].status` if the phase's exit criterion is now met, set `cursor` and a fresh `next_action`, append `last_commit`, increment `cycle`, **have the `sonnet-scribe` documentarian increment `budget.spawns_by_tier` for each endpoint agent spawned this cycle, bump `budget.cycles`, and apply the auto-tighten rule** (compute frontier spawns/cycle, update `spend_posture`, step `budget.posture` down one for BUILD work only if warranted, and surface the change in the report line — never touches the verification tier; see "The `budget` block" above), update `gate_ledger` (a feature whose build stages just completed → `status: built`), when the conductor has authored a full feature spec this cycle, instruct the documentarian to write it to `PROJECT.md`'s `## Feature Specs` section at the `#spec-<id>` anchor and set the gate_ledger item's `spec_ref` to that anchor, **if this firing resolved a prior block set `blocked={is:false,reason:null,since:null}` and `state:"RUNNING"`**, set `verified_at_commit`/`verify` if a VERIFY cycle advanced, **release the lock** (`rmdir .dev-team/loop.lock`), bump `updated`. Keep the two files consistent.
 
 ### 8. RE-EVALUATE TERMINAL, then YIELD
 Recompute the done checklist from the ledgers (`mission-and-done.md`) — including the **freshness binding**: the "builds & runs from clean checkout" and "core task works e2e" boxes count as met only when `verified_at_commit == last_commit`; if a cycle has landed a commit since the last VERIFY, those boxes are *unknown* and a fresh VERIFY phase is forced (re-open VERIFY) before `terminal` can be set. If every criterion is met → set `terminal: true` / `state: "DONE"` and **omit `ScheduleWakeup`** — the loop ends; give the final report now. Otherwise call:
