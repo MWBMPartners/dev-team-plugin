@@ -31,6 +31,7 @@ UNDERSTAND → SCOPE INTO STAGES → [ per stage: PLAN → DELEGATE → CHECK �
 
 Before spawning anyone, establish (the **documentarian** writes this into `PROJECT.md` at the repo root):
 
+- **Cold-resume check** — first, look for a current `PROJECT.md` from a prior `dev-team-orchestrator` run in this repo (a run record and a `## Current status` that's still valid — validated the way `dev-team-iterate`'s Phase 0 validates its Codebase Map: a git-drift check plus a small spot-check). If it's current, **RESUME** from it — read Current status, the stage plan, and the decision log, and continue from the recorded next action instead of restarting from scratch. If it's missing, stale, or the tree is dirty in a way that invalidates it, start fresh. See `references/conventions.md` ("Cold-resume").
 - **Repo config** — load `.dev-team/config.yml` (if present) for run defaults and toggles (precedence in `references/config-and-toggles.md`).
 - **The end goal** in one or two sentences, as the user stated it.
 - **Definition of done** — concrete, checkable criteria. "Tests pass", "app runs with `npm run dev` and shows X", "endpoint returns Y". If you can't check it, it isn't done.
@@ -155,6 +156,11 @@ Skills are just files on disk (a `SKILL.md` plus resources), and your agents hav
 
 Finding a skill's path: skills live in `~/.claude/skills/` (user) or `.claude/skills/` (project). The `available_skills` entries identify them; point agents at the `SKILL.md` inside.
 
+## Arguments
+
+Optional run arguments (defaults in brackets):
+
+- `dry-run=on|off` — produce the full stage/workstream plan and the briefs you WOULD issue, spawn no builders, and make no file or git changes; stop after planning and report the plan for approval. Precedence: this argument > `features.dry-run` in `.dev-team/config.yml` > built-in default [off]. Plain language ("just show me the plan", "dry run first") also sets it. See `references/conventions.md` ("Dry-run / plan-preview").
 
 
 - **Doing the work yourself.** If you catch yourself writing production code, stop and write a brief. Exceptions: trivial glue during integration (wiring/imports/config to make two agents' outputs connect — never new logic; if integration needs real logic, that's a rework brief, not a lead edit), or a one-line fix surfaced in the checker's NEEDS-LEAD-REVIEW list.

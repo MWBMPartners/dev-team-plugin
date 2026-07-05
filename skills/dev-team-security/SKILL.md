@@ -55,6 +55,7 @@ PHASE 0: THREAT MODEL + ATTACK-SURFACE MAP + TOOLING SWEEP + MULTI-ROLE FIXTURES
 
 You're always in an existing repo, so **scout first**. Follow `references/threat-model-and-surface-protocol.md`. In short:
 
+0. **Resume check (do this first).** Look for a current `SECURITY.md` — its **coverage ledger** and **findings register** — from a prior `dev-team-security` run in this repo. If it exists and validates as current (git-drift check + a quick spot-check, same discipline as `dev-team-iterate`'s Phase 0), **RESUME**: reuse the coverage ledger and findings register as-is, and pick up red-teaming only the checklist classes still `tested? = no`/`partial` and any `open`/unresolved finding — don't re-run the full sweep. If it's missing, stale, fails the spot-check, or the tree is dirty in a way that invalidates it, do a **full Phase 0** and write it fresh. Either way, update the run record. See `dev-team-orchestrator/references/conventions.md` ("Cold-resume").
 1. **Scouts** map: stack, entry points, trust boundaries, data flows, authN/authZ model, external integrations, secrets handling, deployment/config, and the dependency manifest. Establish how to run a **local sandbox instance**, how tests run, and **seed multi-role test fixtures** — accounts at different privilege levels (anon, user, admin, cross-tenant) so access-control classes (IDOR/BOLA/BFLA/privilege escalation) can actually be tested.
 2. **Tooling sweep** — don't rely on reasoning alone. Run whatever scanners the stack supports (SCA: `npm audit`/`pip-audit`/`osv-scanner`; SAST: `semgrep`/`bandit`/`gosec`; secrets incl. **git history**: `gitleaks`/`trufflehog`; containers/IaC: `trivy`) and load the results into the findings register as **starting leads** for the red team. Tools give deterministic evidence and catch what reasoning misses.
 3. Build a lightweight **threat model**: assets (what's worth protecting), entry points, trust boundaries, and the likely adversaries/abuse cases.
@@ -116,6 +117,7 @@ A later `dev-team-security` run reads `SECURITY.md` and resumes from the registe
 
 Optional run arguments (defaults in brackets):
 
+- `dry-run=on|off` — run Phase 0 (threat model, attack-surface map, coverage ledger) and write the briefs each red/blue-team wave WOULD receive, but spawn no red-team/validator/builder agents and make no file or git changes; stop after planning and report the plan for approval. Precedence: this argument > `features.dry-run` in `.dev-team/config.yml` > built-in default [off]. Plain language ("just show me the plan", "dry run first") also sets it. See `dev-team-orchestrator/references/conventions.md` ("Dry-run / plan-preview").
 - `severity-floor=critical|high|medium|low` — the lowest severity to **fix** this run; below it is documented only [high → fix Critical+High, document the rest].
 - `scope=full|surface-list` — audit the whole checklist or a named subset (e.g. `scope=authz,injection,secrets`) [full].
 - `rounds=N` — max red-team rounds before stopping [until-dry, cap 4].

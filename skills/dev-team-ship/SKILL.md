@@ -181,6 +181,7 @@ Follow `references/branch-protection-protocol.md`'s cross-check and
 Optional run arguments (defaults in brackets):
 
 - `mode=setup|audit|auto` — pick the mode [auto: infer from whether CI/protection/scanning/release already exist].
+- `dry-run=on|off` — produce the full pipeline inventory/plan and the builder briefs you WOULD issue (workflow/config changes, branch-protection/ruleset updates, release-flow wiring), then stop — spawn no builders, make no file, git, GitHub-config, or branch-protection changes; report the plan for approval. Precedence: this argument > `features.dry-run` in `.dev-team/config.yml` > built-in default [off]. Plain language ("just show me the plan", "dry run first") also sets it. See `dev-team-orchestrator/references/conventions.md` ("Dry-run / plan-preview").
 - `targets=ci,branch-protection,secret-scanning,release|all` — narrow the run to specific lanes [all].
 - `fix=auto|propose-only` — apply safe, additive fixes automatically, or only report and
   propose [auto for additive changes; anything that loosens/removes an existing required

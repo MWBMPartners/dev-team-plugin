@@ -71,6 +71,42 @@ env-override table, and `/dev-team-config` (show the effective config, or scaffo
 live in `references/config-and-toggles.md` — read it before you build anything that reads a
 default or a toggle.
 
+## Dry-run / plan-preview
+
+When `dry-run=on` (per-run argument) or `features.dry-run: on` (repo `.dev-team/config.yml`;
+default `off`) is in effect, a BUILDING skill — orchestrator, iterate, security, stripe, ship —
+produces its full plan and the briefs it WOULD issue, spawns **no builders**, and makes **no
+file or git changes**: it stops after planning and reports the plan + briefs for the user's
+approval. (`dev-team-review` is unaffected — it's already read-only.) Precedence follows the
+standard chain in `config-and-toggles.md`: per-run argument > plain language ("just show me the
+plan", "dry run") > repo config > built-in default (`off`). Fail-open: a missing or unreadable
+config simply leaves dry-run off.
+
+## Cold-resume
+
+At the front of a run, a skill checks for its **own prior artifact + run record** before doing any
+fresh work — the same discipline `dev-team-iterate`'s Phase 0 and `dev-team-autopilot` already
+apply, generalized across the suite. If a current one exists — validated the way iterate validates
+its Codebase Map (a git-drift check, plus a small spot-check against the real repo; see
+`dev-team-iterate/references/audit-and-backlog-protocol.md`) — **RESUME** from that state instead
+of restarting cold. If it's missing, stale, or the tree is dirty in a way that invalidates it,
+start fresh. The artifact to check is whichever this skill owns per the Shared artifacts table
+above: `PROJECT.md` (orchestrator, iterate, stripe), `SECURITY.md` (security), `VERIFICATION.md`
+(review). This is baked-in discipline, not a toggle — always attempted, always fail-open to a
+fresh run when the check doesn't pass.
+
+## Autopilot notifications
+
+When `features.notifications: on` (the default; `.dev-team/config.yml`), the `dev-team-autopilot`
+conductor surfaces a prominent, clearly-marked notice at three events: a gate item **QUEUED** for
+approval, a **BLOCKED** pause, and a terminal **DONE**/cap. Each is emitted as its own distinct
+report line — not buried in a routine cycle update — so a long unattended run makes plain the
+moment it needs the user or has finished. Users MAY additionally wire a Claude Code
+Notification/Stop hook, or a push-notification integration, for real push delivery outside the
+terminal (documented, optional — not required for the in-report notice to work). Fail-open: a
+missing/malformed config leaves the default (`on`); `features.notifications: off` skips the notice
+entirely. See `dev-team-autopilot/references/loop-runtime.md` for the exact event hooks.
+
 ## Git / branch model
 
 - One run = one branch; **one commit per passing cycle/checkpoint**; never merge to `main` without asking.
