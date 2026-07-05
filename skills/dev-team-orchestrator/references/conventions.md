@@ -26,6 +26,8 @@ Subagents are **leaves** — they cannot spawn their own subagents. When one ski
 
 `PROJECT.md` is the human-readable source of truth; `autopilot.json` is the machine state the conductor's loop reads first each iteration. Keep the two consistent.
 
+A run's end-of-run summary (phases/cycles, commits, agents by tier, a rough cost estimate) is a *computed report*, not an owned artifact in the table above — see `run-report.md` for the spec, and its automatic emission honors the `features.telemetry` toggle (`config-and-toggles.md`; fail-open, default `on`) while `/dev-team-report` works on demand regardless.
+
 ### PROJECT.md canonical section headings
 
 Use these heading names verbatim so producers and consumers agree.

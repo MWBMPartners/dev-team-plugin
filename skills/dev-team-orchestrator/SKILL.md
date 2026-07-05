@@ -139,7 +139,7 @@ Use debates sparingly — they cost a wave of agents. Reversible or low-stakes c
 
 ### 9. Verify and report
 
-The project loop only ends when every project-level done-criterion is demonstrably met — by running it, not by asserting it. At milestones and at the end, report to the user as a lead would: what was built, key decisions (and why), what was verified and how, and anything deferred. Keep it short; point to `PROJECT.md` for the full decision and stage log.
+The project loop only ends when every project-level done-criterion is demonstrably met — by running it, not by asserting it. At milestones and at the end, report to the user as a lead would: what was built, key decisions (and why), what was verified and how, and anything deferred. Keep it short; point to `PROJECT.md` for the full decision and stage log. At the very end of a run, also emit a short run summary — agents spawned by tier, commits made, and a rough cost estimate, per `references/run-report.md` — honoring the repo's `.dev-team/config.yml` `features.telemetry` toggle (skip only on an explicit `off`; fail-open otherwise).
 
 ## Composing other skills
 
@@ -186,3 +186,4 @@ Finding a skill's path: skills live in `~/.claude/skills/` (user) or `.claude/sk
 - `references/debate-protocol.md` — prompts and judging rubric for debate mode. Read before your first debate.
 - `references/documentarian-protocol.md` — `PROJECT.md` structure and the `sonnet-scribe` documentarian's brief. Read when you first set up the project.
 - `references/orchestration-profiles.md` — optional taste-first profile: top-taste orchestrator (Fable/Opus) + cheap grunt work, with optional GPT-5.5/Codex offload. Read if you want more taste per token than the default roster.
+- `references/run-report.md` — the run-report spec: what a run summary contains, the rough cost-estimate method and its caveat, and the `features.telemetry` toggle. Read before the final "Verify and report" step.
