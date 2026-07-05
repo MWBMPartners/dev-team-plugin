@@ -4,12 +4,15 @@ The documentarian is spawned as the **`sonnet-scribe`** agent (Sonnet tier; mode
 
 `PROJECT.md` is the orchestrator's **external memory**. Its job is not just to log history but to answer, at any moment, "where does this project stand and what's next" — so a fresh orchestrator with no prior context could read it and resume correctly. That means a **Current status** section that is kept up to date, not only append-only logs.
 
+**Schema:** the `<!-- dev-team-schema: 1.0 -->` HTML comment right under the title is this document's format version — the same versioning discipline as `.dev-team/autopilot.json`'s `schema` field (`loop-runtime.md`). A missing comment is treated as `1.0`; see `conventions.md`'s "Schema versioning" subsection for the shared rule.
+
 ## PROJECT.md structure
 
 The documentarian maintains this file at the repo root:
 
 ```markdown
 # [Project name]
+<!-- dev-team-schema: 1.0 -->
 
 ## Goal
 [one or two sentences, as the user stated it]

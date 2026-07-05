@@ -35,6 +35,10 @@ Use these heading names verbatim so producers and consumers agree.
 
 So `autopilot.json`'s `trajectory_ref` resolves to `PROJECT.md#Trajectory-ledger` and its `spec_ref` to `PROJECT.md#spec-<id>`.
 
+### Schema versioning
+
+State and ledger files carry a version marker so a consumer can tell a compatible file from a stale-format one before trusting its shape: `.dev-team/autopilot.json` has a top-level `"schema": "1.0"` field (`loop-runtime.md`); `PROJECT.md` carries a `<!-- dev-team-schema: 1.0 -->` HTML comment under its title (`documentarian-protocol.md`). The rule for any dev-team state file: a consumer tolerates a **matching major version** (and treats a missing marker as the oldest known version, for back-compat with files written before the marker existed); it warns — rather than silently guessing — on an unrecognized **newer** major. Bump the major only on a breaking format change (a field removed, renamed, or repurposed), never for an additive field. This is deliberately lightweight — no migration tooling, just a version a reader can check first.
+
 ## ID prefixes — keep the namespaces distinct
 
 | Prefix | Meaning | Owner / location |
@@ -92,6 +96,10 @@ explicitly asks for it for that run — both conditions, not either. See
 - **Evidence, not claims.** Builders paste real command output; the checker re-runs; review re-proves with fresh evidence generated *now*. In featurefind this becomes a **citation per claimed competitor feature**.
 - **Restraint.** No manufacturing work to keep a loop alive. "Nothing high-impact left — here's what I'd leave alone, stopping" is a success state, not a failure.
 - **Independence.** Whoever verifies a thing is never whoever built it.
+
+## Self-tests
+
+The plugin tests itself: `tests/smoke-structure.sh` (structure a marketplace installer relies on) and `tests/scripts.bats` (behavior contracts for the hooks/scripts) run in CI as the `test` job alongside the existing `audit` job (`.github/workflows/plugin-audit.yml`) — see `tests/README.md` and `CONTRIBUTING.md` for how to run them locally before you touch `hooks/`, `scripts/`, or the manifests.
 
 ## Safety (security & stripe)
 

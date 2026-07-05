@@ -8,6 +8,7 @@ This is the **single source of truth**. You read it *first* every iteration and 
 
 ```json
 {
+  "schema": "1.0",                              // state-format version — read this first; see conventions.md#Schema-versioning
   "mission": "production-ready + feature-complete (in scope)",
   "aim": "<confirmed 1-2 sentence product purpose — the yardstick for purpose-fit>",
   "definition_of_done": ["builds+runs from clean checkout", "core task works e2e", "tests cover core flows & pass", "no unresolved Critical/High security finding", "no High correctness/UX backlog item", "docs enough to run it", "every High in-scope feature gap built-or-queued"],
@@ -52,6 +53,8 @@ This is the **single source of truth**. You read it *first* every iteration and 
 ```
 
 Keep it small and current. Anything that needs prose (decision rationale, what a cycle changed, the trajectory table) lives in `PROJECT.md` via the `sonnet-scribe` documentarian (Sonnet tier; model routing: `skills/dev-team-orchestrator/references/model-routing.md`); this file holds only what the *loop* needs to decide the next move. The **token allowance of the user's plan is the real spend ceiling** (the platform hard-cuts there); `cap` exists only as a *convergence* backstop so a loop that genuinely can't reach done stops honestly instead of spinning. Note `cap` counts every loop iteration — including doc-only setup (e.g. security Phase-0) and read-only VERIFY workstreams (a full VERIFY pass is several) — so size it larger for big or verification-heavy products.
+
+`schema` is the state-format version, written on every save. A cold-resuming conductor reads it first: a matching major (e.g. any `"1.x"` against this doc's `"1.0"`) is safe to resume as-is; a missing field is treated as `"1.0"` for back-compat with files written before this note landed; an unrecognized *newer* major is a signal to stop and surface rather than guess at a shape that changed underneath it. Bump the major only on a breaking change to this schema (a field removed, renamed, or repurposed) — see `conventions.md`'s "Schema versioning" subsection for the shared rule across all dev-team state/artifact files.
 
 ### The `budget` block — a heuristic trend that can auto-tighten the build tier (never verification)
 
