@@ -3,13 +3,28 @@ on:
   pull_request:
   push:
     branches: [main]
+permissions:
+  contents: read
 jobs:
   audit:
     name: audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
       - name: Model-id + plugin-structure audit
         run: bash scripts/audit-model-ids.sh
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install jq, shellcheck, bats
+        run: sudo apt-get update && sudo apt-get install -y jq shellcheck bats
+      - name: Smoke test (plugin-structure delivery)
+        run: bash tests/smoke-structure.sh
+      - name: Shellcheck
+        run: shellcheck scripts/*.sh hooks/*.sh tests/*.sh
+      - name: Bats (script behavior contracts)
+        run: bats tests/scripts.bats

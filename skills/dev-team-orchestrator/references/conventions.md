@@ -20,11 +20,14 @@ Subagents are **leaves** — they cannot spawn their own subagents. When one ski
 | `FEATURES.md` | featurefind | `dev-team-featurefind/references/gap-scoring-rubric.md` | iterate, autopilot |
 | `SECURITY.md` | security | `dev-team-security/references/threat-model-and-surface-protocol.md` | review, autopilot, a later security resume |
 | `VERIFICATION.md` + `verdict.json` | review | `dev-team-review/references/verdict-and-report-protocol.md` | user, autopilot (VERIFY phase) |
+| `MIGRATION.md` | sonnet-scribe (via dev-team-migrate) | `dev-team-migrate/references/migration-plan-protocol.md` | review, a later dev-team-migrate resume |
 | `.dev-team/autopilot.json` | autopilot conductor | `dev-team-autopilot/references/loop-runtime.md` | autopilot (cold-resume) |
 | `HANDOFF.md` | sonnet-scribe (all modes) | `handoff-template.md` | user + a resuming lead — DERIVED convenience card, not a source of truth |
 | GitHub Issues (optional) | sonnet-scribe (issue sync) | `issue-sync-protocol.md` | user's tracker — a dedup-safe export of the ledgers when `issues=sync` |
 
 `PROJECT.md` is the human-readable source of truth; `autopilot.json` is the machine state the conductor's loop reads first each iteration. Keep the two consistent.
+
+A run's end-of-run summary (phases/cycles, commits, agents by tier, a rough cost estimate) is a *computed report*, not an owned artifact in the table above — see `run-report.md` for the spec, and its automatic emission honors the `features.telemetry` toggle (`config-and-toggles.md`; fail-open, default `on`) while `/dev-team-report` works on demand regardless.
 
 ### PROJECT.md canonical section headings
 
@@ -34,6 +37,10 @@ Use these heading names verbatim so producers and consumers agree.
 - **Extensions** (added by `dev-team-iterate`): `## Codebase Map`, `## Run record`, `## Backlog`, `## Proposed-Features ledger`, `## Trajectory ledger`.
 
 So `autopilot.json`'s `trajectory_ref` resolves to `PROJECT.md#Trajectory-ledger` and its `spec_ref` to `PROJECT.md#spec-<id>`.
+
+### Schema versioning
+
+State and ledger files carry a version marker so a consumer can tell a compatible file from a stale-format one before trusting its shape: `.dev-team/autopilot.json` has a top-level `"schema": "1.0"` field (`loop-runtime.md`); `PROJECT.md` carries a `<!-- dev-team-schema: 1.0 -->` HTML comment under its title (`documentarian-protocol.md`). The rule for any dev-team state file: a consumer tolerates a **matching major version** (and treats a missing marker as the oldest known version, for back-compat with files written before the marker existed); it warns — rather than silently guessing — on an unrecognized **newer** major. Bump the major only on a breaking format change (a field removed, renamed, or repurposed), never for an additive field. This is deliberately lightweight — no migration tooling, just a version a reader can check first.
 
 ## ID prefixes — keep the namespaces distinct
 
@@ -45,10 +52,62 @@ So `autopilot.json`'s `trajectory_ref` resolves to `PROJECT.md#Trajectory-ledger
 | `G-` | gate-ledger item (feature / dep-upgrade / architectural, awaiting a decision) | autopilot → `autopilot.json` |
 | `V-` | review verdict | review → `VERIFICATION.md` |
 | `I-` | improvement finding (works, but inefficient) | review |
+| `M-` | migration stage / deferred follow-up (a blocked stage, a risk flagged for sign-off, a proposed-not-auto-taken strategy call) | migrate → `MIGRATION.md`'s Stage Ledger |
 
 A review→security handoff carries the `V-`↔`F-` mapping so the regression projects back into `SECURITY.md`'s register (which is what a security resume reads).
 
 When `issues=sync` (or `/dev-team-sync-issues`) is used, each item's prefix+id maps to a GitHub issue (via the hidden `<!-- dev-team:<id> -->` marker), and the item stores the issue number in an `issue:` field for dedup — see `issue-sync-protocol.md`. Labels: `for consideration`, `security`, `enhancement`, `bug`.
+
+## Repo config & feature toggles
+
+`.dev-team/config.yml`, when the user commits it in their project repo, is the **repo-scoped**
+source of run defaults (`models`, `gates`, `cap`, `cycles`, `issues`) and feature toggles
+(`update-notifier`, `branch-notifier`, `guard`, `notifications`, `telemetry`, `dry-run`) —
+applying to every session and every collaborator, not just the current one. It is the intended
+**primary switch mechanism**; per-run arguments, plain language, and per-session env vars (e.g.
+`DEV_TEAM_NO_UPDATE_CHECK`) are overrides layered on top of it. Precedence, highest first: per-run
+argument > plain language > per-session env var > repo `.dev-team/config.yml` > built-in default.
+Loading is **best-effort and fail-open** everywhere — an absent or malformed file is never an
+error; every skill and hook simply falls back to its built-in default. Full schema, the toggle →
+env-override table, and `/dev-team-config` (show the effective config, or scaffold a starter file)
+live in `references/config-and-toggles.md` — read it before you build anything that reads a
+default or a toggle.
+
+## Dry-run / plan-preview
+
+When `dry-run=on` (per-run argument) or `features.dry-run: on` (repo `.dev-team/config.yml`;
+default `off`) is in effect, a BUILDING skill — orchestrator, iterate, security, stripe, ship —
+produces its full plan and the briefs it WOULD issue, spawns **no builders**, and makes **no
+file or git changes**: it stops after planning and reports the plan + briefs for the user's
+approval. (`dev-team-review` is unaffected — it's already read-only.) Precedence follows the
+standard chain in `config-and-toggles.md`: per-run argument > plain language ("just show me the
+plan", "dry run") > repo config > built-in default (`off`). Fail-open: a missing or unreadable
+config simply leaves dry-run off.
+
+## Cold-resume
+
+At the front of a run, a skill checks for its **own prior artifact + run record** before doing any
+fresh work — the same discipline `dev-team-iterate`'s Phase 0 and `dev-team-autopilot` already
+apply, generalized across the suite. If a current one exists — validated the way iterate validates
+its Codebase Map (a git-drift check, plus a small spot-check against the real repo; see
+`dev-team-iterate/references/audit-and-backlog-protocol.md`) — **RESUME** from that state instead
+of restarting cold. If it's missing, stale, or the tree is dirty in a way that invalidates it,
+start fresh. The artifact to check is whichever this skill owns per the Shared artifacts table
+above: `PROJECT.md` (orchestrator, iterate, stripe), `SECURITY.md` (security), `VERIFICATION.md`
+(review). This is baked-in discipline, not a toggle — always attempted, always fail-open to a
+fresh run when the check doesn't pass.
+
+## Autopilot notifications
+
+When `features.notifications: on` (the default; `.dev-team/config.yml`), the `dev-team-autopilot`
+conductor surfaces a prominent, clearly-marked notice at three events: a gate item **QUEUED** for
+approval, a **BLOCKED** pause, and a terminal **DONE**/cap. Each is emitted as its own distinct
+report line — not buried in a routine cycle update — so a long unattended run makes plain the
+moment it needs the user or has finished. Users MAY additionally wire a Claude Code
+Notification/Stop hook, or a push-notification integration, for real push delivery outside the
+terminal (documented, optional — not required for the in-report notice to work). Fail-open: a
+missing/malformed config leaves the default (`on`); `features.notifications: off` skips the notice
+entirely. See `dev-team-autopilot/references/loop-runtime.md` for the exact event hooks.
 
 ## Git / branch model
 
@@ -56,6 +115,16 @@ When `issues=sync` (or `/dev-team-sync-issues`) is used, each item's prefix+id m
 - Branch names: `iterate/<date>`, `security-audit/<date>`, `review-fix/<date>`, `stripe/<date>`, `autopilot/<date>` (suffix `-2`, `-3` on collision).
 - **Under the `dev-team-autopilot` conductor, siblings do NOT create their own branch** — every mode cycle commits to the single `autopilot/<date>` run branch.
 - A dirty working tree or a non-git repo is surfaced to the user before proceeding — and it forces full re-validation of any reused Codebase Map, not just branch hygiene.
+
+### PR base / no-stack policy
+
+By default, every run branches FROM and targets the **default branch** (`main`) — this extends the
+"one run = one branch" rule above with *which* branch that is. **Never stack a PR on another
+feature branch**: stacking creates a merge-race hazard (the base branch can move, get rebased, or
+be force-pushed out from under the dependent PR, and reviews/CI end up run against a moving
+target). Stack only when `.dev-team/config.yml` sets `git.stack-prs: true` **and** the user
+explicitly asks for it for that run — both conditions, not either. See
+`references/config-and-toggles.md` for the `git:` block (`stack-prs`, `default-branch`).
 
 ## Gates
 
@@ -68,8 +137,13 @@ When `issues=sync` (or `/dev-team-sync-issues`) is used, each item's prefix+id m
 - **Restraint.** No manufacturing work to keep a loop alive. "Nothing high-impact left — here's what I'd leave alone, stopping" is a success state, not a failure.
 - **Independence.** Whoever verifies a thing is never whoever built it.
 
+## Self-tests
+
+The plugin tests itself: `tests/smoke-structure.sh` (structure a marketplace installer relies on) and `tests/scripts.bats` (behavior contracts for the hooks/scripts) run in CI as the `test` job alongside the existing `audit` job (`.github/workflows/plugin-audit.yml`) — see `tests/README.md` and `CONTRIBUTING.md` for how to run them locally before you touch `hooks/`, `scripts/`, or the manifests.
+
 ## Safety (security & stripe)
 
 - **Test-mode / local-sandbox only.** Never attack or mutate systems you don't own; never run live payment flows (`dev-team-stripe` needs an explicit `live=confirm`).
+- **Destructive/irreversible ops on systems the user DOES own also require confirmation.** Production databases, live datastores, and deployed environments are not exempt just because the user owns them: any destructive or irreversible operation against one requires the user's explicit confirmation and a verified backup/rollback in hand before proceeding. `git revert` undoes code, not data.
 - **Secrets:** report location and type, never the value; flag for rotation; treat as compromised.
 - **Active-compromise signal → freeze all remediation.** Do not patch even if the fix is clear — auto-patching destroys forensic evidence and tips off an attacker. Escalate to the user as incident response; this is not a git-revertible action.

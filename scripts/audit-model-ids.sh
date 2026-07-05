@@ -33,5 +33,22 @@ done
 # 4) No plugin components misplaced under .claude/ (must be at plugin root).
 [ -d ".claude/agents" ] && note ".claude/agents/ exists — plugin agents must live in agents/ at the plugin root, or installers won't get them."
 
+# 5) Docs-coverage: every skill and every command must be documented in README.md, so the
+# suite's docs can't silently drift out of date as skills/commands are added.
+if [ -f README.md ]; then
+  for d in skills/dev-team-*/; do
+    [ -d "$d" ] || continue
+    name="$(basename "$d")"
+    grep -q "$name" README.md || note "$name not documented in README"
+  done
+  for f in commands/*.md; do
+    [ -f "$f" ] || continue
+    name="$(basename "$f" .md)"
+    grep -q "$name" README.md || note "$name not documented in README"
+  done
+else
+  note "README.md missing"
+fi
+
 [ "$fail" -eq 0 ] && echo "AUDIT OK"
 exit "$fail"

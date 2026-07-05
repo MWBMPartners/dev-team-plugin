@@ -17,10 +17,10 @@ not the typing.
 | model            | cost-efficiency | intelligence | taste | role in the suite |
 |------------------|-----------------|--------------|-------|-------------------|
 | gpt-5.5 (Codex)  | 9 | 8 | 5 | optional cheap bulk executor (external — see "Codex offload") |
-| sonnet-5         | 6 | 5 | 7 | scribe + mid build; the Claude fallback for bulk work |
-| opus-4.8         | 4 | 8 | 8 | default builder + ALL verification |
-| fable-5          | 2 | 9 | 9 | recommended orchestrator + hard reasoning |
-| haiku-4.5        | 10 | 3 | 2 | trivial mechanical only (renames/formatting/boilerplate) |
+| sonnet | 6 | 5 | 7 | scribe + mid build; the Claude fallback for bulk work |
+| opus | 4 | 8 | 8 | default builder + ALL verification |
+| fable | 2 | 9 | 9 | recommended orchestrator + hard reasoning |
+| haiku | 10 | 3 | 2 | trivial mechanical only (renames/formatting/boilerplate) |
 
 "cost-efficiency" is higher = cheaper: gpt-5.5 and haiku are cheapest, fable is priciest but top
 taste + intelligence. Tune the numbers to your own subscription — the rules below read from this

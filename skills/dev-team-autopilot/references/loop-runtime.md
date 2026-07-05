@@ -8,6 +8,7 @@ This is the **single source of truth**. You read it *first* every iteration and 
 
 ```json
 {
+  "schema": "1.0",                              // state-format version — read this first; see conventions.md#Schema-versioning
   "mission": "production-ready + feature-complete (in scope)",
   "aim": "<confirmed 1-2 sentence product purpose — the yardstick for purpose-fit>",
   "definition_of_done": ["builds+runs from clean checkout", "core task works e2e", "tests cover core flows & pass", "no unresolved Critical/High security finding", "no High correctness/UX backlog item", "docs enough to run it", "every High in-scope feature gap built-or-queued"],
@@ -53,6 +54,8 @@ This is the **single source of truth**. You read it *first* every iteration and 
 
 Keep it small and current. Anything that needs prose (decision rationale, what a cycle changed, the trajectory table) lives in `PROJECT.md` via the `sonnet-scribe` documentarian (Sonnet tier; model routing: `skills/dev-team-orchestrator/references/model-routing.md`); this file holds only what the *loop* needs to decide the next move. The **token allowance of the user's plan is the real spend ceiling** (the platform hard-cuts there); `cap` exists only as a *convergence* backstop so a loop that genuinely can't reach done stops honestly instead of spinning. Note `cap` counts every loop iteration — including doc-only setup (e.g. security Phase-0) and read-only VERIFY workstreams (a full VERIFY pass is several) — so size it larger for big or verification-heavy products.
 
+`schema` is the state-format version, written on every save. A cold-resuming conductor reads it first: a matching major (e.g. any `"1.x"` against this doc's `"1.0"`) is safe to resume as-is; a missing field is treated as `"1.0"` for back-compat with files written before this note landed; an unrecognized *newer* major is a signal to stop and surface rather than guess at a shape that changed underneath it. Bump the major only on a breaking change to this schema (a field removed, renamed, or repurposed) — see `conventions.md`'s "Schema versioning" subsection for the shared rule across all dev-team state/artifact files.
+
 ### The `budget` block — a heuristic trend that can auto-tighten the build tier (never verification)
 
 `budget` is a spawn-count trend, not a bill: `spawns_by_tier` tallies how many `deep-architect`/`opus-builder`/`sonnet-scribe`/`quick-edits` subagents this run has spawned so far, and `cycles` tracks how many loop iterations contributed to that tally. The `sonnet-scribe` documentarian increments it during **RECORD** (step 7) each cycle, from the spawns that cycle actually made. It counts **spawns, not credits** — there is no billing API to reconcile against, so never read it as spend, only as a coarse trend.
@@ -61,10 +64,18 @@ Keep it small and current. Anything that needs prose (decision rationale, what a
 
 - The `sonnet-scribe` increments `spawns_by_tier` and `cycles` each cycle, then computes the frontier (Fable + Opus) spawns for that cycle.
 - If that count exceeds `threshold_per_cycle` (default ~6) on a sustained basis, set `spend_posture: "heavy"`.
-- If `spend_posture` is `"heavy"`, `autotighten` is `true`, and `posture` is above `economy`, step `posture` DOWN one notch (`max` → `balanced` → `economy`, floored at `economy` — it never goes lower) for **BUILD work only**, set `spend_posture: "tighten"`, and **surface it** in the iteration's report line, e.g. "budget: auto-tightened balanced→economy at cycle 14 (frontier spend heavy)".
+- If `spend_posture` is `"heavy"`, `autotighten` is `true`, and `posture` is `"balanced"` (not `"max"` —
+  `max` is exempt, it never auto-tightens; not `"economy"` either, there's nowhere lower to go), step
+  `posture` DOWN to `economy` (`balanced` → `economy` only) for **BUILD work only**, set
+  `spend_posture: "tighten"`, and **surface it** in the iteration's report line, e.g. "budget:
+  auto-tightened balanced→economy at cycle 14 (frontier spend heavy)".
 - This **never** changes the verification tier — checker/red-team/validator/reviewer work stays on `opus-builder` in every posture (invariant 1, `model-routing.md`); only the build/scout tier steps down.
 
 Caveat, always: this is spawns, not credits — a coarse heuristic trend, never an authoritative spend figure. It shows up in `/dev-team-status` either way; auto-tighten just means the loop can also *act* on it for build work, not only display it.
+
+## Notifications — surfacing the three moments a human is needed
+
+When `features.notifications` is `on` (the suite-wide default; see the **Autopilot notifications** contract in `dev-team-orchestrator/references/conventions.md`), the conductor emits a distinct, clearly-marked notice — in addition to, not instead of, the normal report — at three events, so a long unattended run makes plain when it needs you or has finished, instead of requiring you to poll: a gate item **QUEUED** for approval (step 6, GATE CHECK), a **BLOCKED** pause (step 2's `only-gated-work-left` guard and step 6's hard-blocker path), and a **terminal** DONE/cap stop (step 2's `terminal`/`cap hit` guards and step 8's RE-EVALUATE TERMINAL). Fail-open: if `features.notifications` is `off`, or `.dev-team/config.yml` is absent/unreadable (default wins, `on`), skip the notice and emit the plain report only — GUARD, GATE CHECK, and the terminal check behave identically either way; notifications are a reporting layer on top, never a gate condition of their own. For real push delivery beyond the report line, the user may additionally wire a Claude Code Notification/Stop hook, or an external push integration, to watch for the marked line — documented as optional, never required for the loop itself to work.
 
 ## The per-iteration protocol
 
@@ -81,11 +92,11 @@ Read `.dev-team/autopilot.json` cold. Read only the *slices* of `PROJECT.md` / `
 ### 2. GUARD — decide whether the loop should stop *before* doing work
 Evaluate, in order; the first that trips ends the loop (report, then **omit `ScheduleWakeup`**):
 
-- **terminal / DONE** — `terminal: true` or `state: "DONE"` → final report, stop.
-- **cap hit** — `cycle >= cap` → stop; report where it landed and the residual queue. A convergence backstop, not a failure.
-- **blocked & unresolved** — `state: "BLOCKED"` and step 1 did *not* clear it → re-surface the blocker and stop. (A re-fire whose input resolves it was already cleared in step 1 and falls through.)
+- **terminal / DONE** — `terminal: true` or `state: "DONE"` → final report (**terminal notification**, see Notifications), stop.
+- **cap hit** — `cycle >= cap` → stop; report where it landed and the residual queue (**terminal notification**, see Notifications). A convergence backstop, not a failure.
+- **blocked & unresolved** — `state: "BLOCKED"` and step 1 did *not* clear it → re-surface the blocker (**BLOCKED notification**, see Notifications) and stop. (A re-fire whose input resolves it was already cleared in step 1 and falls through.)
 - **lock held by a live iteration** — the lock directory exists and its heartbeat `ts` is within `stale_after_min` (compare against `date`) → another iteration is mid-cycle; stop quietly without double-running. (A stale lock is reclaimed in step 3. A re-fire that carries user text is handled in step 1 and may reclaim early — see Crash/interruption recovery.)
-- **only-gated-work-left** — no safe autonomous (Bucket-1) work remains — including no pending or re-opened/forced VERIFY phase on the cursor and no phase-cursor work — AND no `gate_ledger` item is `approved` or `auto-cleared`, but items remain `awaiting-user` → nothing safe left to do without approvals → surface the approval queue, set `blocked={is:true, reason:"awaiting-approvals", since:<now>}` and `state:"BLOCKED"` (both fields, persisted — keep them consistent), and stop. (A re-fire that approves an item clears this via step 1.)
+- **only-gated-work-left** — no safe autonomous (Bucket-1) work remains — including no pending or re-opened/forced VERIFY phase on the cursor and no phase-cursor work — AND no `gate_ledger` item is `approved` or `auto-cleared`, but items remain `awaiting-user` → nothing safe left to do without approvals → surface the approval queue (**BLOCKED notification**, see Notifications), set `blocked={is:true, reason:"awaiting-approvals", since:<now>}` and `state:"BLOCKED"` (both fields, persisted — keep them consistent), and stop. (A re-fire that approves an item clears this via step 1.)
 
 If none trip, continue.
 
@@ -105,16 +116,22 @@ Play lead for the selected mode, following that sibling skill's protocol for **e
 Keep your own context thin (see Context hygiene).
 
 ### 6. GATE CHECK
-Apply the hybrid policy to whatever this cycle surfaced (`modes-and-gates.md` has the full table):
-- a **net-new feature** → run the feature autonomy test (`modes-and-gates.md`, all four criteria): if it passes, author the full spec + a logged justification, mark it `status: auto-cleared` (`cleared_by: autonomy-test`), **build it** (→ `built` when its stages complete), surface it; if it fails (differentiator, `risk`≥Med, out-of-scope-leaning, large/architectural), author the full spec, queue it (`status: awaiting-user`) with the reservation, surface it, **don't build**. A feature that is itself **Bucket-3-class** (destructive/irreversible/external-touching) → Bucket 3 (queue or hard-pause, never auto-build). A **major dep-upgrade / risky-architectural** item → always author the spec, queue (`status: awaiting-user`), surface, do not build;
-- an **active-compromise / incident signal**, or another **hard blocker** (contradiction, destructive op, two-strike failure, unestablishable safety net) → set `blocked = {is:true, reason, since}` and `state:"BLOCKED"`. For an active-compromise signal, do **not** auto-fix or patch (it can destroy forensic evidence) even if the remediation looks clear — the next GUARD will stop and surface it as an incident;
+Apply the hybrid policy to whatever this cycle surfaced (`modes-and-gates.md` has the full table). Every item that lands on `status: awaiting-user` below emits the **gate-queued notification** (see Notifications) at the moment it's queued — not deferred to the next report:
+- a **net-new feature** → run the feature autonomy test (`modes-and-gates.md`, all four criteria): if it passes, author the full spec + a logged justification, mark it `status: auto-cleared` (`cleared_by: autonomy-test`), **build it** (→ `built` when its stages complete), surface it; if it fails (differentiator, `risk`≥Med, out-of-scope-leaning, large/architectural), author the full spec, queue it (`status: awaiting-user`) with the reservation, surface it (**gate-queued notification**), **don't build**. A feature that is itself **Bucket-3-class** (destructive/irreversible/external-touching) → Bucket 3 (queue or hard-pause, never auto-build — queuing emits the **gate-queued notification**, hard-pausing emits the **BLOCKED notification**). A **major dep-upgrade / risky-architectural** item → always author the spec, queue (`status: awaiting-user`), surface (**gate-queued notification**), do not build;
+- an **active-compromise / incident signal**, or another **hard blocker** (contradiction, destructive op, two-strike failure, unestablishable safety net) → set `blocked = {is:true, reason, since}` and `state:"BLOCKED"` (**BLOCKED notification**, see Notifications). For an active-compromise signal, do **not** auto-fix or patch (it can destroy forensic evidence) even if the remediation looks clear — the next GUARD will stop and surface it as an incident;
 - otherwise the work was autonomous and already done — nothing to gate.
 
 ### 7. RECORD
 Have the `sonnet-scribe` documentarian update `PROJECT.md` (narrative + trajectory row + checkpoint) — **and keep it lean: overwrite `## Current status` every cycle (never append) to a tight "single next action + where to look" block**, so a fresh cheap agent can resume cold from it; append-only is for the trajectory/decision logs, not this section. Then update `autopilot.json`: advance `phase_cursor`/`plan[].status` if the phase's exit criterion is now met, set `cursor` and a fresh `next_action`, append `last_commit`, increment `cycle`, **have the `sonnet-scribe` documentarian increment `budget.spawns_by_tier` for each endpoint agent spawned this cycle, bump `budget.cycles`, and apply the auto-tighten rule** (compute frontier spawns/cycle, update `spend_posture`, step `budget.posture` down one for BUILD work only if warranted, and surface the change in the report line — never touches the verification tier; see "The `budget` block" above), update `gate_ledger` (a feature whose build stages just completed → `status: built`), when the conductor has authored a full feature spec this cycle, instruct the documentarian to write it to `PROJECT.md`'s `## Feature Specs` section at the `#spec-<id>` anchor and set the gate_ledger item's `spec_ref` to that anchor, **if this firing resolved a prior block set `blocked={is:false,reason:null,since:null}` and `state:"RUNNING"`**, set `verified_at_commit`/`verify` if a VERIFY cycle advanced, **release the lock** (`rmdir .dev-team/loop.lock`), bump `updated`. Keep the two files consistent.
 
 ### 8. RE-EVALUATE TERMINAL, then YIELD
-Recompute the done checklist from the ledgers (`mission-and-done.md`) — including the **freshness binding**: the "builds & runs from clean checkout" and "core task works e2e" boxes count as met only when `verified_at_commit == last_commit`; if a cycle has landed a commit since the last VERIFY, those boxes are *unknown* and a fresh VERIFY phase is forced (re-open VERIFY) before `terminal` can be set. If every criterion is met → set `terminal: true` / `state: "DONE"` and **omit `ScheduleWakeup`** — the loop ends; give the final report now. Otherwise call:
+Recompute the done checklist from the ledgers (`mission-and-done.md`) — including the **freshness binding**: the "builds & runs from clean checkout" and "core task works e2e" boxes count as met only when `verified_at_commit == last_commit`; if a cycle has landed a commit since the last VERIFY, those boxes are *unknown* and a fresh VERIFY phase is forced (re-open VERIFY) before `terminal` can be set. If every criterion is met → set `terminal: true` / `state: "DONE"` and **omit `ScheduleWakeup`** — the loop ends; give the final report now (**terminal notification**, see Notifications).
+
+**Run report.** Whenever the loop actually stops — landing here at `terminal: true`/`DONE`, or at an earlier GUARD stop (cap hit, blocked, lock held, step 2) — fold a run report into that final report, per `skills/dev-team-orchestrator/references/run-report.md`: cycles, `budget.spawns_by_tier`, commits on the run branch, and the rough cost estimate, always carrying its "estimate, not a bill" caveat. This is automatic by default; skip it only when the repo's `.dev-team/config.yml` sets `features.telemetry: off` (fail-open — an absent or unreadable config still emits the report).
+
+- The user can pull the same report on demand at any point via `/dev-team-report`, independent of this toggle.
+
+Otherwise call:
 
 ```
 ScheduleWakeup(

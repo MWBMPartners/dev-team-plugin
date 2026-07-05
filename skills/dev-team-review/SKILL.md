@@ -59,6 +59,8 @@ Locate `PROJECT.md` (and `SECURITY.md`) at the repo root — the source of inten
 
 Also note **claims with no evidence** in the doc — those are unverified by construction and go on the report regardless. If a prior `VERIFICATION.md` exists, load it too, to power the regression delta (step 5).
 
+**Cold-resume.** If that prior `VERIFICATION.md` instead looks like an **interrupted** pass — some claim-groups verified, others never reached, no overall verdict recorded — validate it the way `dev-team-iterate`'s Phase 0 validates its Codebase Map (a git-drift check plus a small spot-check against the current commit); if it's still current, **RESUME**: re-verify only the outstanding claim-groups and merge the results into the same report, rather than re-extracting and re-verifying everything from zero. A **complete** prior pass (an overall verdict already recorded) isn't a resume target — it feeds the regression delta above instead. If the partial file is stale or the tree has drifted since it was written, start fresh. See `dev-team-orchestrator/references/conventions.md` ("Cold-resume").
+
 ### 2. Plan the verification
 
 Group claims into coherent workstreams a single verifier can own (by area/feature/stage), and decide *how each claim is proven* — re-run tests/build/lint, run the app and exercise the flow, read code to confirm a decision, re-measure a metric, re-run a security PoC. Parallelize groups that don't contend for the same runtime/ports. Match effort to the run's `depth` (see Arguments).

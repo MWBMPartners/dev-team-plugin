@@ -31,6 +31,8 @@ UNDERSTAND → SCOPE INTO STAGES → [ per stage: PLAN → DELEGATE → CHECK �
 
 Before spawning anyone, establish (the **documentarian** writes this into `PROJECT.md` at the repo root):
 
+- **Cold-resume check** — first, look for a current `PROJECT.md` from a prior `dev-team-orchestrator` run in this repo (a run record and a `## Current status` that's still valid — validated the way `dev-team-iterate`'s Phase 0 validates its Codebase Map: a git-drift check plus a small spot-check). If it's current, **RESUME** from it — read Current status, the stage plan, and the decision log, and continue from the recorded next action instead of restarting from scratch. If it's missing, stale, or the tree is dirty in a way that invalidates it, start fresh. See `references/conventions.md` ("Cold-resume").
+- **Repo config** — load `.dev-team/config.yml` (if present) for run defaults and toggles (precedence in `references/config-and-toggles.md`).
 - **The end goal** in one or two sentences, as the user stated it.
 - **Definition of done** — concrete, checkable criteria. "Tests pass", "app runs with `npm run dev` and shows X", "endpoint returns Y". If you can't check it, it isn't done.
 - **Constraints** — language, framework, style, things the user said to avoid.
@@ -117,7 +119,7 @@ A failed return is information, usually about the brief. Don't just re-run the s
 
 When a stage's waves are integrated and checked, run the **checkpoint**: re-read the stage's done-criteria, run the full check suite, and ask the real question — *is progress matching the plan?* Then:
 
-- **On track** → documentarian records the stage outcome; **commit the work** (a single commit at the passing checkpoint, message naming the stage). This gives a known-good rollback point and writes the plan-vs-actual trail into git as well as `PROJECT.md`. Then advance to the next stage.
+- **On track** → documentarian records the stage outcome; **commit the work** (a single commit at the passing checkpoint, message naming the stage). This gives a known-good rollback point and writes the plan-vs-actual trail into git as well as `PROJECT.md`. Branch FROM and target the default branch (`main`) for the run — never stack it on another feature branch — unless `.dev-team/config.yml` sets `git.stack-prs: true` (see conventions.md's "PR base / no-stack policy"). Then advance to the next stage.
 - **Drifting** (scope grew, an assumption broke, a criterion can't be met as planned) → revise the stage plan, and if it materially changes the project, take it to the user per your check-in policy. Don't commit a drifting/half-broken state as a checkpoint; fix or re-scope first, then commit.
 
 If a later wave goes wrong, the last checkpoint commit is your clean restore point — return to it rather than trying to hand-untangle a bad merge.
@@ -138,7 +140,7 @@ Use debates sparingly — they cost a wave of agents. Reversible or low-stakes c
 
 ### 9. Verify and report
 
-The project loop only ends when every project-level done-criterion is demonstrably met — by running it, not by asserting it. At milestones and at the end, report to the user as a lead would: what was built, key decisions (and why), what was verified and how, and anything deferred. Keep it short; point to `PROJECT.md` for the full decision and stage log.
+The project loop only ends when every project-level done-criterion is demonstrably met — by running it, not by asserting it. At milestones and at the end, report to the user as a lead would: what was built, key decisions (and why), what was verified and how, and anything deferred. Keep it short; point to `PROJECT.md` for the full decision and stage log. At the very end of a run, also emit a short run summary — agents spawned by tier, commits made, and a rough cost estimate, per `references/run-report.md` — honoring the repo's `.dev-team/config.yml` `features.telemetry` toggle (skip only on an explicit `off`; fail-open otherwise).
 
 ## Composing other skills
 
@@ -154,6 +156,11 @@ Skills are just files on disk (a `SKILL.md` plus resources), and your agents hav
 
 Finding a skill's path: skills live in `~/.claude/skills/` (user) or `.claude/skills/` (project). The `available_skills` entries identify them; point agents at the `SKILL.md` inside.
 
+## Arguments
+
+Optional run arguments (defaults in brackets):
+
+- `dry-run=on|off` — produce the full stage/workstream plan and the briefs you WOULD issue, spawn no builders, and make no file or git changes; stop after planning and report the plan for approval. Precedence: this argument > `features.dry-run` in `.dev-team/config.yml` > built-in default [off]. Plain language ("just show me the plan", "dry run first") also sets it. See `references/conventions.md` ("Dry-run / plan-preview").
 
 
 - **Doing the work yourself.** If you catch yourself writing production code, stop and write a brief. Exceptions: trivial glue during integration (wiring/imports/config to make two agents' outputs connect — never new logic; if integration needs real logic, that's a rework brief, not a lead edit), or a one-line fix surfaced in the checker's NEEDS-LEAD-REVIEW list.
@@ -179,8 +186,10 @@ Finding a skill's path: skills live in `~/.claude/skills/` (user) or `.claude/sk
 ## References
 
 - `references/conventions.md` — the suite's **shared contracts**: artifact ownership & schemas, ID prefixes, the branch model, the flattening rule, gates, and safety. The canonical home for cross-skill facts; read it once.
+- `references/config-and-toggles.md` — the `.dev-team/config.yml` repo-scoped schema, precedence rules, the feature-toggle → env-override table, and fail-open loading. Read before relying on any run default or toggle.
 - `references/task-brief-template.md` — brief format for builder/scout agents. Read before your first delegation.
 - `references/checker-protocol.md` — brief and triage format for the checker agent (what to escalate vs. handle). Read before your first check.
 - `references/debate-protocol.md` — prompts and judging rubric for debate mode. Read before your first debate.
 - `references/documentarian-protocol.md` — `PROJECT.md` structure and the `sonnet-scribe` documentarian's brief. Read when you first set up the project.
 - `references/orchestration-profiles.md` — optional taste-first profile: top-taste orchestrator (Fable/Opus) + cheap grunt work, with optional GPT-5.5/Codex offload. Read if you want more taste per token than the default roster.
+- `references/run-report.md` — the run-report spec: what a run summary contains, the rough cost-estimate method and its caveat, and the `features.telemetry` toggle. Read before the final "Verify and report" step.

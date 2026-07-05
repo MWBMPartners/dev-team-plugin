@@ -29,7 +29,7 @@ fi
 
 # A fetch --prune is what makes "gone" accurate; it only touches remote-tracking refs, never
 # local branches. Skippable with --no-fetch (offline / no-network).
-[ "$do_fetch" = 1 ] && git fetch --prune --quiet 2>/dev/null || true
+if [ "$do_fetch" = 1 ]; then git fetch --prune --quiet 2>/dev/null || true; fi
 
 current="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || echo)"
 

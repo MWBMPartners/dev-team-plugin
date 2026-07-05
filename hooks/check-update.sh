@@ -8,14 +8,17 @@ set -u
 # Off-switch.
 [ -z "${DEV_TEAM_NO_UPDATE_CHECK:-}" ] || exit 0
 
+# Repo-scoped off-switch: .dev-team/config.yml (best-effort, fail-open — absent/malformed => proceed).
+if [ -f .dev-team/config.yml ] && grep -Eq '^[[:space:]]*update-notifier:[[:space:]]*(off|false|no)([[:space:]]|$)' .dev-team/config.yml 2>/dev/null; then exit 0; fi
+
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
 DATA_DIR="${CLAUDE_PLUGIN_DATA:-}"
-[ -n "$PLUGIN_ROOT" ] && [ -n "$DATA_DIR" ] || exit 0
+if [ -z "$PLUGIN_ROOT" ] || [ -z "$DATA_DIR" ]; then exit 0; fi
 
 # Local version — best-effort; reading plugin.json from a hook is documented-but-unstated,
 # so any failure here is silently swallowed.
 local_version="$(jq -r '.version' "$PLUGIN_ROOT/.claude-plugin/plugin.json" 2>/dev/null)" || exit 0
-[ -n "$local_version" ] && [ "$local_version" != "null" ] || exit 0
+if [ -z "$local_version" ] || [ "$local_version" = "null" ]; then exit 0; fi
 
 # Throttle/cache dir: the WRITABLE persistent dir, NOT the plugin dir (which may be read-only).
 mkdir -p "$DATA_DIR" 2>/dev/null || exit 0
@@ -45,7 +48,7 @@ command -v jq >/dev/null 2>&1 || exit 0
 remote_version="$(timeout 5 gh api repos/MWBMPartners/dev-team-plugin/contents/.claude-plugin/plugin.json --jq '.content' 2>/dev/null \
   | base64 -d 2>/dev/null \
   | jq -r '.version' 2>/dev/null)" || exit 0
-[ -n "$remote_version" ] && [ "$remote_version" != "null" ] || exit 0
+if [ -z "$remote_version" ] || [ "$remote_version" = "null" ]; then exit 0; fi
 
 printf '%s' "$remote_version" > "$REMOTE_CACHE" 2>/dev/null || true
 

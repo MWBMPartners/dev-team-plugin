@@ -7,8 +7,10 @@ owned by the `sonnet-scribe` agent (a cheap tier — this is bookkeeping, not re
 
 ## The switch
 `issues=off|sync` (default **off**) on any skill that maintains a ledger (iterate, security,
-featurefind, review, autopilot), or run `/dev-team-sync-issues` manually. Nothing is created
-unless the switch is `sync` or the command is invoked.
+featurefind, review, autopilot, migrate), or run `/dev-team-sync-issues` manually. Nothing is created
+unless the switch is `sync` or the command is invoked. `SECURITY.md` findings are the one
+exception: `issues=sync` alone does NOT sync them — that needs the separate `issues=sync-security`
+opt-in (see Safety rule 5).
 
 ## What maps to an issue
 One issue per OPEN ledger item, by source:
@@ -18,8 +20,9 @@ One issue per OPEN ledger item, by source:
 | `FEATURES.md` (featurefind) | `FG-` | `for consideration` (→ `enhancement` once approved) |
 | `PROJECT.md` Backlog (iterate) | `B-` | `enhancement` |
 | `PROJECT.md` Proposed-Features ledger | (feature) | `for consideration` |
-| `SECURITY.md` findings (security) | `F-` | `security` |
+| `SECURITY.md` findings (security) — **opt-in only, redacted; see Safety rule 5** | `F-` | `security` |
 | `VERIFICATION.md` verdicts (review) | `V-` (fail) / `I-` | `bug` / `enhancement` |
+| `MIGRATION.md` Stage Ledger (migrate) | `M-` | `enhancement` |
 | `.dev-team/autopilot.json` gate-ledger | `G-` | `for consideration` |
 
 Title = a short, stable summary of the item. Body = the item's fields (description, impact,
@@ -51,14 +54,30 @@ Create any missing labels idempotently (`gh label create <name> 2>/dev/null || t
 the `for consideration` convention (color `D4C5F9`) for propose-only items, plus `security`,
 `enhancement`, `bug`.
 
-## Safety
-- Only a repo the user owns / has push on (`gh` authed). Only ever touch issues THIS sync created
-  (identified by the stored `issue:` ref or the hidden marker) — never edit or close unrelated
-  issues, and never delete any issue.
-- `gh` required — if absent/unauthed, do nothing and tell the user how to enable it. Issue sync
-  never fails the surrounding run.
-- Batch to respect rate limits. On GitHub, issues and PRs share numbering — always read the issue
-  number from `gh` output, never guess it.
+## Safety (non-negotiable)
+1. **Only a repo the user owns / has push on** (`gh` authed). Only ever touch issues THIS sync
+   created (identified by the stored `issue:` ref or the hidden marker) — never edit or close
+   unrelated issues, and never delete any issue.
+2. **`gh` required** — if absent/unauthed, do nothing and tell the user how to enable it. Issue
+   sync never fails the surrounding run.
+3. **Batch to respect rate limits.** On GitHub, issues and PRs share numbering — always read the
+   issue number from `gh` output, never guess it.
+4. **Shell safety — ledger free-text is UNTRUSTED for shell purposes.** Title, description,
+   impact, evidence, rationale, and verification output all come from ledger files the lead/team
+   wrote in prose — never string-interpolate any of it into a `gh` command line, and never build a
+   `gh ... "$(...)"` command by concatenating ledger text. Write the body to a temp file and pass
+   `gh issue create --title "$t" --body-file <file>` (same for `--body-file` on updates); pass
+   search terms and other values as quoted, individually-passed arguments (`gh issue list --search
+   "$term"`), never as part of a hand-assembled command string. This mirrors ci-medic's
+   untrusted-names rule (`dev-team-ci-medic/SKILL.md`) applied to ledger text instead of
+   branch/ref names.
+5. **Security findings are redacted and opt-in only.** Syncing `SECURITY.md` findings (`F-`
+   prefix, `security` label) is NOT part of the default `issues=sync` switch — it requires a
+   separate, explicit opt-in (e.g. `issues=sync-security`) because a GitHub issue is far more
+   visible than the local `SECURITY.md` file. When opted in, the synced issue body carries ONLY
+   the finding's title, severity, and CWE/location — NEVER the `evidence`/PoC/repro field. This
+   holds even on update passes: re-syncing a security item never adds evidence/PoC text to the
+   issue body or a comment. Aligns with dev-team-security's "findings stay private" posture.
 
 ## How the scribe runs one pass
 1. Read the ledgers present (FEATURES.md / PROJECT.md / SECURITY.md / VERIFICATION.md /

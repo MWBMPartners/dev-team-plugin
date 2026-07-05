@@ -5,10 +5,14 @@ bend regardless of how obvious or small the fix looks. Read this before applying
 
 ## Principles
 
-- **Reproduce locally first.** Don't fix blind against a CI log alone — check out the PR's head
-  branch and reproduce the failing check on your own machine/sandbox wherever the tool allows
-  it (formatter, linter, test suite, build). A fix you can watch pass locally is a fix you can
-  trust the push on.
+- **Reproduce locally first — but only when the PR's code is trusted (safety rule 9).** Don't
+  fix blind against a CI log alone — check out the PR's head branch and reproduce the failing
+  check on your own machine/sandbox wherever the tool allows it (formatter, linter, test suite,
+  build). A fix you can watch pass locally is a fix you can trust the push on. But checking out
+  and running a PR's code means executing code from wherever that branch came from: only do this
+  when the PR is from a trusted collaborator or a branch of this same repo. For an external/fork
+  PR, do NOT execute its code locally — diagnose from the logs and the diff only, or get an
+  explicit user acknowledgement that they trust this specific PR before reproducing it.
 - **Minimal fix, not opportunistic cleanup.** A SAFE-AUTO fix touches exactly what the failing
   check flagged. A REAL fix touches exactly what the diagnosis identified. Don't reformat
   unrelated files, don't "improve" nearby code, don't expand scope while you're in there — a
@@ -44,9 +48,15 @@ check is visible; a gamed test is a silent, permanent hole.
 ## Rule 2 — SAFE-AUTO: fix → verify → push
 
 1. **Check out the PR's head branch** (never a detached fix branch that then needs its own PR —
-   the fix belongs on the branch whose check is failing).
-2. **Reproduce locally.** Run the same tool the CI check runs (the formatter, the linter with
-   its exact config, the codegen/lockfile command) and confirm it reproduces the same failure.
+   the fix belongs on the branch whose check is failing). The branch name comes from `gh`/`git`
+   output and is UNTRUSTED (safety rule 7) — hold it in a quoted shell variable rather than
+   string-substituting it into the checkout command, and reject anything that doesn't match
+   `^[A-Za-z0-9._/-]+$`.
+2. **Reproduce locally — only if the PR's code is trusted (safety rule 9).** Run the same tool
+   the CI check runs (the formatter, the linter with its exact config, the codegen/lockfile
+   command) and confirm it reproduces the same failure. This step executes the PR's code: for a
+   fork or an untrusted external PR, skip execution and diagnose from the log/diff instead (or
+   get explicit user acknowledgement first).
 3. **Apply the fix.** Run the tool's own fix mode — `prettier --write`, `black`, `gofmt -w`,
    `rustfmt`, `eslint --fix`, `ruff --fix`, the import-sorter, the codegen/lockfile regenerate
    command. This step is pure-mechanical: delegate it to `quick-edits` (Haiku tier) when the
@@ -100,6 +110,11 @@ unilaterally.
   <head-branch>`, never a new branch, never `main`/`master`, and never with `--force` or
   `--force-with-lease`. If the remote has moved (someone else pushed while you worked), rebase
   or merge cleanly and re-verify — never force past it.
+- **Untrusted names — no shell interpolation (safety rule 7).** `<head-branch>` above is a value
+  read back from `gh`/`git`, not a literal — never build the push/checkout command by
+  string-substituting it directly. Hold it in a quoted shell variable (`branch="$(...)"; git
+  push origin "$branch"`), prefer structured `--json`/`-q` reads over parsing text, and refuse
+  or reject any name that doesn't match `^[A-Za-z0-9._/-]+$` before it reaches a shell command.
 - **Commit message:** `ci-medic: fix <check-name> — <what changed>`, one commit per resolved
   check where practical, so the PR's history stays legible about what ci-medic touched vs. what
   the author wrote.

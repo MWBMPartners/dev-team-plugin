@@ -7,6 +7,10 @@
 # Disable with DEV_TEAM_NO_BRANCH_CHECK.
 set -u
 [ -z "${DEV_TEAM_NO_BRANCH_CHECK:-}" ] || exit 0
+
+# Repo-scoped off-switch: .dev-team/config.yml (best-effort, fail-open — absent/malformed => proceed).
+if [ -f .dev-team/config.yml ] && grep -Eq '^[[:space:]]*branch-notifier:[[:space:]]*(off|false|no)([[:space:]]|$)' .dev-team/config.yml 2>/dev/null; then exit 0; fi
+
 git rev-parse --git-dir >/dev/null 2>&1 || exit 0
 
 gone_count="$(git for-each-ref --format='%(upstream:track)' refs/heads 2>/dev/null | grep -c 'gone' || true)"
