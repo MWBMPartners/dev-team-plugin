@@ -85,7 +85,7 @@ economizes and never auto-tightens (see `loop-runtime.md`).
 
 ## Escalation — the dynamic part
 Start a mechanical-looking workstream on `quick-edits` (Haiku); on a genuine CAPABILITY
-failure (not a brief-quality failure), escalate one tier: Haiku → Opus → Fable. This reuses
+failure (not a brief-quality failure), escalate one tier: Haiku → Sonnet → Opus → Fable. This reuses
 the orchestrator's two-strike rule: strike one may be a bad brief (re-brief, same tier); a
 second failure that looks capability-bound escalates the tier. Never escalate verification
 below Opus.

@@ -108,6 +108,8 @@ Optional run arguments (defaults in brackets):
 - `phases=<subset>` — restrict the mission (e.g. `phases=stabilize,secure,verify` to harden without feature work).
 - `delay=<seconds>` — wakeup pacing between cycles [~90; clamped to the loop's bounds].
 - `branch=<name>` — run branch [`autopilot/<date>`].
+- `issues=off|sync` — export each cycle's ledger items to GitHub Issues (dedup-safe, confirm-first;
+  see `skills/dev-team-orchestrator/references/issue-sync-protocol.md`). [off]
 
 ## What carries over from dev-team-orchestrator (unchanged)
 

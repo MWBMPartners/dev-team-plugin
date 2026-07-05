@@ -117,6 +117,8 @@ Optional run arguments (defaults in brackets):
 - `remediate=fix|propose|report` — after the report: **fix** every gap + inefficiency via dev-team cycles on a branch then re-verify (default); **propose** lists fixes without applying; **report** stops at the report. [fix]
 - `improve=on|off` — whether the fix phase also addresses inefficiencies, not just bugs [on]. `off` = fix broken things only; inefficiencies stay recommendations.
 - `branch=<name>` — branch the fix phase works on [`review-fix/<date>`].
+- `issues=off|sync` — export this run's verdicts/findings to GitHub Issues (dedup-safe, confirm-first;
+  see `skills/dev-team-orchestrator/references/issue-sync-protocol.md`). [off]
 
 ## What carries over from dev-team-orchestrator (unchanged)
 

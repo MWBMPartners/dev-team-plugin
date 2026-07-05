@@ -119,6 +119,8 @@ Optional run arguments (defaults in brackets):
 - `scope=strict|balanced|loose` — how aggressively the validator excludes out-of-scope features [balanced]. `strict` keeps only clear purpose-fits; `loose` surfaces more adjacent ideas (still marked).
 - `focus=table-stakes|differentiators|all` — bias the hunt toward closing parity gaps, toward standout features, or both [all].
 - `depth=quick|standard|deep` — `quick`: top comparables, headline features. `standard`: full comparable set + category sweep + validate. `deep`: + changelog/recent-release mining and a second validation pass on high-importance gaps. [standard]
+- `issues=off|sync` — export this run's ledger items to GitHub Issues (dedup-safe, confirm-first;
+  see `skills/dev-team-orchestrator/references/issue-sync-protocol.md`). [off]
 
 ## What carries over from dev-team-orchestrator (unchanged)
 

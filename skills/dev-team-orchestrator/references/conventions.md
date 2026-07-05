@@ -22,6 +22,7 @@ Subagents are **leaves** — they cannot spawn their own subagents. When one ski
 | `VERIFICATION.md` + `verdict.json` | review | `dev-team-review/references/verdict-and-report-protocol.md` | user, autopilot (VERIFY phase) |
 | `.dev-team/autopilot.json` | autopilot conductor | `dev-team-autopilot/references/loop-runtime.md` | autopilot (cold-resume) |
 | `HANDOFF.md` | sonnet-scribe (all modes) | `handoff-template.md` | user + a resuming lead — DERIVED convenience card, not a source of truth |
+| GitHub Issues (optional) | sonnet-scribe (issue sync) | `issue-sync-protocol.md` | user's tracker — a dedup-safe export of the ledgers when `issues=sync` |
 
 `PROJECT.md` is the human-readable source of truth; `autopilot.json` is the machine state the conductor's loop reads first each iteration. Keep the two consistent.
 
@@ -46,6 +47,8 @@ So `autopilot.json`'s `trajectory_ref` resolves to `PROJECT.md#Trajectory-ledger
 | `I-` | improvement finding (works, but inefficient) | review |
 
 A review→security handoff carries the `V-`↔`F-` mapping so the regression projects back into `SECURITY.md`'s register (which is what a security resume reads).
+
+When `issues=sync` (or `/dev-team-sync-issues`) is used, each item's prefix+id maps to a GitHub issue (via the hidden `<!-- dev-team:<id> -->` marker), and the item stores the issue number in an `issue:` field for dedup — see `issue-sync-protocol.md`. Labels: `for consideration`, `security`, `enhancement`, `bug`.
 
 ## Git / branch model
 

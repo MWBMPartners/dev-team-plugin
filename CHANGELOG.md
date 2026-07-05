@@ -64,6 +64,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   orchestration profile — recommends a Fable/Opus (top-taste) orchestrator, with optional
   GPT-5.5 offload via Codex for bulk/mechanical grunt work (Claude fallback when Codex isn't
   installed), keeping all user-facing work and verification on Claude taste/frontier tiers.
+- `skills/dev-team-ci-medic/SKILL.md` (+ references) and `commands/dev-team-watch-prs.md`:
+  new skill to watch this repo's open PRs for failing CI checks and resolve them by class —
+  auto-fixing SAFE-AUTO classes (formatters, autofix linters, import-sort, deterministically
+  regenerable generated files/lockfiles) once the checker verifies and pushes to the PR
+  branch, rerunning FLAKY failures, diagnosing and proposing REAL failures via a gated
+  remediation cycle (the test under scrutiny is never edited to make it pass), and reporting
+  BLOCKED ones outright. Runs interactively, via `/loop <interval> /dev-team-watch-prs`, or as
+  a scheduled routine; only ever pushes to the PR branch it's watching, never `main`, and
+  documents the `GITHUB_TOKEN` anti-recursion trap for scheduled/cloud pushes.
+- Opt-in GitHub Issue sync (`issues=off|sync` on `dev-team-iterate`/`dev-team-security`/
+  `dev-team-featurefind`/`dev-team-review`/`dev-team-autopilot`, plus `/dev-team-sync-issues`):
+  exports the suite's ledgers (feature gaps, backlog, security findings, review verdicts,
+  gate-deferred items) to GitHub Issues, owned by `sonnet-scribe`. Dedup-safe via a stored
+  `issue:` ref plus a hidden `<!-- dev-team:<id> -->` marker, confirm-first on the first sync,
+  and close-on-done when an item is resolved/built/verified/merged.
 
 ### Changed
 

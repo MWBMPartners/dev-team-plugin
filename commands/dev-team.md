@@ -12,7 +12,8 @@ Route them to the right skill (activate it by following its SKILL.md), or if unc
 - Competitor feature-gap analysis → dev-team-featurefind
 - Stripe / payments build or audit → dev-team-stripe
 - Set up CI/CD, branch protection, secret scanning, releases → dev-team-ship
+- Watch open PRs and safely resolve failing CI checks → dev-team-ci-medic (fire via `/dev-team-watch-prs`)
 - Drive all the way to production-ready, autonomously → dev-team-autopilot (fire via `/loop dev-team-autopilot <mission>`)
 
-Also: `/dev-team-status` shows a live run dashboard; `/dev-team-approve <G-id> approve|reject` resolves a queued gate item; `/dev-team-update` checks for a newer plugin version; `/dev-team-sync-branches` safely prunes local branches whose remote was merged/deleted.
+Also: `/dev-team-status` shows a live run dashboard; `/dev-team-approve <G-id> approve|reject` resolves a queued gate item; `/dev-team-update` checks for a newer plugin version; `/dev-team-sync-branches` safely prunes local branches whose remote was merged/deleted; `/dev-team-watch-prs` runs one CI-medic watch pass over this repo's open PRs (loopable); `/dev-team-sync-issues` exports the suite's ledgers (feature gaps, backlog, security findings, review verdicts, gate items) to GitHub Issues, opt-in and dedup-safe.
 If the request clearly matches one skill, name it and proceed; otherwise ask one question.
