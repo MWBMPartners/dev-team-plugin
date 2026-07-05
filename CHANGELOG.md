@@ -6,6 +6,79 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.2.0] - <unreleased>
+
+### Added
+
+- `.dev-team/config.yml`: a repo-scoped, committed config file for run defaults (`models`, `gates`,
+  `cap`, `cycles`, `issues`) and feature toggles (`update-notifier`, `branch-notifier`, `guard`,
+  `notifications`, `telemetry`, `dry-run`) plus a `git:` block (`stack-prs`, `default-branch`) —
+  applies repo-wide, to every session and collaborator. Precedence: per-run argument > plain
+  language > per-session env var > repo config > built-in default. Loading is best-effort and
+  fail-open everywhere. Full schema in
+  `skills/dev-team-orchestrator/references/config-and-toggles.md`.
+- The **no-stack PR policy**: by default every run branches FROM and targets the default branch;
+  stacking on another feature branch requires both `git.stack-prs: true` in the repo config AND an
+  explicit per-run ask.
+- `tests/smoke-structure.sh` + `tests/scripts.bats`: the plugin's own self-tests (structure a
+  marketplace installer relies on, and behavior contracts for the hooks/scripts), run in CI as a new
+  `test` job (job name `test`, the required-check context) alongside the existing `audit` job.
+  `CONTRIBUTING.md` documents the repo layout and how to run both locally. State files
+  (`.dev-team/autopilot.json`, `PROJECT.md`) carry an explicit schema-version marker so a consumer
+  can tell a compatible file from a stale-format one before trusting its shape
+  (`conventions.md`'s "Schema versioning").
+- Run-end **telemetry**: an automatic run report (skill/mode + phases, cycles/stages, agents
+  spawned by tier, commits, wall-clock, gate-ledger outcomes, and a rough spawn-count cost estimate
+  — explicitly caveated as "not a bill") emitted at a run's terminal step, gated by the
+  `features.telemetry` toggle (default `on`, fail-open). `/dev-team-report` (`[branch=<base>]`)
+  computes the same report on demand, read-only, regardless of the toggle. Spec + the single source
+  of truth for the per-tier cost weights: `skills/dev-team-orchestrator/references/run-report.md`.
+- `dry-run=on|off` on every building skill (orchestrator, iterate, security, stripe, ship, migrate):
+  produces the full plan and the briefs it WOULD issue, spawns no builders, and makes no file or
+  git changes. Precedence and fail-open rules follow the standard config chain
+  (`conventions.md`'s "Dry-run / plan-preview").
+- **Generalized Cold-resume**: every skill now checks for its own prior owned artifact + run record
+  at the front of a run (validated via a git-drift check plus a small spot-check, the same
+  discipline `dev-team-iterate` already used) and resumes from it instead of restarting cold, when
+  it's current.
+- Autopilot **notifications**: a prominent, clearly-marked notice at three events — a gate item
+  QUEUED for approval, a BLOCKED pause, and a terminal DONE/cap — gated by `features.notifications`
+  (default `on`).
+- `skills/dev-team-docs/SKILL.md` (+ references): new skill to generate, maintain, and audit a
+  project's documentation, verified against the actual source rather than taken on trust.
+- `skills/dev-team-migrate/SKILL.md` (+ references): new skill for safe, staged LARGE-SCALE
+  migrations (framework/language/dependency majors, schema migrations, API/interface ports) —
+  pins current behavior with a characterization-test net before anything moves, then cuts over in
+  independently-green, independently-revertible stages (never big-bang by default), gated by an
+  approved Migration Plan before any code moves. Owns `MIGRATION.md`.
+- `commands/dev-team-config.md`: `/dev-team-config show|init` — print the effective config
+  (built-in defaults overlaid with `.dev-team/config.yml`) or scaffold a starter file; never edits
+  the file without telling the user.
+
+### Changed
+
+- `hooks/guard-dev-team.sh`: fixed a bypassable git-push-to-main/master detection — it missed
+  `HEAD:main`, `+main` (force via refspec), `git -C <dir> push`, a quoted `"main"`, and trailing
+  punctuation. Now tokenizes around refspec/quote separators so `main`/`master` must match as a
+  whole token.
+- `.github/workflows/plugin-audit.yml`: added least-privilege `permissions: contents: read` and
+  pinned `actions/checkout` to a verified SHA (`v4.2.2`).
+- `dev-team-ci-medic` (SKILL + triage + remediation) + `/dev-team-watch-prs` +
+  `/dev-team-sync-branches`: three non-negotiable untrusted-input rules — no shell interpolation of
+  `gh`/`git` names (allowlist `^[A-Za-z0-9._/-]+$`), CI logs/PR text are treated as DATA, never
+  instructions (prompt-injection defense), and untrusted-code-execution gating on
+  reproduce-locally / `pr=<n>` (fork PRs are analyzed from logs/diffs only).
+- `issue-sync-protocol.md` + `/dev-team-sync-issues`: shell-safety (ledger free-text is written via
+  `--body-file`, never string-interpolated into a `gh` command) and a security-finding disclosure
+  control — `F-` items are opt-in only (`issues=sync-security`) and redacted to
+  title/severity/CWE/location, never the evidence/PoC field.
+- `dev-team-autopilot/references/loop-runtime.md`: `models=max` never auto-tightens (only
+  `balanced` steps down toward `economy`) — removes a contradiction with `model-routing.md`'s
+  verification-tier invariant.
+- `skills/dev-team-orchestrator/references/orchestration-profiles.md`: replaced lingering
+  versioned/dated model ids with bare tier aliases — drift the model-id audit didn't catch because
+  it only enforces the roster file.
+
 ## [1.1.0] - 2026-07-03
 
 ### Added

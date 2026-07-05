@@ -7,7 +7,7 @@ owned by the `sonnet-scribe` agent (a cheap tier — this is bookkeeping, not re
 
 ## The switch
 `issues=off|sync` (default **off**) on any skill that maintains a ledger (iterate, security,
-featurefind, review, autopilot), or run `/dev-team-sync-issues` manually. Nothing is created
+featurefind, review, autopilot, migrate), or run `/dev-team-sync-issues` manually. Nothing is created
 unless the switch is `sync` or the command is invoked. `SECURITY.md` findings are the one
 exception: `issues=sync` alone does NOT sync them — that needs the separate `issues=sync-security`
 opt-in (see Safety rule 5).
@@ -22,6 +22,7 @@ One issue per OPEN ledger item, by source:
 | `PROJECT.md` Proposed-Features ledger | (feature) | `for consideration` |
 | `SECURITY.md` findings (security) — **opt-in only, redacted; see Safety rule 5** | `F-` | `security` |
 | `VERIFICATION.md` verdicts (review) | `V-` (fail) / `I-` | `bug` / `enhancement` |
+| `MIGRATION.md` Stage Ledger (migrate) | `M-` | `enhancement` |
 | `.dev-team/autopilot.json` gate-ledger | `G-` | `for consideration` |
 
 Title = a short, stable summary of the item. Body = the item's fields (description, impact,

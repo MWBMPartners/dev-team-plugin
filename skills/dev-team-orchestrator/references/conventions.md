@@ -20,6 +20,7 @@ Subagents are **leaves** — they cannot spawn their own subagents. When one ski
 | `FEATURES.md` | featurefind | `dev-team-featurefind/references/gap-scoring-rubric.md` | iterate, autopilot |
 | `SECURITY.md` | security | `dev-team-security/references/threat-model-and-surface-protocol.md` | review, autopilot, a later security resume |
 | `VERIFICATION.md` + `verdict.json` | review | `dev-team-review/references/verdict-and-report-protocol.md` | user, autopilot (VERIFY phase) |
+| `MIGRATION.md` | sonnet-scribe (via dev-team-migrate) | `dev-team-migrate/references/migration-plan-protocol.md` | review, a later dev-team-migrate resume |
 | `.dev-team/autopilot.json` | autopilot conductor | `dev-team-autopilot/references/loop-runtime.md` | autopilot (cold-resume) |
 | `HANDOFF.md` | sonnet-scribe (all modes) | `handoff-template.md` | user + a resuming lead — DERIVED convenience card, not a source of truth |
 | GitHub Issues (optional) | sonnet-scribe (issue sync) | `issue-sync-protocol.md` | user's tracker — a dedup-safe export of the ledgers when `issues=sync` |
@@ -51,6 +52,7 @@ State and ledger files carry a version marker so a consumer can tell a compatibl
 | `G-` | gate-ledger item (feature / dep-upgrade / architectural, awaiting a decision) | autopilot → `autopilot.json` |
 | `V-` | review verdict | review → `VERIFICATION.md` |
 | `I-` | improvement finding (works, but inefficient) | review |
+| `M-` | migration stage / deferred follow-up (a blocked stage, a risk flagged for sign-off, a proposed-not-auto-taken strategy call) | migrate → `MIGRATION.md`'s Stage Ledger |
 
 A review→security handoff carries the `V-`↔`F-` mapping so the regression projects back into `SECURITY.md`'s register (which is what a security resume reads).
 
