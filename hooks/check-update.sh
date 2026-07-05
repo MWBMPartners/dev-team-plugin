@@ -8,6 +8,9 @@ set -u
 # Off-switch.
 [ -z "${DEV_TEAM_NO_UPDATE_CHECK:-}" ] || exit 0
 
+# Repo-scoped off-switch: .dev-team/config.yml (best-effort, fail-open — absent/malformed => proceed).
+if [ -f .dev-team/config.yml ] && grep -Eq '^[[:space:]]*update-notifier:[[:space:]]*(off|false|no)([[:space:]]|$)' .dev-team/config.yml 2>/dev/null; then exit 0; fi
+
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
 DATA_DIR="${CLAUDE_PLUGIN_DATA:-}"
 [ -n "$PLUGIN_ROOT" ] && [ -n "$DATA_DIR" ] || exit 0

@@ -50,12 +50,37 @@ A review→security handoff carries the `V-`↔`F-` mapping so the regression pr
 
 When `issues=sync` (or `/dev-team-sync-issues`) is used, each item's prefix+id maps to a GitHub issue (via the hidden `<!-- dev-team:<id> -->` marker), and the item stores the issue number in an `issue:` field for dedup — see `issue-sync-protocol.md`. Labels: `for consideration`, `security`, `enhancement`, `bug`.
 
+## Repo config & feature toggles
+
+`.dev-team/config.yml`, when the user commits it in their project repo, is the **repo-scoped**
+source of run defaults (`models`, `gates`, `cap`, `cycles`, `issues`) and feature toggles
+(`update-notifier`, `branch-notifier`, `guard`, `notifications`, `telemetry`, `dry-run`) —
+applying to every session and every collaborator, not just the current one. It is the intended
+**primary switch mechanism**; per-run arguments, plain language, and per-session env vars (e.g.
+`DEV_TEAM_NO_UPDATE_CHECK`) are overrides layered on top of it. Precedence, highest first: per-run
+argument > plain language > per-session env var > repo `.dev-team/config.yml` > built-in default.
+Loading is **best-effort and fail-open** everywhere — an absent or malformed file is never an
+error; every skill and hook simply falls back to its built-in default. Full schema, the toggle →
+env-override table, and `/dev-team-config` (show the effective config, or scaffold a starter file)
+live in `references/config-and-toggles.md` — read it before you build anything that reads a
+default or a toggle.
+
 ## Git / branch model
 
 - One run = one branch; **one commit per passing cycle/checkpoint**; never merge to `main` without asking.
 - Branch names: `iterate/<date>`, `security-audit/<date>`, `review-fix/<date>`, `stripe/<date>`, `autopilot/<date>` (suffix `-2`, `-3` on collision).
 - **Under the `dev-team-autopilot` conductor, siblings do NOT create their own branch** — every mode cycle commits to the single `autopilot/<date>` run branch.
 - A dirty working tree or a non-git repo is surfaced to the user before proceeding — and it forces full re-validation of any reused Codebase Map, not just branch hygiene.
+
+### PR base / no-stack policy
+
+By default, every run branches FROM and targets the **default branch** (`main`) — this extends the
+"one run = one branch" rule above with *which* branch that is. **Never stack a PR on another
+feature branch**: stacking creates a merge-race hazard (the base branch can move, get rebased, or
+be force-pushed out from under the dependent PR, and reviews/CI end up run against a moving
+target). Stack only when `.dev-team/config.yml` sets `git.stack-prs: true` **and** the user
+explicitly asks for it for that run — both conditions, not either. See
+`references/config-and-toggles.md` for the `git:` block (`stack-prs`, `default-branch`).
 
 ## Gates
 

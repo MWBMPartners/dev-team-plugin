@@ -31,6 +31,7 @@ UNDERSTAND → SCOPE INTO STAGES → [ per stage: PLAN → DELEGATE → CHECK �
 
 Before spawning anyone, establish (the **documentarian** writes this into `PROJECT.md` at the repo root):
 
+- **Repo config** — load `.dev-team/config.yml` (if present) for run defaults and toggles (precedence in `references/config-and-toggles.md`).
 - **The end goal** in one or two sentences, as the user stated it.
 - **Definition of done** — concrete, checkable criteria. "Tests pass", "app runs with `npm run dev` and shows X", "endpoint returns Y". If you can't check it, it isn't done.
 - **Constraints** — language, framework, style, things the user said to avoid.
@@ -117,7 +118,7 @@ A failed return is information, usually about the brief. Don't just re-run the s
 
 When a stage's waves are integrated and checked, run the **checkpoint**: re-read the stage's done-criteria, run the full check suite, and ask the real question — *is progress matching the plan?* Then:
 
-- **On track** → documentarian records the stage outcome; **commit the work** (a single commit at the passing checkpoint, message naming the stage). This gives a known-good rollback point and writes the plan-vs-actual trail into git as well as `PROJECT.md`. Then advance to the next stage.
+- **On track** → documentarian records the stage outcome; **commit the work** (a single commit at the passing checkpoint, message naming the stage). This gives a known-good rollback point and writes the plan-vs-actual trail into git as well as `PROJECT.md`. Branch FROM and target the default branch (`main`) for the run — never stack it on another feature branch — unless `.dev-team/config.yml` sets `git.stack-prs: true` (see conventions.md's "PR base / no-stack policy"). Then advance to the next stage.
 - **Drifting** (scope grew, an assumption broke, a criterion can't be met as planned) → revise the stage plan, and if it materially changes the project, take it to the user per your check-in policy. Don't commit a drifting/half-broken state as a checkpoint; fix or re-scope first, then commit.
 
 If a later wave goes wrong, the last checkpoint commit is your clean restore point — return to it rather than trying to hand-untangle a bad merge.
@@ -179,6 +180,7 @@ Finding a skill's path: skills live in `~/.claude/skills/` (user) or `.claude/sk
 ## References
 
 - `references/conventions.md` — the suite's **shared contracts**: artifact ownership & schemas, ID prefixes, the branch model, the flattening rule, gates, and safety. The canonical home for cross-skill facts; read it once.
+- `references/config-and-toggles.md` — the `.dev-team/config.yml` repo-scoped schema, precedence rules, the feature-toggle → env-override table, and fail-open loading. Read before relying on any run default or toggle.
 - `references/task-brief-template.md` — brief format for builder/scout agents. Read before your first delegation.
 - `references/checker-protocol.md` — brief and triage format for the checker agent (what to escalate vs. handle). Read before your first check.
 - `references/debate-protocol.md` — prompts and judging rubric for debate mode. Read before your first debate.

@@ -10,10 +10,16 @@
 set -u
 payload="$(cat 2>/dev/null)" || exit 0
 
-# Scope: only enforce during an active run, unless explicitly forced on.
-if [ -z "${DEV_TEAM_GUARD:-}" ]; then
-  [ -f ".dev-team/autopilot.json" ] || exit 0
-fi
+# Scope: repo-scoped guard mode (.dev-team/config.yml, best-effort, fail-open) folded into the
+# active-run scope check. off = disabled repo-wide; on = forced on (skip the scope gate); auto/unset
+# (default) = only enforce during an active run, unless explicitly forced on via DEV_TEAM_GUARD.
+guard_mode=""
+[ -f .dev-team/config.yml ] && guard_mode="$(grep -Eo '^[[:space:]]*guard:[[:space:]]*(on|off|auto)' .dev-team/config.yml 2>/dev/null | grep -Eo '(on|off|auto)$' | head -1)"
+case "$guard_mode" in
+  off) exit 0 ;;                                   # disabled repo-wide
+  on)  : ;;                                        # forced on — skip the active-run scope gate
+  *)   if [ -z "${DEV_TEAM_GUARD:-}" ]; then [ -f ".dev-team/autopilot.json" ] || exit 0; fi ;;
+esac
 
 cmd=""
 if command -v jq >/dev/null 2>&1; then
