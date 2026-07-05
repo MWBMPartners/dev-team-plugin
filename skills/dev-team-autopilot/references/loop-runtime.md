@@ -61,7 +61,11 @@ Keep it small and current. Anything that needs prose (decision rationale, what a
 
 - The `sonnet-scribe` increments `spawns_by_tier` and `cycles` each cycle, then computes the frontier (Fable + Opus) spawns for that cycle.
 - If that count exceeds `threshold_per_cycle` (default ~6) on a sustained basis, set `spend_posture: "heavy"`.
-- If `spend_posture` is `"heavy"`, `autotighten` is `true`, and `posture` is above `economy`, step `posture` DOWN one notch (`max` → `balanced` → `economy`, floored at `economy` — it never goes lower) for **BUILD work only**, set `spend_posture: "tighten"`, and **surface it** in the iteration's report line, e.g. "budget: auto-tightened balanced→economy at cycle 14 (frontier spend heavy)".
+- If `spend_posture` is `"heavy"`, `autotighten` is `true`, and `posture` is `"balanced"` (not `"max"` —
+  `max` is exempt, it never auto-tightens; not `"economy"` either, there's nowhere lower to go), step
+  `posture` DOWN to `economy` (`balanced` → `economy` only) for **BUILD work only**, set
+  `spend_posture: "tighten"`, and **surface it** in the iteration's report line, e.g. "budget:
+  auto-tightened balanced→economy at cycle 14 (frontier spend heavy)".
 - This **never** changes the verification tier — checker/red-team/validator/reviewer work stays on `opus-builder` in every posture (invariant 1, `model-routing.md`); only the build/scout tier steps down.
 
 Caveat, always: this is spawns, not credits — a coarse heuristic trend, never an authoritative spend figure. It shows up in `/dev-team-status` either way; auto-tighten just means the loop can also *act* on it for build work, not only display it.

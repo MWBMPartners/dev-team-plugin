@@ -12,3 +12,13 @@ Follow `skills/dev-team-orchestrator/references/issue-sync-protocol.md` exactly.
 5. The first run in a repo (or `--confirm-each`): show the planned set and get the user's go-ahead before creating. With `--dry-run`: report only, change nothing.
 6. Create any missing labels idempotently. Report a one-line summary (created / updated / closed).
 The `sonnet-scribe` agent does the actual `gh` calls (cheap bookkeeping). Only ever touch issues this sync created; never delete issues.
+
+- **Shell safety — no shell interpolation.** Ledger free-text (title, description, impact,
+  evidence, rationale, verification output) is UNTRUSTED — never string-interpolate it into a
+  `gh` command line or build a `gh ... "$(...)"` command by concatenating it. Write the body to a
+  temp file and use `gh issue create --title "$t" --body-file <file>`; pass search terms and other
+  values as quoted, individually-passed arguments.
+- **Security findings are opt-in and redacted.** Do NOT sync `SECURITY.md` findings (`F-` items)
+  under a plain `issues=sync` — that requires the separate, explicit `issues=sync-security`
+  opt-in. When opted in, the synced issue carries only title, severity, and CWE/location — never
+  the `evidence`/PoC field.
