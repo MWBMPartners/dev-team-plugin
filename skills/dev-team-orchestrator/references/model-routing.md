@@ -20,6 +20,16 @@ one edit per model release instead of six that rot together.
 | Scribe | `sonnet-scribe` | `sonnet` | Documentarian: PROJECT.md / FEATURES.md / SECURITY.md / VERIFICATION.md upkeep, ledgers, run records. |
 | Mechanical | `quick-edits` | `haiku` | Renames, formatting, import sorting, docstrings, boilerplate, trivial config. |
 
+## Orchestrator tier (the lead)
+Model routing above binds SUBAGENTS. The lead/orchestrator is the *session* model, which the
+plugin cannot set. For maximum taste, run the session on Fable (or Opus): `/model fable` before
+you start, or pin it in settings with `{"model":"fable"}`. See `orchestration-profiles.md` for
+the optional taste-first profile (top-taste orchestrator + cheap grunt work + optional
+GPT-5.5/Codex offload).
+
+GPT-5.5 via Codex is an OPTIONAL external bulk-executor tier for non-user-facing grunt work (see
+`orchestration-profiles.md`); it never does user-facing work or primary verification.
+
 ## Model ids and aliases (the ONE place concrete ids live)
 | Tier | Model | Alias | Dated id (fallback) |
 |---|---|---|---|
@@ -79,6 +89,11 @@ failure (not a brief-quality failure), escalate one tier: Haiku → Opus → Fab
 the orchestrator's two-strike rule: strike one may be a bad brief (re-brief, same tier); a
 second failure that looks capability-bound escalates the tier. Never escalate verification
 below Opus.
+
+**Judge the output, not the price tag.** These tiers are defaults, not limits. If a cheaper
+tier's output doesn't meet the bar, redo it on a smarter tier without asking — escalating
+costs less than shipping mediocre work. Cost is only a tie-breaker: when axes conflict for
+anything that ships, intelligence > taste > cost.
 
 ## Session-model caveat
 An agent left on `model: inherit` (or the lead itself) follows the user's `/model` session

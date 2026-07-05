@@ -60,6 +60,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   verification, and surfaces the change in the iteration report.
 - `HANDOFF.md`: a derived, always-regenerated one-glance resume card, never a source of
   truth.
+- `skills/dev-team-orchestrator/references/orchestration-profiles.md`: optional taste-first
+  orchestration profile — recommends a Fable/Opus (top-taste) orchestrator, with optional
+  GPT-5.5 offload via Codex for bulk/mechanical grunt work (Claude fallback when Codex isn't
+  installed), keeping all user-facing work and verification on Claude taste/frontier tiers.
 
 ### Changed
 
