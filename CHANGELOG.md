@@ -73,6 +73,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   BLOCKED ones outright. Runs interactively, via `/loop <interval> /dev-team-watch-prs`, or as
   a scheduled routine; only ever pushes to the PR branch it's watching, never `main`, and
   documents the `GITHUB_TOKEN` anti-recursion trap for scheduled/cloud pushes.
+- Opt-in GitHub Issue sync (`issues=off|sync` on `dev-team-iterate`/`dev-team-security`/
+  `dev-team-featurefind`/`dev-team-review`/`dev-team-autopilot`, plus `/dev-team-sync-issues`):
+  exports the suite's ledgers (feature gaps, backlog, security findings, review verdicts,
+  gate-deferred items) to GitHub Issues, owned by `sonnet-scribe`. Dedup-safe via a stored
+  `issue:` ref plus a hidden `<!-- dev-team:<id> -->` marker, confirm-first on the first sync,
+  and close-on-done when an item is resolved/built/verified/merged.
 
 ### Changed
 

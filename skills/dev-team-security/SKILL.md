@@ -123,6 +123,8 @@ Optional run arguments (defaults in brackets):
 - `tools=auto|off` — run the SCA/SAST/secret/container scanners in Phase 0, or reason-only [auto: run whatever the stack supports].
 - `report-only` — audit, validate, and report findings without applying any fix (implies `fix=propose-only`) [off].
 - `branch=<name>` — override the default `security-audit/<date>` branch name.
+- `issues=off|sync` — export this run's ledger items to GitHub Issues (dedup-safe, confirm-first;
+  see `skills/dev-team-orchestrator/references/issue-sync-protocol.md`). [off]
 
 ## What carries over from dev-team-orchestrator (unchanged)
 

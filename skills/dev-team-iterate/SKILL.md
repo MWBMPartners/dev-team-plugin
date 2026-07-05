@@ -142,6 +142,8 @@ This skill accepts optional arguments to tune a run (defaults in brackets):
 - `branch=<name>` — override the default `iterate/<date>` branch name.
 - `models=economy|balanced|max` — cost posture biasing which tier does build work; verification
   always stays frontier (model-routing.md, "Cost posture"). [balanced]
+- `issues=off|sync` — export this run's ledger items to GitHub Issues (dedup-safe, confirm-first;
+  see `skills/dev-team-orchestrator/references/issue-sync-protocol.md`). [off]
 
 ## Running with a focus
 

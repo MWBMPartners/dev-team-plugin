@@ -247,12 +247,14 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 | [`/dev-team-sync-branches`][cmd-sync] | `--apply`, `--no-fetch` | Safely align local branches with GitHub remotes (see [Branch hygiene](#branch-hygiene)). |
 | [`/dev-team-update`][cmd-update] | — | Check for a newer plugin version and show the exact update commands to run yourself. |
 | [`/dev-team-watch-prs`][cmd-watch] | `pr=<n>`, `autofix=safe\|off` | One CI-medic pass over open PRs (see [PR monitoring](#pr-monitoring-ci-medic)); loopable for recurring watch. |
+| [`/dev-team-sync-issues`][cmd-sync-issues] | `--dry-run`, `--confirm-each` | Export the suite's ledgers (feature gaps, backlog, security findings, review verdicts, gate items) to GitHub Issues (see [Issue sync](#issue-sync-optional)); opt-in, dedup-safe. |
 
 **Detail worth knowing:**
 
 - **`/dev-team-approve`** — `<gate-id>` is the queued item's id (e.g. `G-003`); `approve` marks it built next iteration, `reject` marks it skipped. Add `[notes]` (free text) — especially useful on a reject.
 - **`/dev-team-sync-branches`** — without `--apply` it only detects and reports, then stops for confirmation. `--no-fetch` skips the pre-detection `git fetch --prune`.
 - **`/dev-team-watch-prs`** — `pr=<n>` also serves as the explicit per-PR opt-in required to touch a PR **not authored by the current user**. `autofix=safe` (default) fixes+verifies+pushes SAFE-AUTO and reruns flaky checks; `autofix=off` only monitors/reports/proposes.
+- **`/dev-team-sync-issues`** — first run in a repo (and any `--confirm-each` run) shows the planned set and waits for the user's go-ahead before creating anything; `--dry-run` reports without touching GitHub.
 
 ---
 
@@ -373,6 +375,36 @@ The command deletes nothing without `--apply` (it prints the plan and stops for 
 
 ---
 
+## Issue sync (optional)
+
+The suite already maintains issue-shaped ledgers — feature gaps (`FEATURES.md`), backlog and proposed features (`PROJECT.md`), security findings (`SECURITY.md`), review verdicts (`VERIFICATION.md`), and gate-deferred items (`.dev-team/autopilot.json`). Issue sync exports them to GitHub Issues so they're actionable in your real tracker instead of trapped in markdown. It's **opt-in** and owned by the `sonnet-scribe` agent (cheap bookkeeping, not reasoning) — full detail in [issue-sync-protocol.md][issue-sync-protocol].
+
+Turn it on two ways:
+
+- The `issues=off|sync` argument (default **off**) on `dev-team-iterate`, `dev-team-security`, `dev-team-featurefind`, `dev-team-review`, or `dev-team-autopilot` — set `issues=sync` to export that run's ledger items as it goes.
+- [`/dev-team-sync-issues`][cmd-sync-issues] — run a sync pass over the current repo's ledgers on demand, independent of any skill run.
+
+**Mapping:**
+
+| Source ledger | Item prefix | Issue label |
+|---|---|---|
+| `FEATURES.md` (featurefind) | `FG-` | `for consideration` (→ `enhancement` once approved) |
+| `PROJECT.md` Backlog (iterate) | `B-` | `enhancement` |
+| `PROJECT.md` Proposed-Features ledger | (feature) | `for consideration` |
+| `SECURITY.md` findings (security) | `F-` | `security` |
+| `VERIFICATION.md` verdicts (review) | `V-` (fail) / `I-` | `bug` / `enhancement` |
+| `.dev-team/autopilot.json` gate-ledger | `G-` | `for consideration` |
+
+**Dedup is the core.** Each ledger item carries an `issue:` field holding its GitHub issue number once synced. An item with no `issue:` ref gets a new issue created (and the returned number written back); an item that already has one is updated in place — never a duplicate. The hidden `<!-- dev-team:<id> -->` footer marker is the identity backstop if a ledger ref is ever lost.
+
+**Close-on-done.** When an item's status becomes resolved/built/verified/merged, its issue is closed with a reference to the delivering commit/PR; a re-opened item re-opens its issue.
+
+**Confirm-first.** The first sync in a repo shows the set it will create (count + titles) and waits for your go-ahead before creating anything — the suite's standard gate posture. After that, syncs run and report a one-line summary (e.g. "issue sync: +2 created, 3 updated, 1 closed"). `--confirm-each` re-arms per-item confirmation; `--dry-run` reports without touching GitHub.
+
+**Safety.** Requires `gh` authenticated for the repo — if absent/unauthed, it does nothing and tells you how to enable it; issue sync never fails the surrounding run. It only ever touches issues it created (via the stored `issue:` ref or the hidden marker) — never edits or closes unrelated issues, and never deletes any issue.
+
+---
+
 ## Repo self-audit / CI
 
 The plugin guards its own integrity in CI. [`.github/workflows/plugin-audit.yml`][plugin-audit] (workflow name `plugin-audit`) triggers on every `pull_request` and on `push` to `main`. It has one job — id `audit`, `name: audit` — that checks out, installs `jq`, and runs [`scripts/audit-model-ids.sh`][audit-script].
@@ -408,6 +440,7 @@ The audit script performs four checks and exits non-zero (`AUDIT FAIL: <reason>`
 [threat-model]: skills/dev-team-security/references/threat-model-and-surface-protocol.md
 [verdict-protocol]: skills/dev-team-review/references/verdict-and-report-protocol.md
 [loop-runtime]: skills/dev-team-autopilot/references/loop-runtime.md
+[issue-sync-protocol]: skills/dev-team-orchestrator/references/issue-sync-protocol.md
 [deep-architect]: agents/deep-architect.md
 [opus-builder]: agents/opus-builder.md
 [sonnet-scribe]: agents/sonnet-scribe.md
@@ -422,3 +455,4 @@ The audit script performs four checks and exits non-zero (`AUDIT FAIL: <reason>`
 [cmd-sync]: commands/dev-team-sync-branches.md
 [cmd-update]: commands/dev-team-update.md
 [cmd-watch]: commands/dev-team-watch-prs.md
+[cmd-sync-issues]: commands/dev-team-sync-issues.md
