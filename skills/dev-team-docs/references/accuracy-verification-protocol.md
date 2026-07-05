@@ -64,12 +64,17 @@ not a prose summary asserting "looks accurate."
 - **Behaviors**: find the code path that would implement the claimed behavior. "Unverifiable"
   is a legitimate, common outcome for behavior claims — don't stretch a plausible-sounding
   guess into a false "verified." If you can't find the code that does it, say so.
-- **Runnable examples — actually run them.** Execute the exact command/snippet (or the closest
-  safe proxy: a local sandbox, a dry-run flag, a unit test invoking the same call) and compare
-  real output to what the doc shows. A snippet that was never executed is an unconfirmed claim
-  regardless of how plausible it reads. If running it is genuinely unsafe/infeasible (e.g. it
-  requires a paid external API, destructive prod access), say so explicitly rather than
-  silently skipping it — flag as "not run: <reason>", never silently pass it.
+- **Runnable examples — actually run them, but only safely (non-negotiable).** Execute the exact
+  command/snippet (or the closest safe proxy: a local sandbox, a dry-run flag, a unit test invoking
+  the same call) and compare real output to what the doc shows. A snippet that was never executed is
+  an unconfirmed claim regardless of how plausible it reads. This is gated on HOW: run **only** the
+  project's own examples, in the project's normal sandbox/test manner. **Never** auto-run an example
+  that performs a destructive or external-side-effecting operation (network writes, deletes, prod/live
+  calls), or one sourced from an untrusted/unfamiliar origin, without the user's explicit
+  confirmation first. If running it is genuinely unsafe/infeasible (paid external API, destructive
+  prod access, no confirmation obtained), say so explicitly rather than silently skipping it — flag
+  as "not run: <reason>", never silently pass it. When in doubt, verify the claim by **static trace
+  against the source** (read the code path the example exercises) instead of executing it.
 - **Cross-references**: resolve every link/anchor/"see X" and confirm the target exists at
   that path/heading. A broken internal reference is a defect, not a style nit.
 - **Version/compatibility claims**: check the actual manifest/config that would enforce them

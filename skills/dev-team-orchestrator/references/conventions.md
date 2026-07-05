@@ -144,5 +144,6 @@ The plugin tests itself: `tests/smoke-structure.sh` (structure a marketplace ins
 ## Safety (security & stripe)
 
 - **Test-mode / local-sandbox only.** Never attack or mutate systems you don't own; never run live payment flows (`dev-team-stripe` needs an explicit `live=confirm`).
+- **Destructive/irreversible ops on systems the user DOES own also require confirmation.** Production databases, live datastores, and deployed environments are not exempt just because the user owns them: any destructive or irreversible operation against one requires the user's explicit confirmation and a verified backup/rollback in hand before proceeding. `git revert` undoes code, not data.
 - **Secrets:** report location and type, never the value; flag for rotation; treat as compromised.
 - **Active-compromise signal → freeze all remediation.** Do not patch even if the fix is clear — auto-patching destroys forensic evidence and tips off an attacker. Escalate to the user as incident response; this is not a git-revertible action.

@@ -48,6 +48,19 @@ These are the reason this skill exists — every plan/execute pass enforces them
    expand-contract, dual-write) is fine *only* if it names the later stage that removes it. The
    final **cutover + cleanup** stage is mandatory: every shim and every dead old-path is removed,
    and the characterization net is run one last time fully switched over.
+6. **Execution-environment gate for data-mutating steps (data-loss safety, non-negotiable).** The
+   reversibility discipline above (rules 2 and 5) is **code-level** — `git revert` undoes a commit,
+   not a data mutation. Any stage that actually touches data (Stage-0 characterization writes,
+   backfill, dual-write, or a contract/DROP step) defaults to running against a **DISPOSABLE**
+   datastore — a restored snapshot, fixtures, or a dedicated test instance — never the live/production
+   store, by default. Targeting a **LIVE/production** datastore requires the user's explicit,
+   informed confirmation (mirroring `dev-team-stripe`'s test-mode-default + `live=confirm`; see
+   `db-target` under Arguments). The Migration Plan records, per stage, which datastore each
+   data-touching stage runs against — this is not left implicit. Any **DB-DESTRUCTIVE** step
+   (contract/DROP, dual-write cleanup) additionally requires a **verified backup/snapshot** taken and
+   confirmed **before** the stage runs, live target or not — state plainly to the user: `git revert`
+   undoes code, it does not undo data. Full detail:
+   `references/characterization-and-cutover-protocol.md` (Parts 1 and 4).
 
 ## Your team
 
@@ -201,6 +214,10 @@ Optional run arguments (defaults in brackets):
   estimated); not a substitute for finishing the approved plan across multiple invocations [default:
   the approved plan's full stage count — i.e. run the whole plan in one invocation; set it lower to
   checkpoint more often on a large migration].
+- `db-target=disposable|live` — which datastore data-mutating stages (characterization writes,
+  backfill, dual-write, contract/DROP) run against [`disposable` — a restored snapshot, fixtures, or
+  a dedicated test instance; `live` requires the explicit, informed user confirmation described in
+  Non-negotiable migration rule 6 above, the datastore analog of `dev-team-stripe`'s `live=confirm`].
 - `branch=<name>` — override the default `migrate/<date>` branch name.
 
 ## What carries over from dev-team-orchestrator (unchanged)

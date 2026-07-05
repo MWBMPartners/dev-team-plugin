@@ -49,6 +49,16 @@ The net must **pass against the untouched `from=` state** before Stage 1 begins 
 characterization test at Stage 0 means either the test is wrong or the "current behavior" you're
 about to preserve is already broken; resolve which, explicitly, before proceeding.
 
+**Execution environment for data-mutating steps (non-negotiable).** Stage 0's characterization
+writes, and every later data-mutating stage (backfill, dual-write, contract/DROP), default to
+running against a **DISPOSABLE** datastore — a restored snapshot, fixtures, or a dedicated test
+instance — never against the live/production store unless the user has given explicit, informed
+confirmation to target `db-target=live` (SKILL.md's Non-negotiable migration rule 6, mirroring
+`dev-team-stripe`'s test-mode-default + `live=confirm`). Record, in the Stage Ledger, which datastore
+each data-touching stage actually ran against. This is independent of the code-level reversibility
+this protocol otherwise guarantees: `git revert` undoes the commit, it does not undo a write, a
+backfill, or a DROP already executed against real data.
+
 ## Part 2 — Staged, reversible cutover discipline
 
 Per stage, from the approved Migration Plan:
@@ -120,6 +130,11 @@ does not get left implicit.
   can be safely discarded/backfilled on rollback, or whether rollback instead requires a data
   reconciliation step — and write that decision into the stage's Stage Ledger entry. Deciding this
   *after* something has gone wrong is exactly the scenario this protocol exists to prevent.
+  Additionally, **any DB-destructive step** (a `contract`/DROP step, or dual-write cleanup that
+  removes the old shape) requires a **verified backup or snapshot taken and confirmed before the
+  stage runs** — not merely a discard/reconciliation decision on paper. A destructive step with no
+  confirmed backup in hand does not run; `git revert` restores the code, it cannot restore dropped
+  data.
 - A stage whose rollback story is genuinely unresolved does not run — send it back to `plan` mode
   (Step 4 of `migration-plan-protocol.md`) to work out the rollback approach first.
 
