@@ -1,6 +1,6 @@
 # Documentarian Protocol
 
-The documentarian is a **Claude Sonnet** agent (`claude-sonnet-4-6`) that owns `PROJECT.md`. Recording state and decisions doesn't need a frontier model, so this role runs on Sonnet to save tokens. Spawn it at project start to create the file, then re-spawn it (or append to its thread) whenever there's something new to record: a stage plan, a decision, a checkpoint result, or a change in current status.
+The documentarian is spawned as the **`sonnet-scribe`** agent (Sonnet tier; model routing: `skills/dev-team-orchestrator/references/model-routing.md`) that owns `PROJECT.md`. Recording state and decisions doesn't need a frontier model, so this role runs on the Sonnet tier to save tokens. Spawn it at project start to create the file, then re-spawn it (or append to its thread) whenever there's something new to record: a stage plan, a decision, a checkpoint result, or a change in current status.
 
 `PROJECT.md` is the orchestrator's **external memory**. Its job is not just to log history but to answer, at any moment, "where does this project stand and what's next" — so a fresh orchestrator with no prior context could read it and resume correctly. That means a **Current status** section that is kept up to date, not only append-only logs.
 
@@ -65,6 +65,13 @@ The documentarian maintains this file at the repo root:
 
 **Extension sections (added by sibling skills).** This is the BASE schema; some modes extend it. dev-team-iterate adds `## Codebase Map`, `## Run record`, `## Backlog`, `## Proposed-Features ledger`, and `## Trajectory ledger` — see `dev-team-iterate/references/audit-and-backlog-protocol.md` for those section schemas (don't duplicate them here, to avoid drift). Any consumer's documentarian that must write one of these matches the existing section's shape (or is given it in the brief). Use the canonical heading names above verbatim.
 
+## Keep it lean
+
+`sonnet-scribe` runs cheap on purpose — keep the file it maintains cheap to read, too:
+
+- **`## Current status` is always overwritten, never appended.** It stays a tight "single next action + where to look" block: active stage, what's done, the one next step, open threads — nothing more. A fresh agent (possibly on a cheaper tier) must be able to resume correctly from this section alone; letting it accrete history defeats the point of having it.
+- **Ledger retention is light.** Closed backlog items, resolved open threads, and superseded decisions get folded into a one-line summary (or a "resolved" sub-list), not kept verbatim forever. Full history already lives in git and past commits; PROJECT.md only needs to carry what a fresh agent needs to resume, so rehydration stays cheap.
+
 ## Documentarian brief
 
 ```
@@ -83,7 +90,7 @@ decisions or write code. Keep entries concise and factual.
 
 ## Constraints
 - Edit only PROJECT.md.
-- Preserve existing content; append to logs, but **keep "Current status" overwritten to reflect reality now** (it's the one section that's not append-only).
+- Preserve existing content; append to logs, but **keep "Current status" overwritten to reflect reality now** (it's the one section that's not append-only), and follow the ledger-retention rule in "Keep it lean" above.
 - Match the existing section structure.
 
 ## Report back
@@ -96,5 +103,6 @@ Confirm what you wrote and where.
 - **After a decision/debate:** append a decision-log entry.
 - **After each stage checkpoint:** append a checkpoint entry, update the stage's status, and refresh Current status.
 - **Whenever state moves materially:** refresh Current status so the file is always a faithful snapshot to resume from.
+- **At each checkpoint/RECORD:** `sonnet-scribe` also (re)generates `HANDOFF.md` per `handoff-template.md` — a derived one-glance resume card, always overwritten in full (same discipline as "Keep it lean" above), never a source of truth.
 
 Builders and the checker get the relevant PROJECT.md slices pasted into their briefs — that's how decisions stay sticky across the team. The orchestrator reads Current status to rehydrate at stage boundaries instead of relying on its own (drifting) context.

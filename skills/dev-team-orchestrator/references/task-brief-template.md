@@ -1,11 +1,16 @@
 # Task Brief Template
 
-Every worker agent gets a brief in this shape, passed as the Task prompt. Always set the subagent model to Opus 4.8 (`model: claude-opus-4-8`). Fill every section — agents have no context you don't give them.
+Every worker agent gets a brief in this shape, passed as the Task prompt. Spawn each worker as the `opus-builder` agent (`subagent_type`), or the tier the workstream needs per `skills/dev-team-orchestrator/references/model-routing.md`. Fill every section — agents have no context you don't give them.
 
 ```
 ## Role
 You are a [senior backend engineer / frontend engineer / test engineer / reviewer / scout]
 on a team building: [one-line project goal].
+
+## Model tier / endpoint agent
+[Which of the four to spawn — `opus-builder` (Build/Verify, the default) / `deep-architect`
+(Reasoning) / `sonnet-scribe` (Scribe) / `quick-edits` (Mechanical) — plus one line on why this
+workstream needs that tier. See `model-routing.md`. Verification roles never go below `opus-builder`.]
 
 ## Project context
 - Repo / working directory: [path]
@@ -48,6 +53,17 @@ run something, say so plainly — an unverified claim is worse than a flagged ga
 **Reviewer / checker agent** — see `checker-protocol.md`; it has its own triage-based brief. Reviewers and checkers modify only what they're explicitly cleared to fix.
 
 **Rework agent** — original brief + "Previous attempt produced [state]. Review feedback: [your specific notes]. Address each point; leave working parts intact."
+
+## Execution spec (invariant 2 — plan expensive, execute cheap)
+
+When a higher tier (`deep-architect` or `opus-builder`, or you as lead) has already done the expensive thinking for a workstream that a cheaper tier will execute (`sonnet-scribe` for bookkeeping, `quick-edits` for mechanical work), the brief has to carry that thinking, not just the task. The **Your task** and **Constraints** sections become a self-contained execution spec:
+
+- Exact signatures / shapes — function names, types, API contracts — not "add validation" but the precise fields and rules.
+- The exact files (and, where it helps, lines) to touch, and an existing example to pattern-match against.
+- Acceptance criteria precise enough that pass/fail needs no judgment call.
+- Edge cases already enumerated, not left for the executor to discover.
+
+Pay for the reasoning once, at the tier that's good at it; amortize it across however many cheap-tier executions the spec drives. If an executor comes back needing to make a design decision the brief didn't already settle, that's a brief-quality failure — tighten the spec and re-brief at the same tier rather than escalating the executor's tier.
 
 ## Tips
 

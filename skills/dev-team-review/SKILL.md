@@ -1,6 +1,6 @@
 ---
 name: dev-team-review
-description: Run an independent verification / QA pass over work done by the other dev-team skills, as a team lead delegating to a team of Opus 4.8 subagents. It reads the PROJECT.md (and SECURITY.md) those skills wrote, extracts every claim — done-criteria, completed stages, shipped features and their specs, fixed security findings, decisions, the Codebase Map, the trajectory metrics — and spawns independent, adversarial verifier agents to PROVE each one actually works as intended, with fresh evidence. Defaults to read-only reporting; can optionally hand failures back for remediation. Use when the user wants to "verify", "QA", "review", "double-check", or "confirm everything works" after a dev-team-orchestrator / dev-team-iterate / dev-team-security run. Do NOT use to build features or for one-off questions; for verifying/QAing Stripe or payments code specifically, use dev-team-stripe (review mode).
+description: Run an independent verification / QA pass over work done by the other dev-team skills, as a team lead delegating to a team of opus-builder subagents (Opus tier). It reads the PROJECT.md (and SECURITY.md) those skills wrote, extracts every claim — done-criteria, completed stages, shipped features and their specs, fixed security findings, decisions, the Codebase Map, the trajectory metrics — and spawns independent, adversarial verifier agents to PROVE each one actually works as intended, with fresh evidence. Defaults to read-only reporting; can optionally hand failures back for remediation. Use when the user wants to "verify", "QA", "review", "double-check", or "confirm everything works" after a dev-team-orchestrator / dev-team-iterate / dev-team-security run. Do NOT use to build features or for one-off questions; for verifying/QAing Stripe or payments code specifically, use dev-team-stripe (review mode).
 ---
 
 # Dev Team Review
@@ -23,10 +23,10 @@ This is the **verification variant** of `dev-team-orchestrator`. It **reuses tha
 
 ## Your team
 
-- **Verifier agents** — Opus 4.8, adversarial and independent. Take a group of claims and **try to prove each false**; a claim survives only with fresh evidence. They also flag **inefficiencies** noticed in passing (works, but slow / wasteful / redundant) as *improvement findings*, not just claim failures. Follow `references/claim-extraction-and-verification-protocol.md`. Read-only.
+- **Verifier agents** — the `opus-builder` agent (Opus tier), adversarial and independent. Take a group of claims and **try to prove each false**; a claim survives only with fresh evidence. They also flag **inefficiencies** noticed in passing (works, but slow / wasteful / redundant) as *improvement findings*, not just claim failures. Follow `references/claim-extraction-and-verification-protocol.md`. Read-only. The whole point of this skill is independent verification, so it stays on the Opus/frontier tier — never routed cheaper (model routing: `skills/dev-team-orchestrator/references/model-routing.md`, invariant 1).
 - **Runner** — a verifier (or dedicated agent) that actually launches the app and exercises flows using the user's `verify` / `run` skills (route them in the brief). Behavior verification, not just "tests pass."
-- **Completeness critic** — Opus 4.8, end of pass. Confirms every claim in PROJECT.md was checked and flags any claim that had no evidence to begin with.
-- **Documentarian** — Sonnet (`claude-sonnet-4-6`). Writes the standalone **`VERIFICATION.md`** report (kept independent of the `PROJECT.md` whose claims are under review) and notes the verdict in PROJECT.md's status.
+- **Completeness critic** — the `opus-builder` agent (Opus tier), end of pass. Confirms every claim in PROJECT.md was checked and flags any claim that had no evidence to begin with.
+- **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Writes the standalone **`VERIFICATION.md`** report (kept independent of the `PROJECT.md` whose claims are under review) and notes the verdict in PROJECT.md's status.
 - **Remediation cycle** — by default, after the report, every gap and inefficiency is fixed by **activating the matching sibling skill** (`dev-team-iterate` for bugs/inefficiency/refactor, `dev-team-security` for security findings, `dev-team-orchestrator` for larger rework), on a branch, then **re-verified**. Same builder/checker discipline as the orchestrator.
 
 ## The operating loop
@@ -65,7 +65,7 @@ Group claims into coherent workstreams a single verifier can own (by area/featur
 
 ### 3. Verify each claim independently
 
-Spawn verifier agents (Opus 4.8) with the brief in `references/claim-extraction-and-verification-protocol.md`. Each:
+Spawn verifier agents as the `opus-builder` agent (via `subagent_type`, Opus tier) with the brief in `references/claim-extraction-and-verification-protocol.md`. Each:
 
 1. **Generates fresh evidence now** — runs the command, launches the app, reads the code — never trusting PROJECT.md's assertion.
 2. **Re-runs the builder's own pasted evidence.** Takes the exact commands/output the doc pasted and reproduces them; a mismatch means the evidence was stale or fabricated.
@@ -123,7 +123,7 @@ Optional run arguments (defaults in brackets):
 - Team sizing & parallelism; parallelize only non-contending work.
 - Brief discipline (`task-brief-template.md`), evidence-not-claims, triage so you read only what's escalated.
 - Checker discipline (`checker-protocol.md`) — the verifier is a rigorous, independent checker; reuse its hollow-test judgment.
-- Documentarian (`documentarian-protocol.md`) — Sonnet records state; here it writes `VERIFICATION.md`.
+- Documentarian (`documentarian-protocol.md`) — the `sonnet-scribe` agent records state; here it writes `VERIFICATION.md`.
 - Composing other skills — route the user's `verify`/`run`/testing skills to the verifier/runner agents.
 - **You own dependency-manifest changes** — unchanged (relevant only if remediating).
 - Debate/remediation machinery if a fix is contested (only when `remediate` is on).

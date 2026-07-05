@@ -1,0 +1,15 @@
+name: plugin-audit
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Model-id + plugin-structure audit
+        run: bash scripts/audit-model-ids.sh

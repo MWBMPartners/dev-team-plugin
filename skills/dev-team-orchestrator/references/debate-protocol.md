@@ -1,6 +1,6 @@
 # Debate Protocol
 
-For consequential decisions with 2–4 genuinely distinct options. One Opus 4.8 agent per option, all spawned in the same turn so they run in parallel and can't see each other's cases.
+For consequential decisions with 2–4 genuinely distinct options. One `deep-architect` agent (Reasoning tier — debates are hard reasoning; see `model-routing.md`) per option, all spawned in the same turn so they run in parallel and can't see each other's cases.
 
 ## Advocate prompt (one per option)
 

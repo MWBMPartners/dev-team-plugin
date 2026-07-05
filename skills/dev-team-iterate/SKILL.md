@@ -1,6 +1,6 @@
 ---
 name: dev-team-iterate
-description: Run a self-directed improvement loop on an EXISTING codebase as a team lead / product owner delegating to a team of Opus 4.8 subagents. Instead of a predefined end goal, it reverse-engineers the app's purpose from the code, audits it, and iterates in scored cycles to improve correctness, UX, efficiency, and remove redundancy — building small improvements autonomously and proposing large features for approval. Use when the user wants to "iterate on", "improve", "refine", "polish", "harden", or "level up" an existing project without a specific spec, or mentions "dev-team-iterate", "iterate mode", or "improve the codebase". For building toward a stated goal use dev-team-orchestrator instead; do NOT use for one-file scripts, quick fixes, or questions. If the work centers on Stripe / payments / billing / subscriptions / Connect / webhooks, use dev-team-stripe instead (it carries the payments-specific correctness and security rules).
+description: Run a self-directed improvement loop on an EXISTING codebase as a team lead / product owner delegating to a team of `opus-builder` subagents (Opus tier). Instead of a predefined end goal, it reverse-engineers the app's purpose from the code, audits it, and iterates in scored cycles to improve correctness, UX, efficiency, and remove redundancy — building small improvements autonomously and proposing large features for approval. Use when the user wants to "iterate on", "improve", "refine", "polish", "harden", or "level up" an existing project without a specific spec, or mentions "dev-team-iterate", "iterate mode", or "improve the codebase". For building toward a stated goal use dev-team-orchestrator instead; do NOT use for one-file scripts, quick fixes, or questions. If the work centers on Stripe / payments / billing / subscriptions / Connect / webhooks, use dev-team-stripe instead (it carries the payments-specific correctness and security rules).
 ---
 
 # Dev Team Iterate
@@ -13,11 +13,11 @@ This skill is the **iterate variant** of `dev-team-orchestrator`. It **reuses th
 
 ## Your team
 
-Same three roles as the orchestrator:
+Same three roles as the orchestrator (model routing: `skills/dev-team-orchestrator/references/model-routing.md`):
 
-- **Builders / scouts** — Opus 4.8 (`claude-opus-4-8`). Implement and investigate.
-- **Checker** — Opus 4.8. Reviews each cycle against its contract; here it *also* enforces the **UX rubric** and **perf-evidence** rules (see below). Triages: clean / flagged-and-handled / NEEDS-LEAD-REVIEW.
-- **Documentarian** — Sonnet (`claude-sonnet-4-6`). Owns `PROJECT.md`, which here carries extra sections: the **Codebase Map** (a durable "what the code does" reference), a **run record** (`map-commit` + date, for the resume check), the **scored backlog**, the **Proposed-Features ledger**, and the **trajectory ledger** (metrics over time). It is your external memory *and* the persistent state that lets a later run **reuse the map and resume instead of re-scouting from scratch**. The documentarian keeps the Codebase Map current as cycles change the code.
+- **Builders / scouts** — the `opus-builder` agent (Opus tier). Implement and investigate.
+- **Checker** — the `opus-builder` agent (Opus tier). Reviews each cycle against its contract; here it *also* enforces the **UX rubric** and **perf-evidence** rules (see below). Triages: clean / flagged-and-handled / NEEDS-LEAD-REVIEW. Verification stays on the Opus/frontier tier — never routed cheaper (model-routing.md, invariant 1).
+- **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Owns `PROJECT.md`, which here carries extra sections: the **Codebase Map** (a durable "what the code does" reference), a **run record** (`map-commit` + date, for the resume check), the **scored backlog**, the **Proposed-Features ledger**, and the **trajectory ledger** (metrics over time). It is your external memory *and* the persistent state that lets a later run **reuse the map and resume instead of re-scouting from scratch**. The documentarian keeps the Codebase Map current as cycles change the code. The Codebase Map plus a tight `Current status` are the suite's lean-memory mechanism — cheap resume instead of full re-context (model-routing.md, invariant 2).
 
 ## The operating loop
 
@@ -140,6 +140,8 @@ This skill accepts optional arguments to tune a run (defaults in brackets):
 - `propose-threshold=small|medium|large` — for NON-FEATURE work, how big a change must be before it's propose-only instead of built [medium: small/isolated improvements build; large refactors/perf/dep-changes propose]. Features are out of scope for this knob — they always go through the Feature Spec Gate (see "Build small · spec-gate every feature").
 - `focus=<dimension(s)>` — **drive** the run toward one or more dimensions (`features`, `ux`, `correctness`, `efficiency`, `redundancy`, `security`, `docs`), not just bias scoring. Accepts the flag form *or plain language in the invocation* — "focus on adding features", "improve the UX", "make it faster", "clean up the duplication" all set it. Multiple allowed ("features and ux"). [default: none — balanced, UX-first.] See **Running with a focus** below.
 - `branch=<name>` — override the default `iterate/<date>` branch name.
+- `models=economy|balanced|max` — cost posture biasing which tier does build work; verification
+  always stays frontier (model-routing.md, "Cost posture"). [balanced]
 
 ## Running with a focus
 
@@ -185,7 +187,7 @@ Read the orchestrator skill for the detail on each:
 - **Checker triage** — `references/checker-protocol.md`; you read only NEEDS-LEAD-REVIEW.
 - **Failed/stuck agents** — diagnose, re-brief with specifics, two strikes then re-scope.
 - **Debate mode** — `references/debate-protocol.md` for consequential, contested decisions (e.g. a big architectural refactor strategy surfaced by the audit).
-- **Documentarian** — `references/documentarian-protocol.md`; Sonnet owns `PROJECT.md`.
+- **Documentarian** — `references/documentarian-protocol.md`; the `sonnet-scribe` agent (Sonnet tier) owns `PROJECT.md`.
 - **Composing other skills** — route the user's UI/testing/style skills to the relevant agents and have the checker verify conformance.
 
 ## References (new — read at the matching step)

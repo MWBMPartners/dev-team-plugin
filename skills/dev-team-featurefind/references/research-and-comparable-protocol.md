@@ -18,7 +18,7 @@ How to build the set:
 
 ## Step 2 — Enumerate features (one researcher per slice)
 
-Slice the work so researchers don't overlap: **one comparable each**, or for a large set, **one feature domain across all comparables** (e.g. "onboarding & auth across all six"). Spawn them in parallel (Opus 4.8, web-enabled), each with the brief below.
+Slice the work so researchers don't overlap: **one comparable each**, or for a large set, **one feature domain across all comparables** (e.g. "onboarding & auth across all six"). Spawn them in parallel as the `opus-builder` agent (Opus tier, web-enabled), each with the brief below.
 
 Pull features from the **strongest sources first**: the vendor's own product/docs/features pages and changelogs/release notes (authoritative), then pricing pages (reveal gated/tiered features), then third-party reviews (weaker — corroborate before trusting). For each feature, capture:
 
@@ -55,7 +55,7 @@ Return the union of comparable inventories to the synthesizer for diffing agains
 
 ## Step 4 — Validator refute pass (the false-positive gate)
 
-Before any candidate becomes a ledger entry, a validator (Opus 4.8, skeptic) tries to **refute** each one. Default to dropping/down-scoping when unconfirmed.
+Before any candidate becomes a ledger entry, a validator (the `opus-builder` agent, Opus tier, skeptic) tries to **refute** each one. This gate stays on the Opus/frontier tier — never routed cheaper (model routing: `skills/dev-team-orchestrator/references/model-routing.md`, invariant 1). Default to dropping/down-scoping when unconfirmed.
 
 ```
 ## Role

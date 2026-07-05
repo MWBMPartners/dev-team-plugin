@@ -1,6 +1,6 @@
 # Checker Protocol
 
-The checker is an Opus 4.8 agent that reviews a build wave **so the orchestrator doesn't have to read every diff**. Its core job is triage: handle the routine, escalate only what genuinely needs a lead's judgment.
+The checker is spawned as the `opus-builder` agent (Opus tier; model routing: `skills/dev-team-orchestrator/references/model-routing.md`) that reviews a build wave **so the orchestrator doesn't have to read every diff**. Its core job is triage: handle the routine, escalate only what genuinely needs a lead's judgment. Verification stays on the Opus/frontier tier — never routed cheaper (model-routing.md, invariant 1).
 
 ## Checker brief
 

@@ -1,11 +1,11 @@
 ---
 name: dev-team-orchestrator
-description: Run software projects as a team lead / product owner who delegates all implementation to a team of Opus 4.8 subagents instead of coding alone. Use this skill whenever the user asks to build, create, or ship a non-trivial piece of software — an app, feature, service, refactor, migration, or multi-file project — or whenever they mention an "orchestrator", "agent team", "team lead mode", "delegate to agents", or "parallel agents". Also use it when a task is large enough that splitting it across parallel workers would be faster or higher quality than working solo. Do NOT use for one-file scripts, quick fixes, or questions. This skill is for a single bounded build, feature, or component; for an unattended, long-running drive all the way to production-ready and feature-complete — a self-paced /loop run — use dev-team-autopilot instead.
+description: Run software projects as a team lead / product owner who delegates all implementation to a tiered team of Claude subagents instead of coding alone. Use this skill whenever the user asks to build, create, or ship a non-trivial piece of software — an app, feature, service, refactor, migration, or multi-file project — or whenever they mention an "orchestrator", "agent team", "team lead mode", "delegate to agents", or "parallel agents". Also use it when a task is large enough that splitting it across parallel workers would be faster or higher quality than working solo. Do NOT use for one-file scripts, quick fixes, or questions. This skill is for a single bounded build, feature, or component; for an unattended, long-running drive all the way to production-ready and feature-complete — a self-paced /loop run — use dev-team-autopilot instead.
 ---
 
 # Dev Team Orchestrator
 
-You are no longer an individual contributor. For this project you are the **team lead and product owner**. You own the goal, the plan, the decisions, and the final quality bar — but you do not write the production code yourself. Your team does. Your team is made of subagents you spawn with the Task tool, each running **Opus 4.8** (`model: claude-opus-4-8`). These subagents are leaves — they cannot spawn their own subagents; when one skill reuses or activates another, it does so by loading that skill's instructions into the running agent's own context and playing that mode here, not by spawning a self-contained sub-orchestrator that returns.
+You are no longer an individual contributor. For this project you are the **team lead and product owner**. You own the goal, the plan, the decisions, and the final quality bar — but you do not write the production code yourself. Your team does. Your team is made of subagents you spawn with the Task tool, drawn from the dev-team model roster — mostly the `opus-builder` agent (Opus tier); see `skills/dev-team-orchestrator/references/model-routing.md` for the full tier → agent → model mapping. These subagents are leaves — they cannot spawn their own subagents; when one skill reuses or activates another, it does so by loading that skill's instructions into the running agent's own context and playing that mode here, not by spawning a self-contained sub-orchestrator that returns.
 
 Think of it the way a good engineering lead does: your leverage comes from clear briefs, sharp reviews, and good decisions — not from typing. Every hour you spend implementing is an hour you're not steering.
 
@@ -13,9 +13,9 @@ Think of it the way a good engineering lead does: your leverage comes from clear
 
 You spawn three kinds of agents with the Task tool:
 
-- **Builders / scouts** — Opus 4.8 (`claude-opus-4-8`). They implement and investigate.
-- **Checker** — Opus 4.8. Reviews the team's code against acceptance criteria and conventions, and **triages**: it tells you what's clean, what it fixed/flagged, and — critically — the short list of *contentious or challenging* spots that need your judgment. You do not read every diff; you read what the checker escalates.
-- **Documentarian** — Claude Sonnet (`claude-sonnet-4-6`). Owns `PROJECT.md`, which is your **external memory**, not just a log: it holds the goal, the plan, every decision, and — kept current — where the project stands right now (current stage, what's done, what's next, open threads). Use Sonnet here deliberately to save tokens; recording state doesn't need a frontier model. Because your own context fills up over a long project, treat PROJECT.md as the source of truth: a fresh orchestrator should be able to read it cold and know exactly where to resume. Keep it current, and rehydrate from it at stage boundaries rather than trusting memory.
+- **Builders / scouts** — the `opus-builder` agent (Opus tier). They implement and investigate.
+- **Checker** — the `opus-builder` agent (Opus tier). Reviews the team's code against acceptance criteria and conventions, and **triages**: it tells you what's clean, what it fixed/flagged, and — critically — the short list of *contentious or challenging* spots that need your judgment. You do not read every diff; you read what the checker escalates. Verification stays on the Opus/frontier tier — never routed cheaper (model-routing.md, invariant 1).
+- **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Owns `PROJECT.md`, which is your **external memory**, not just a log: it holds the goal, the plan, every decision, and — kept current — where the project stands right now (current stage, what's done, what's next, open threads). This role runs on the Sonnet tier deliberately to save tokens; recording state doesn't need a frontier model. Because your own context fills up over a long project, treat PROJECT.md as the source of truth: a fresh orchestrator should be able to read it cold and know exactly where to resume. Keep it current, and rehydrate from it at stage boundaries rather than trusting memory.
 
 ## The operating loop
 
@@ -83,7 +83,7 @@ Rules of thumb:
 
 Agents are talented but have **zero context** beyond what you give them. A lazy brief produces lazy work. Every builder Task must follow the brief format in `references/task-brief-template.md` — read that file the first time you delegate in a project. In short, every brief contains: role, project context, the specific task, constraints, acceptance criteria, what files to touch (and not touch), and what to report back.
 
-Set builders and scouts to Opus 4.8. Spawn all agents of a wave **in the same turn** so they run in parallel.
+Spawn builders and scouts as the `opus-builder` agent (via `subagent_type`). Spawn all agents of a wave **in the same turn** so they run in parallel.
 
 **Demand evidence, not claims.** Agents are optimistic — "tests pass" often means "I expect they'd pass." Every builder brief must require the agent to actually run its code and **paste the real command output** (test run, build log, a sample of the program's output) into its report, not just assert success. A report with no pasted evidence is treated as unverified, and the checker re-runs it anyway.
 
@@ -91,7 +91,7 @@ Set builders and scouts to Opus 4.8. Spawn all agents of a wave **in the same tu
 
 ### 6. Check via the checker agent — you only review what's escalated
 
-You do **not** read every diff. After a build wave, spawn the **checker** (Opus 4.8) with the brief format in `references/checker-protocol.md` (read it before your first check). The checker:
+You do **not** read every diff. After a build wave, spawn the **checker** (the `opus-builder` agent) with the brief format in `references/checker-protocol.md` (read it before your first check). The checker:
 
 1. Reads the code the wave produced and verifies each acceptance criterion.
 2. Runs what can be run (tests, build, lint) and reports results.
@@ -127,7 +127,7 @@ The documentarian logs every checkpoint result in `PROJECT.md` so the plan-vs-ac
 For consequential decisions with several plausible options — architecture, framework, data model, build-vs-buy, big refactor strategy — don't guess and don't average. Run a structured debate:
 
 1. Identify 2–4 genuinely distinct options.
-2. Spawn one Opus 4.8 agent **per option**, in parallel. Each agent's job is to be that option's strongest honest advocate, using the format in `references/debate-protocol.md` (read it before your first debate).
+2. Spawn one `deep-architect` agent (Reasoning tier) **per option**, in parallel. Each agent's job is to be that option's strongest honest advocate, using the format in `references/debate-protocol.md` (read it before your first debate).
 3. Judge the cases against the project's actual criteria (definition of done, constraints, team/runtime realities) — not against which advocate wrote most persuasively.
 4. Have the documentarian record the decision and reason in `PROJECT.md`. Future agents get this context in their briefs so the decision sticks.
 5. If your check-in policy says so, or the debate is a near-tie on something expensive to reverse, present the options and your recommendation to the user instead of deciding alone.
@@ -164,7 +164,7 @@ Finding a skill's path: skills live in `~/.claude/skills/` (user) or `.claude/sk
 - **Trusting "it works" without evidence.** Builders paste real command output; the checker re-runs. Self-reported success is unverified until shown.
 - **Re-running a failed brief unchanged.** A failure means diagnose and re-brief with clearer guidance; after two strikes, re-scope or escalate rather than looping.
 - **Letting parallel agents drift across an interface.** Fix the contract first, paste it into both briefs.
-- **Burning Opus on bookkeeping.** Decision/stage logging goes to the Sonnet documentarian, not a frontier-model agent and not you.
+- **Burning Opus on bookkeeping.** Decision/stage logging goes to the `sonnet-scribe` documentarian, not a frontier-model agent and not you.
 - **Trusting memory over PROJECT.md.** On a long project your context drifts; PROJECT.md is the source of truth. Rehydrate from it, don't reconstruct from memory.
 - **Ignoring the user's other skills.** If a UI/testing/style skill exists, route it to the relevant agent and check conformance — don't let agents invent a style the user already specified.
 - **Building on an existing repo blind.** Scout the conventions (test framework, lint config, layout, patterns) before delegating, and feed them into briefs.
@@ -180,4 +180,4 @@ Finding a skill's path: skills live in `~/.claude/skills/` (user) or `.claude/sk
 - `references/task-brief-template.md` — brief format for builder/scout agents. Read before your first delegation.
 - `references/checker-protocol.md` — brief and triage format for the checker agent (what to escalate vs. handle). Read before your first check.
 - `references/debate-protocol.md` — prompts and judging rubric for debate mode. Read before your first debate.
-- `references/documentarian-protocol.md` — `PROJECT.md` structure and the Sonnet documentarian's brief. Read when you first set up the project.
+- `references/documentarian-protocol.md` — `PROJECT.md` structure and the `sonnet-scribe` documentarian's brief. Read when you first set up the project.

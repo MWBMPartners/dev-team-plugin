@@ -19,7 +19,7 @@ Before scouting, find out whether a prior run already gathered the context. This
 
 ## Step 1 — Scout the repo (read-only)
 
-Spawn one or more scout agents (Opus 4.8, modify nothing). They answer, as first-class outputs:
+Spawn one or more scout agents (the `opus-builder` agent, Opus tier; modify nothing). They answer, as first-class outputs:
 
 **Conventions (house style)** — same as the orchestrator's conventions scout:
 - Test framework + exact run command; current **coverage** (number, or an honest estimate from what's tested).
@@ -45,7 +45,7 @@ This is the yardstick every later change is measured against (purpose-fit). It g
 
 ## Step 3 — Audit into a scored backlog
 
-Spawn audit agents (Opus 4.8) — one per dimension for a big codebase, or a few covering several dimensions each. Each returns backlog items in the schema below. **Audit agents investigate and report; they do not fix.**
+Spawn audit agents (the `opus-builder` agent, Opus tier) — one per dimension for a big codebase, or a few covering several dimensions each. Each returns backlog items in the schema below. **Audit agents investigate and report; they do not fix.**
 
 ### Audit dimensions
 

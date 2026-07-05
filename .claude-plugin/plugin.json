@@ -1,9 +1,9 @@
 {
   "name": "dev-team",
-  "version": "1.0.0",
-  "description": "A suite of team-lead/product-owner skills that delegate software work to a team of Opus 4.8 subagents: orchestrator (build), iterate (improve), security (adversarial audit), review (QA), featurefind (competitive gap analysis), autopilot (autonomous drive to production), and stripe (payments build/review).",
+  "version": "1.1.0",
+  "description": "A suite of team-lead/product-owner skills that delegate software work to a tiered team of Claude subagents (Fable/Opus/Sonnet/Haiku, see model-routing): orchestrator (build), iterate (improve), security (adversarial audit), review (QA), featurefind (competitive gap analysis), autopilot (autonomous drive to production), stripe (payments build/review), and ship (CI/CD, branch protection, secret scanning, releases).",
   "author": {
-    "name": "xm987"
+    "name": "MWBM Partners Ltd"
   },
   "keywords": [
     "orchestrator",
