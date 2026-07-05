@@ -10,29 +10,51 @@ Cross-cutting since 1.2.0 (see [Configuration & feature toggles](#configuration-
 
 ## Install
 
-The plugin ships from the private **MWBMPartners** marketplace:
+You install the plugin **once** and it's then available in every Claude Code surface (terminal, VSCode, JetBrains, web). In Claude Code, type these two commands into the chat input, one at a time:
 
 ```text
-/plugin marketplace add MWBMPartners/dev-team-plugin
-/plugin install dev-team@dev-team
+/plugin marketplace add MWBMPartners/dev-team-plugin   # 1) register the marketplace
+/plugin install dev-team@dev-team                       # 2) install the plugin
 ```
 
-Once installed, the [hooks](#hooks--environment-switches) auto-activate (they are fail-open and scoped — see below), and the [`/dev-team`](#commands) router is your entry point.
+> This is a **private** plugin under the MWBMPartners org — you need read access to the repo to install it (see [Privacy](#privacy)).
+
+**Then what?** Nothing else to configure. The [safety hooks](#hooks--environment-switches) turn on automatically (they stay quiet and fail-safe), and your entry point is the [`/dev-team`](#commands) router: type `/dev-team` followed by what you want — e.g. `/dev-team build a REST API for todos` — or just describe the task in plain language and the right skill activates on its own. Not sure how skills fire in the terminal vs. an IDE? See [Using in Claude Code](#using-in-claude-code--cli-and-ides-vscode).
 
 ### Updating
 
-The plugin has a layered update story:
+Pick whichever suits you — **A** is the "set it and forget it" option most people want.
 
-- **Layer 1 — marketplace auto-update (primary).** Enable auto-update for `dev-team` from the `/plugin` UI toggle, or declare it in your settings via `extraKnownMarketplaces` with `autoUpdate: true`. This rides on Claude Code's own auto-updater.
-  - `DISABLE_AUTOUPDATER` turns off Claude Code's auto-update entirely (including marketplace plugin auto-update).
-  - `FORCE_AUTOUPDATE_PLUGINS` keeps plugin auto-updates running even when `DISABLE_AUTOUPDATER` is set.
-- **Layer 2 — SessionStart notifier (fallback).** [`hooks/check-update.sh`][check-update] compares your installed version against the remote `plugin.json` at most once per 24h and, if a newer version exists, prints a one-line notice to run the update. It never updates anything itself, and fails open/silent if `gh`/`jq` are missing or the network call fails. Disable with `DEV_TEAM_NO_UPDATE_CHECK`.
-- **Manual.** Run [`/dev-team-update`](#commands) to check and get the exact commands, or update by hand:
+**A. Turn on auto-update (recommended — do this once):**
 
-  ```text
-  /plugin marketplace update dev-team
-  /plugin update dev-team
-  ```
+1. In Claude Code, type `/plugin` and press Enter to open the plugin menu.
+2. Open the **Marketplaces** tab and select **dev-team**.
+3. Choose **Enable auto-update**.
+
+That's it. New versions now install automatically each time Claude Code starts — you never have to think about it again.
+
+**B. Update by hand whenever you like:**
+
+1. Type `/dev-team-update` in the chat. It checks whether a newer version exists and, if so, prints the exact commands to run.
+2. Or just run these two commands yourself (in the chat input):
+
+   ```text
+   /plugin marketplace update dev-team   # 1) refresh the catalog
+   /plugin update dev-team               # 2) install the newest version
+   ```
+
+   Run them in that order: the first refreshes what's available, the second installs it.
+
+**Will I miss an update?** No. Even if you never enable auto-update, dev-team quietly checks about once a day and, when a newer version is out, prints a single line like `dev-team: v1.3.0 available…` at the start of a session. It **never** updates itself from that notice — it just tells you, so you stay in control. Want to silence that line? See [Enable/disable features](#configuration--feature-toggles) (`update-notifier`).
+
+<details>
+<summary><b>Advanced update controls</b> (optional)</summary>
+
+- **Enable auto-update via settings instead of the menu:** add dev-team to `extraKnownMarketplaces` with `autoUpdate: true`.
+- **Global switches:** `DISABLE_AUTOUPDATER=1` turns off Claude Code's auto-update entirely (this plugin included); `FORCE_AUTOUPDATE_PLUGINS=1` keeps plugin auto-updates running even then.
+- **The daily notice** is [`hooks/check-update.sh`][check-update] — a SessionStart hook, cached to at most once/24h, fail-open (silent if `gh`/`jq` are missing or offline). It never changes anything. Turn it off with the env var `DEV_TEAM_NO_UPDATE_CHECK=1` (this session) or `features.update-notifier: off` in `.dev-team/config.yml` (repo-wide).
+
+</details>
 
 ---
 
@@ -334,6 +356,62 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 ## Configuration & feature toggles
 
 `.dev-team/config.yml` is a file **you commit** in your own project repo (not this plugin's repo). Because it's committed, it's the suite's **primary, repo-scoped switch mechanism** — it applies to every session and every collaborator who clones the repo, not just a per-session or per-user setting. Full schema, load rules, and the toggle → env-override table: [config-and-toggles.md][config-toggles]; inspect or scaffold it with [`/dev-team-config`](#commands).
+
+### Turning a feature on or off — step by step
+
+Every switch lives in **one file in your project**: `.dev-team/config.yml`. Because you commit it, a setting there applies to **everyone on the repo, in every session** — set it once and you're done. There are two ways to change a behaviour:
+
+**Just for right now (this session, or a single command) — nothing to commit:**
+
+- Use an **environment variable** for a session-level switch. Example — silence the "update available" notice for this session only:
+
+  ```bash
+  export DEV_TEAM_NO_UPDATE_CHECK=1
+  ```
+
+- Or add a **per-run argument** to your request for a one-off. Example — run a skill cheaply just this once: end your message with `models=economy` (or simply say *"keep costs down"*).
+
+**For the whole repo (everyone, every session) — edit `.dev-team/config.yml`:**
+
+1. **Create the file** (if you don't have one yet): run `/dev-team-config init` in the repo — it writes a ready-to-edit, commented `.dev-team/config.yml`. (You can also create it by hand.)
+2. **Edit it** and set the toggle you want, under the right section. For example, to turn *off* the update notice and the cost report, and make building skills *preview-only* by default:
+
+   ```yaml
+   version: 1              # required — leave this line in
+   features:
+     update-notifier: off  # no "update available" notice at session start
+     telemetry: off        # no run-end cost / telemetry summary
+     dry-run: on           # building skills show the plan first and change nothing
+   defaults:
+     models: economy       # prefer cheaper models by default
+   ```
+
+3. **Save and commit it** so the setting travels with the repo:
+
+   ```bash
+   git add .dev-team/config.yml && git commit -m "dev-team: configure feature toggles"
+   ```
+
+4. **Check what's actually active** any time with `/dev-team-config` — it prints the effective settings and marks which value came from your file vs. the built-in default.
+
+> **Worried about breaking something?** Don't be. A missing, empty, or malformed `.dev-team/config.yml` — or a key it doesn't recognise — is simply ignored, and the built-in defaults apply. The plugin is **fail-open** everywhere it reads config: a bad config never blocks a hook, errors a skill, or disables the file's other valid keys.
+
+**The switches you're most likely to want:**
+
+| I want to… | In `.dev-team/config.yml`, under… | set it to | Quick one-session alternative |
+|---|---|---|---|
+| Stop the "update available" notice | `features: → update-notifier` | `off` | `export DEV_TEAM_NO_UPDATE_CHECK=1` |
+| Stop the "you have stale branches" notice | `features: → branch-notifier` | `off` | `export DEV_TEAM_NO_BRANCH_CHECK=1` |
+| Silence the run cost / telemetry summary | `features: → telemetry` | `off` | — |
+| Silence autopilot gate/blocked/done notifications | `features: → notifications` | `off` | — |
+| Make building skills preview-only (show the plan, change nothing) | `features: → dry-run` | `on` | add `dry-run=on` to a request |
+| Default to cheaper models | `defaults: → models` | `economy` | say "keep costs down" / add `models=economy` |
+| Force the Bash safety guard on at all times | `features: → guard` | `on` | `export DEV_TEAM_GUARD=1` |
+| Never stack PRs (the safe default) / allow it | `git: → stack-prs` | `false` / `true` | — |
+
+Each row is one setting; you can set as many as you like in the same file. The `features: → update-notifier` notation means the `update-notifier:` line goes *underneath* a `features:` line (see the YAML example above). When both a config value and a per-session override exist, the [precedence rules](#full-reference) decide which wins.
+
+### Full reference
 
 **Precedence (highest to lowest):** per-run argument (e.g. `models=economy`) > plain language in the invocation (e.g. "keep costs down") > per-session environment variable (e.g. `DEV_TEAM_NO_UPDATE_CHECK`) > repo `.dev-team/config.yml` > built-in default. A missing or unreadable `.dev-team/config.yml` simply drops out of the chain — **fail-open** everywhere it's read: an absent file, a malformed file, or one bad/unrecognized key never blocks a hook, errors out a skill, or takes down the rest of the file's valid keys.
 
