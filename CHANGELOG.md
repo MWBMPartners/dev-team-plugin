@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.4.0] - <unreleased>
+
+### Added
+
+- **Single-PR policy** (`git.single-pr`, default `on`): a companion to the no-stack policy that keeps
+  **one open PR per line of work**. When a run's branch already has an open PR to its base, the suite
+  reuses that PR (pushes the branch to update it) instead of opening a duplicate, and a follow-up /
+  cold-resume run continues on the same run branch so its commits flow into the existing PR. This
+  prevents duplicate/parallel PRs racing to merge the same line of change (complementing `stack-prs`,
+  which prevents *stacked* PRs). Scoped for safety to a PR whose head is the run branch (never pushes
+  onto an unrelated PR); platform-agnostic (GitHub `gh` / GitLab `glab`, auto-detected from the
+  remote); fail-open; and it never auto-opens or auto-merges a PR — each skill still hands the branch
+  back for review. Turn off with `git.single-pr: false`. Full rule in `conventions.md`
+  ("PR base, no-stack & single-PR policy").
+
 ## [1.3.0] - <unreleased>
 
 ### Added
