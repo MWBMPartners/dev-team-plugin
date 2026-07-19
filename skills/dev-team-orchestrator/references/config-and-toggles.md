@@ -45,6 +45,9 @@ git:
   stack-prs: false   # false (default) = every run branches FROM and targets the DEFAULT branch; never
                      #   stack a PR on another feature branch. true = allow stacking (accepts the
                      #   merge-race risk). See the no-stack policy in conventions.md.
+  single-pr: true    # true (default) = converge on ONE open PR per line of work: reuse the run branch's
+                     #   existing open PR instead of opening a duplicate (push updates it). false = each
+                     #   run may surface its own PR. See the single-PR policy in conventions.md.
   default-branch: auto   # auto (origin/HEAD, else main/master) or an explicit branch name.
 
 features:            # enable/disable behaviours repo-wide (on|off; env var can override per-session)
@@ -80,11 +83,13 @@ which a per-run argument or plain language can still override for one run:
 | Key | Purpose | Values | Built-in default |
 |---|---|---|---|
 | `stack-prs` | Whether a run may target another feature branch instead of the default branch | `true`, `false` | `false` |
+| `single-pr` | Reuse the run branch's existing open PR instead of opening a duplicate — one open PR per line of work | `true`, `false` | `true` |
 | `default-branch` | Which branch runs branch FROM/target | `auto` (origin/HEAD, else `main`/`master`), or an explicit branch name | `auto` |
 
-`stack-prs: false` (the default) is the **no-stack policy** — see
-`skills/dev-team-orchestrator/references/conventions.md` ("PR base / no-stack policy") for the
-full rule and why stacking is disallowed by default.
+`stack-prs: false` (the default) is the **no-stack policy** and `single-pr: true` (the default) is
+the **single-PR policy** — see
+`skills/dev-team-orchestrator/references/conventions.md` ("PR base, no-stack & single-PR policy") for
+the full rules and why duplicate/stacked PRs are disallowed by default.
 
 ## `features:` toggle → per-session env override
 
@@ -142,8 +147,8 @@ user — it's a repo-wide, committed file, not run-scoped state.
 
 ## See also
 
-- `conventions.md` — "Repo config & feature toggles" (the short cross-skill summary) and "PR base
-  / no-stack policy" (the full no-stack rule this file's `git.stack-prs` key governs).
+- `conventions.md` — "Repo config & feature toggles" (the short cross-skill summary) and "PR base,
+  no-stack & single-PR policy" (the full rules this file's `git.stack-prs` and `git.single-pr` keys govern).
 - `model-routing.md` — "Cost posture" for how `models=` actually biases the tier table.
 - `issue-sync-protocol.md` — the `issues=` switch and the separate `issues=sync-security` opt-in.
 - `dev-team-autopilot/references/modes-and-gates.md` — the `gates=` policy in full.

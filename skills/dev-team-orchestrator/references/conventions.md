@@ -146,15 +146,38 @@ run branch's current HEAD. Precedence: per-run argument > plain language > per-s
 - **Under the `dev-team-autopilot` conductor, siblings do NOT create their own branch** — every mode cycle commits to the single `autopilot/<date>` run branch.
 - A dirty working tree or a non-git repo is surfaced to the user before proceeding — and it forces full re-validation of any reused Codebase Map, not just branch hygiene.
 
-### PR base / no-stack policy
+### PR base, no-stack & single-PR policy
 
 By default, every run branches FROM and targets the **default branch** (`main`) — this extends the
 "one run = one branch" rule above with *which* branch that is. **Never stack a PR on another
 feature branch**: stacking creates a merge-race hazard (the base branch can move, get rebased, or
 be force-pushed out from under the dependent PR, and reviews/CI end up run against a moving
 target). Stack only when `.dev-team/config.yml` sets `git.stack-prs: true` **and** the user
-explicitly asks for it for that run — both conditions, not either. See
-`references/config-and-toggles.md` for the `git:` block (`stack-prs`, `default-branch`).
+explicitly asks for it for that run — both conditions, not either.
+
+**Single-PR policy** (`git.single-pr`, default **on**) is the companion rule: where no-stack
+prevents *stacked* PRs, single-PR prevents *duplicate* PRs — a second PR for a line of work that
+already has one open. Together they keep **one open PR per line of work**, the safest merge posture
+(no parallel PRs racing to merge the same change). When a run is surfaced as a PR — or a
+follow-up / cold-resume run continues an earlier one — the lead:
+
+1. **Reuses the run branch.** A follow-up run for the same line of work continues on the *same* run
+   branch as the prior run (adopting it when an open PR still points at it) instead of cutting a
+   fresh `<mode>/<date>` branch, so new commits flow into the existing PR rather than a new one.
+2. **Checks before creating.** Before opening a PR, check whether an open PR already exists for this
+   branch → base (`gh pr list --head <branch> --base <base> --state open`; GitLab: `glab mr list
+   --source-branch <branch>`). If one exists, **do not open a second** — push the branch (the
+   existing PR updates itself) and report that PR's URL. Only ever reuse a PR whose **head is this
+   run branch** — never push onto an unrelated PR, or one the user doesn't own.
+3. **Platform-agnostic & fail-open.** GitHub (`gh`) or GitLab (`glab`), auto-detected from the git
+   remote (same detection as issue sync); if the CLI is absent/unauthed or the check fails, fall
+   back to today's behavior — hand the branch back for the user to open the PR.
+
+Single-PR does **not** make the suite auto-open PRs — every skill still hands the branch back for
+review, and nothing merges to the base without asking. It only ensures that *when* a PR is created
+or updated, it converges on the one existing PR instead of spawning duplicates. Turn it off with
+`git.single-pr: false` (then each run may surface its own PR). See
+`references/config-and-toggles.md` for the `git:` block (`stack-prs`, `single-pr`, `default-branch`).
 
 ## Gates
 
