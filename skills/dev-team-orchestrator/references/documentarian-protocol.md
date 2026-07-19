@@ -106,6 +106,6 @@ Confirm what you wrote and where.
 - **After a decision/debate:** append a decision-log entry.
 - **After each stage checkpoint:** append a checkpoint entry, update the stage's status, and refresh Current status.
 - **Whenever state moves materially:** refresh Current status so the file is always a faithful snapshot to resume from.
-- **At each checkpoint/RECORD:** `sonnet-scribe` also (re)generates `HANDOFF.md` per `handoff-template.md` — a derived one-glance resume card, always overwritten in full (same discipline as "Keep it lean" above), never a source of truth.
+- **After every completed task/workstream (auto-handoff, default on) and at each checkpoint/RECORD:** `sonnet-scribe` (re)generates `HANDOFF.md` per `handoff-template.md` — a derived, assistant-agnostic one-glance resume card (readable cold by any LLM coding tool, at a stable repo-root path), always overwritten in full (same discipline as "Keep it lean" above), never a source of truth. It is committed with the work it describes; the per-task cadence applies when `features.auto-handoff` is on (`config-and-toggles.md`; fail-open default on), and a per-session `DEV_TEAM_NO_AUTO_HANDOFF` drops back to checkpoint/RECORD-only regeneration.
 
 Builders and the checker get the relevant PROJECT.md slices pasted into their briefs — that's how decisions stay sticky across the team. The orchestrator reads Current status to rehydrate at stage boundaries instead of relying on its own (drifting) context.

@@ -137,7 +137,7 @@ Read-only — mirrors `dev-team-review`'s posture, scoped to docs:
 4. **Document**: the `sonnet-scribe` documentarian records the audit result (counts by
    severity, headline findings) in `PROJECT.md`'s Current status if that file exists — no new
    ledger file is created.
-5. Optionally, `issues=sync` exports the drift findings as GitHub Issues (see Arguments).
+5. Optionally, `issues=sync` (or `auto`) exports the drift findings to the repo's issue tracker — GitHub or GitLab, auto-detected from the git remote (see Arguments).
 
 ## Definition of done
 
@@ -183,9 +183,12 @@ Optional run arguments (defaults in brackets):
   `sonnet-builder`, per model-routing.md's cost-posture table); drafting stays on
   `sonnet-scribe` and verification stays on `opus-builder` regardless of posture — invariant 1
   holds here exactly as everywhere else in the suite. [balanced]
-- `issues=off|sync` — export `audit` mode's drift findings (or, in `generate`/`maintain`, any
-  NEEDS-LEAD-REVIEW item left unresolved by choice) to GitHub Issues (dedup-safe,
-  confirm-first; see `skills/dev-team-orchestrator/references/issue-sync-protocol.md`). [off]
+- `issues=off|sync|auto` — reflect `audit` mode's drift findings (or, in `generate`/`maintain`, any
+  NEEDS-LEAD-REVIEW item left unresolved by choice) in the repo's issue tracker. `sync` exports at the
+  normal sync points; `auto` continuously reflects each item as it is finalized (per-task cadence). Both
+  are dedup-safe and confirm-first on the first sync per repo. Platform is auto-detected from the git
+  remote — GitHub via `gh`, GitLab via `glab`; a plain-git repo with no platform simply skips issue
+  sync. See `skills/dev-team-orchestrator/references/issue-sync-protocol.md`. [off]
 - `branch=<name>` — override the default `docs/<date>` branch name.
 
 ## What carries over from dev-team-orchestrator (unchanged)

@@ -205,9 +205,12 @@ Optional run arguments (defaults in brackets):
   `dev-team-orchestrator/references/conventions.md` ("Dry-run / plan-preview").
 - `models=economy|balanced|max` — cost posture biasing which tier does build/scout work;
   verification always stays frontier (model-routing.md, "Cost posture"). [balanced]
-- `issues=off|sync` — export this run's open Stage Ledger follow-ups (a deferred stage, a risk
-  flagged for sign-off, a proposed-not-auto-taken strategy call) to GitHub Issues, dedup-safe and
-  confirm-first, using the mechanics in
+- `issues=off|sync|auto` — reflect this run's open Stage Ledger follow-ups (a deferred stage, a risk
+  flagged for sign-off, a proposed-not-auto-taken strategy call) in the repo's issue tracker. `sync`
+  exports at the normal sync points; `auto` continuously reflects each follow-up as it is finalized
+  (per-task cadence). Both are dedup-safe and confirm-first on the first sync per repo. Platform is
+  auto-detected from the git remote — GitHub via `gh`, GitLab via `glab`; a plain-git repo with no
+  platform simply skips issue sync. Mechanics in
   `dev-team-orchestrator/references/issue-sync-protocol.md`. [off]
 - `cap=N` — safety backstop: max number of stages to execute in this invocation before stopping to
   checkpoint and report (protects against a plan that turns out to need far more stages than

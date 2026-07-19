@@ -4,7 +4,7 @@
 
 A Claude Code plugin that lets you run software work as a **team lead / product owner** instead of coding alone: you delegate every piece of implementation to a tiered team of Claude subagents (a frontier reasoner, an Opus builder/verifier, a Sonnet documentarian, a Haiku mechanic) through a stage-by-stage *delegate → check → checkpoint* loop. **Eleven skills** cover the whole lifecycle — building, iterating, migrating, security, verification, competitive feature discovery, Stripe, shipping/CI, PR CI-medic, and documentation — plus an autopilot conductor that drives them all to production autonomously. An optional **taste-first** profile can put the highest-taste model in the orchestrator seat and offload token-hungry bulk work to GPT-5.5/Codex.
 
-Cross-cutting since 1.2.0 (see [Configuration & feature toggles](#configuration--feature-toggles) and [Cross-cutting behaviors](#cross-cutting-behaviors)): an optional, repo-scoped `.dev-team/config.yml` sets the suite's run defaults and feature toggles for every session and collaborator; every building skill supports a `dry-run` plan-preview and a generalized cold-resume; and runs surface an end-of-run [telemetry report](#run-reports--cost) (a rough, explicitly-not-a-bill cost estimate) plus autopilot gate/blocked/done notifications.
+Cross-cutting since 1.2.0 (see [Configuration & feature toggles](#configuration--feature-toggles) and [Cross-cutting behaviors](#cross-cutting-behaviors)): an optional, repo-scoped `.dev-team/config.yml` sets the suite's run defaults and feature toggles for every session and collaborator; every building skill supports a `dry-run` plan-preview and a generalized cold-resume; and runs surface an end-of-run [telemetry report](#run-reports--cost) (a rough, explicitly-not-a-bill cost estimate) plus autopilot gate/blocked/done notifications. New in 1.3.0: every completed task/workstream can auto-regenerate an **assistant-agnostic** `HANDOFF.md` (readable by Claude, Codex, or any LLM tool) and land its own **fine-grained local commit**, and issue sync gains a per-task `auto` cadence plus **GitLab** support — see [Cross-cutting behaviors](#cross-cutting-behaviors) and [Issue sync](#issue-sync-optional).
 
 ---
 
@@ -20,6 +20,16 @@ You install the plugin **once** and it's then available in every Claude Code sur
 > This is a **private** plugin under the MWBMPartners org — you need read access to the repo to install it (see [Privacy](#privacy)).
 
 **Then what?** Nothing else to configure. The [safety hooks](#hooks--environment-switches) turn on automatically (they stay quiet and fail-safe), and your entry point is the [`/dev-team`](#commands) router: type `/dev-team` followed by what you want — e.g. `/dev-team build a REST API for todos` — or just describe the task in plain language and the right skill activates on its own. Not sure how skills fire in the terminal vs. an IDE? See [Using in Claude Code](#using-in-claude-code--cli-and-ides-vscode).
+
+### Do I need to "activate" it? (per-repo? per-prompt?)
+
+**No activation step, and nothing to repeat.** The whole model is three layers, and only the first is required:
+
+- **Install once — covers everything.** The two `/plugin` commands above install at the **user level**, so the plugin is available in every Claude Code surface (terminal, VSCode, JetBrains, web) and in **every repo you ever open**. You never reinstall per project, per IDE, or per session, and the safety [hooks](#hooks--environment-switches) turn themselves on at install.
+- **Use it per task — just ask.** There is nothing to switch on before a request. Either **describe the task in plain language** and the matching skill activates on its own (e.g. *"build a REST API for todos"* → the orchestrator; *"audit this for vulnerabilities"* → security), **or** call it explicitly via the [`/dev-team`](#commands) router (`/dev-team <what you want>`) or a specific command (`/dev-team-status`, `/dev-team-config`, …). That's *using* it — not a setup step you repeat each prompt.
+- **Configure once per repo — optional.** The only per-repo thing, and it's entirely optional, is committing a [`.dev-team/config.yml`](#configuration--feature-toggles) (scaffold it with `/dev-team-config init`) to change the suite's defaults/toggles for that project. Without one, built-in defaults apply everywhere — **no config file is needed to use the plugin**; it only exists to change defaults (e.g. opting a repo into `issues: auto`).
+
+In short: **install once (all repos), invoke per task (describe it, or `/dev-team …`), and optionally drop one committed config file in a repo if you want non-default behavior.**
 
 ### Updating
 
@@ -296,7 +306,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 | `scope=readme\|api\|reference\|docstrings\|changelog\|guides\|architecture\|all` | `all` | Which doc area(s) to work on; accepts a comma list (e.g. `scope=readme,changelog`). |
 | `dry-run=on\|off` | `off` | Produce the full doc-area plan and the drafter/checker briefs it WOULD issue, but spawn no drafters or checkers and make no file or git changes; report the plan for approval. Not meaningful for `mode=audit` (already read-only). See [Cross-cutting behaviors](#cross-cutting-behaviors). |
 | `models=economy\|balanced\|max` | `balanced` | Cost posture for the **scout** tier only (`opus-builder` vs. `sonnet-builder`); drafting stays `sonnet-scribe` and verification stays `opus-builder` regardless of posture (Invariant 1). |
-| `issues=off\|sync` | `off` | Export `audit` mode's drift findings (or an unresolved NEEDS-LEAD-REVIEW item from `generate`/`maintain`) to GitHub Issues, dedup-safe and confirm-first. |
+| `issues=off\|sync\|auto` | `off` | Export `audit` mode's drift findings (or an unresolved NEEDS-LEAD-REVIEW item from `generate`/`maintain`) to GitHub or GitLab issues (platform auto-detected from the git remote; plain-git repos skip), dedup-safe and confirm-first. `sync` exports at the normal sync points; `auto` reflects each item continuously as it completes/closes (per-task cadence). |
 | `branch=<name>` | `docs/<date>` | Override the default branch name. |
 
 **Modes.** **generate** (no docs exist yet for the scope — write from scratch) | **maintain** (docs exist but the code moved — delta-scout what changed, draft only what drifted, but the checker re-verifies the *whole* doc-area) | **audit** (read-only: find and report doc drift/staleness by severity, no draft/fix/commit — a good cheap first look before committing to `maintain`). **Cold-resumes**: since this skill owns no dedicated ledger, it checks `PROJECT.md`'s Current status/decision log (if present) for a prior docs-pass record and `git diff`s since that commit to decide resume-vs-rescout — see [Cross-cutting behaviors](#cross-cutting-behaviors).
@@ -318,7 +328,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 | `strategy=incremental\|parallel-run\|big-bang` | `incremental` | The cutover strategy. `big-bang` is strongly discouraged and only ever runs after the Migration Plan Gate surfaces its risk explicitly and the user signs off — never the default, never silently accepted. |
 | `dry-run=on\|off` | `off` | Inside `execute` mode, produce the per-stage builder briefs it WOULD issue for the (already-approved) stages, spawn no builders, and make no file or git changes; report the plan for approval. `mode=plan` already stops for approval by design — this is not a substitute for the Migration Plan Gate. See [Cross-cutting behaviors](#cross-cutting-behaviors). |
 | `models=economy\|balanced\|max` | `balanced` | Cost posture biasing which tier does build/scout work; verification always stays frontier. |
-| `issues=off\|sync` | `off` | Export this run's open Stage Ledger follow-ups (a deferred stage, a risk flagged for sign-off, a proposed-not-auto-taken strategy call) to GitHub Issues, dedup-safe and confirm-first. |
+| `issues=off\|sync\|auto` | `off` | Export this run's open Stage Ledger follow-ups (a deferred stage, a risk flagged for sign-off, a proposed-not-auto-taken strategy call) to GitHub or GitLab issues (platform auto-detected from the git remote; plain-git repos skip), dedup-safe and confirm-first. `sync` exports at the normal sync points; `auto` reflects each item continuously as it completes/closes (per-task cadence). |
 | `cap=N` | the approved plan's full stage count | Safety backstop: max stages to execute in this invocation before stopping to checkpoint and report; not a substitute for finishing the approved plan across multiple invocations. |
 | `branch=<name>` | `migrate/<date>` | Override the default branch name. |
 
@@ -338,7 +348,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 | [`/dev-team-sync-branches`][cmd-sync] | `--apply`, `--no-fetch` | Safely align local branches with GitHub remotes (see [Branch hygiene](#branch-hygiene)). |
 | [`/dev-team-update`][cmd-update] | — | Check for a newer plugin version and show the exact update commands to run yourself. |
 | [`/dev-team-watch-prs`][cmd-watch] | `pr=<n>`, `autofix=safe\|off` | One CI-medic pass over open PRs (see [PR monitoring](#pr-monitoring-ci-medic)); loopable for recurring watch. |
-| [`/dev-team-sync-issues`][cmd-sync-issues] | `--dry-run`, `--confirm-each` | Export the suite's ledgers (feature gaps, backlog, security findings, review verdicts, gate items) to GitHub Issues (see [Issue sync](#issue-sync-optional)); opt-in, dedup-safe. |
+| [`/dev-team-sync-issues`][cmd-sync-issues] | `--dry-run`, `--confirm-each` | Export the suite's ledgers (feature gaps, backlog, security findings, review verdicts, gate items) to your GitHub or GitLab tracker (platform auto-detected; see [Issue sync](#issue-sync-optional)); opt-in, dedup-safe. |
 | [`/dev-team-config`][cmd-config] | `show\|init` | Print the effective config (built-in defaults overlaid with `.dev-team/config.yml`), or scaffold a starter repo-scoped config file (see [Configuration & feature toggles](#configuration--feature-toggles)). |
 | [`/dev-team-report`][cmd-report] | `[branch=<base>]` | Read-only, on-demand run report — phases/cycles, commits, agents by tier, a rough (not-a-bill) cost estimate — regardless of the `features.telemetry` toggle (see [Run reports & cost](#run-reports--cost)). |
 
@@ -347,7 +357,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 - **`/dev-team-approve`** — `<gate-id>` is the queued item's id (e.g. `G-003`); `approve` marks it built next iteration, `reject` marks it skipped. Add `[notes]` (free text) — especially useful on a reject.
 - **`/dev-team-sync-branches`** — without `--apply` it only detects and reports, then stops for confirmation. `--no-fetch` skips the pre-detection `git fetch --prune`.
 - **`/dev-team-watch-prs`** — `pr=<n>` also serves as the explicit per-PR opt-in required to touch a PR **not authored by the current user**. `autofix=safe` (default) fixes+verifies+pushes SAFE-AUTO and reruns flaky checks; `autofix=off` only monitors/reports/proposes.
-- **`/dev-team-sync-issues`** — first run in a repo (and any `--confirm-each` run) shows the planned set and waits for the user's go-ahead before creating anything; `--dry-run` reports without touching GitHub.
+- **`/dev-team-sync-issues`** — first run in a repo (and any `--confirm-each` run) shows the planned set and waits for the user's go-ahead before creating anything; `--dry-run` reports without touching the tracker (GitHub or GitLab).
 - **`/dev-team-config`** — `show` (default if omitted) is read-only: it never creates, edits, or touches the file. `init` creates `.dev-team/config.yml` with the commented starter schema **only if one doesn't already exist**; it never overwrites a file that's there, and never commits it for you — the file is meant to be committed by the user so its defaults and toggles apply to every session and collaborator.
 - **`/dev-team-report`** — `branch=<base>` sets the base to diff commits against; if omitted it resolves from `.dev-team/config.yml`'s `git.default-branch`, then auto-detects `origin/HEAD`, then falls back to `main`/`master`. Agents-spawned-by-tier and the cost estimate read from `.dev-team/autopilot.json`'s `budget.spawns_by_tier` when present; without it (a plain, non-autopilot run with no persisted spawn ledger) it reports those as "not tracked outside an autopilot run" rather than guessing. Never writes or fetches anything.
 
@@ -405,6 +415,9 @@ Every switch lives in **one file in your project**: `.dev-team/config.yml`. Beca
 | Silence the run cost / telemetry summary | `features: → telemetry` | `off` | — |
 | Silence autopilot gate/blocked/done notifications | `features: → notifications` | `off` | — |
 | Make building skills preview-only (show the plan, change nothing) | `features: → dry-run` | `on` | add `dry-run=on` to a request |
+| Stop regenerating `HANDOFF.md` after every task (on by default) | `features: → auto-handoff` | `off` | `export DEV_TEAM_NO_AUTO_HANDOFF=1` |
+| Stop the per-task local commits (on by default; never pushes either way) | `features: → auto-commit` | `off` | `export DEV_TEAM_NO_AUTO_COMMIT=1` |
+| Reflect work in GitHub/GitLab issues as it's done (off by default) | `defaults: → issues` | `auto` (or `sync`) | add `issues=auto` to a request |
 | Default to cheaper models | `defaults: → models` | `economy` | say "keep costs down" / add `models=economy` |
 | Force the Bash safety guard on at all times | `features: → guard` | `on` | `export DEV_TEAM_GUARD=1` |
 | Never stack PRs (the safe default) / allow it | `git: → stack-prs` | `false` / `true` | — |
@@ -417,7 +430,7 @@ Each row is one setting; you can set as many as you like in the same file. The `
 
 **Schema overview** (`version: 1` is the only required key — everything else is optional and falls back to its built-in default):
 
-- **`defaults:`** — repo-wide overrides for existing run arguments: `models` (economy/balanced/max, default `balanced`), `gates` (autopilot's gate policy, default `hybrid`), `cap` (autopilot convergence cap, default ~30), `cycles` (iterate's cycle cap, default `5`), `issues` (`off`/`sync`, default `off`; security findings still need the separate `sync-security` opt-in).
+- **`defaults:`** — repo-wide overrides for existing run arguments: `models` (economy/balanced/max, default `balanced`), `gates` (autopilot's gate policy, default `hybrid`), `cap` (autopilot convergence cap, default ~30), `cycles` (iterate's cycle cap, default `5`), `issues` (`off`/`sync`/`auto`, default `off`; `sync` exports at the normal sync points, `auto` reflects each item continuously as it completes/closes (per-task cadence); security findings still need the separate `sync-security` opt-in; platform is GitHub (`gh`) or GitLab (`glab`), auto-detected from the git remote, and a plain-git repo with no platform simply skips issues).
 - **`git:`** — `stack-prs` (`true`/`false`, default `false`) and `default-branch` (`auto` or an explicit branch name). `stack-prs: false` is the **no-stack policy**: by default every run branches FROM and targets the default branch and never stacks a PR on another feature branch (a merge-race hazard) — stacking requires both `git.stack-prs: true` **and** an explicit per-run ask.
 - **`features:`** — repo-wide on/off toggles, each with an optional per-session env override:
 
@@ -429,6 +442,8 @@ Each row is one setting; you can set as many as you like in the same file. The `
   | `notifications` | Autopilot gate/blocked/done notifications | `on`, `off` | none yet — config-only | `on` |
   | `telemetry` | Run-end telemetry + cost estimate | `on`, `off` | none yet — config-only | `on` |
   | `dry-run` | Default plan-preview for building skills | `on`, `off` | none yet — config-only (a per-run argument still overrides for one run) | `off` |
+  | `auto-handoff` | Regenerate the assistant-agnostic `HANDOFF.md` after every completed task/workstream | `on`, `off` | `DEV_TEAM_NO_AUTO_HANDOFF` | `on` |
+  | `auto-commit` | Local per-task commit of each completed-and-checked workstream (never pushes, never opens a PR) | `on`, `off` | `DEV_TEAM_NO_AUTO_COMMIT` | `on` |
 
   For `guard` specifically, the values aren't a simple on/off pair: `off` disables it repo-wide **even if** `DEV_TEAM_GUARD` is set for the session; `on` forces it active regardless of whether a run is in progress; `auto` (default) preserves today's behavior — active only while `.dev-team/autopilot.json` exists, unless `DEV_TEAM_GUARD` forces it on.
 
@@ -485,11 +500,13 @@ Start a mechanical-looking workstream on `quick-edits` (Haiku); on a genuine **c
 
 ### Cross-cutting behaviors
 
-Three behaviors apply the same way across every building skill (orchestrator, iterate, security, stripe, ship, docs, migrate) rather than being restated per skill. Canonical source: [conventions.md][conventions].
+Five behaviors apply the same way across every building skill (orchestrator, iterate, security, stripe, ship, docs, migrate) rather than being restated per skill. Canonical source: [conventions.md][conventions].
 
 - **Dry-run / plan-preview.** `dry-run=on` (per-run argument) or `features.dry-run: on` (repo `.dev-team/config.yml`; default `off`) makes a building skill produce its full plan and the briefs it WOULD issue, spawn **no builders**, and make **no file or git changes** — it stops after planning and reports the plan for approval. Precedence: per-run argument > plain language ("just show me the plan", "dry run first") > repo config > built-in default `off`. `dev-team-review` is unaffected — it's already read-only. Fail-open: a missing/unreadable config just leaves dry-run off.
 - **Cold-resume.** At the front of a run, a skill checks for its own prior owned artifact + run record before doing fresh work — `PROJECT.md` (orchestrator, iterate, stripe, and docs' Current-status note), `SECURITY.md` (security), `VERIFICATION.md` (review), `MIGRATION.md` (migrate). If a current one validates (a git-drift check plus a small spot-check against the real repo), the skill **resumes** from it instead of restarting cold; if it's missing, stale, or the tree is dirty in a way that invalidates it, it starts fresh. Always attempted, never a toggle. `dev-team-ship`, `dev-team-featurefind`, and `dev-team-ci-medic` have no cold-resume mechanic of their own.
 - **Autopilot notifications.** When `features.notifications: on` (default), the `dev-team-autopilot` conductor surfaces a prominent, clearly-marked notice at three events: a gate item **QUEUED** for approval, a **BLOCKED** pause, and a terminal **DONE**/cap — each its own report line, not buried in a routine cycle update. You may additionally wire a Claude Code Notification/Stop hook or a push-notification integration for delivery outside the terminal (optional, not required for the in-report notice). `features.notifications: off` skips the notice entirely; fail-open otherwise.
+- **Auto-handoff.** `auto-handoff=on` (feature toggle, default `on`) regenerates `HANDOFF.md` after **every** completed task/workstream — not only at stage checkpoints / RECORD. The card is **assistant-agnostic**: any LLM coding tool (Claude, Codex, Gemini, …) can read it cold, at a stable **repo-root path**. It's committed alongside the work it describes so it travels with the repo for the next session or teammate (these behaviors never auto-push it). Owned by `sonnet-scribe`. Precedence: per-run argument > plain language > per-session env `DEV_TEAM_NO_AUTO_HANDOFF` > repo `.dev-team/config.yml` (`features.auto-handoff`) > built-in default `on`. Fail-open.
+- **Auto-commit.** `auto-commit=on` (feature toggle, default `on`) makes each **completed-and-checked** task/workstream its own **local** commit whose message names the task — additional fine-grained rollback points *between* the existing per-checkpoint / per-cycle commits, never replacing the checkpoint commit, and only for integrated+verified units (preserving *never commit a broken/unverified state*). It **never pushes** and **never opens a PR** — pushing stays your explicit choice. Precedence: per-run argument > plain language > per-session env `DEV_TEAM_NO_AUTO_COMMIT` > repo `.dev-team/config.yml` (`features.auto-commit`) > built-in default `on`. Fail-open.
 
 ---
 
@@ -505,7 +522,7 @@ Every file the suite reads/writes. All ledgers are owned by the `sonnet-scribe` 
 | `VERIFICATION.md` + `verdict.json` | `sonnet-scribe` (via review) | Independent QA/verification evidence and verdicts (`V-` items); `verdict.json` is machine-readable for CI gating. Read by the user and autopilot's VERIFY phase. Schema: [verdict-and-report-protocol.md][verdict-protocol]. |
 | `MIGRATION.md` | `sonnet-scribe` (via migrate) | This skill's own external memory: the Migration Plan (strategy, staged breakdown, risk sizing), the Stage Ledger (`M-` items — one per stage, its own commit), and the compatibility-shims-in-play table. Read by review and a later migrate resume. Schema: [migration-plan-protocol.md][migration-plan-protocol]. |
 | `.dev-team/autopilot.json` | autopilot conductor (fields updated by `sonnet-scribe` each RECORD step) | Machine-authoritative run state (read first every iteration, rewritten last): mission/done, plan/phase cursor, state, next action, gate ledger (`G-` items), blocked, cycle/cap, verify, budget block, lock, branch, last commit, trajectory ref. Schema: [loop-runtime.md][loop-runtime]. |
-| `HANDOFF.md` | `sonnet-scribe` (all modes) | Derived, always-regenerated one-glance resume card built from `PROJECT.md#Current status`. A convenience surface, never itself a source of truth. Schema: [handoff-template.md][handoff-template]. |
+| `HANDOFF.md` | `sonnet-scribe` (all modes) | Derived, always-regenerated **assistant-agnostic** resume card at a stable **repo-root path**, readable cold by any LLM coding tool (Claude, Codex, Gemini, …); built from `PROJECT.md#Current status` and regenerated after every completed task/workstream when `auto-handoff` is on (see [Cross-cutting behaviors](#cross-cutting-behaviors)). Committed alongside the work it describes; a convenience surface, never itself a source of truth. Schema: [handoff-template.md][handoff-template]. |
 
 ---
 
@@ -528,6 +545,8 @@ Since v1.2.0, each hook also reads the repo-scoped [`.dev-team/config.yml`][conf
 | `DEV_TEAM_NO_UPDATE_CHECK` | Off-switch for the SessionStart update notifier — set to any non-empty value and it exits before doing anything. | Update check runs, throttled to ≤ once/24h; fails open/silent if `gh`/`jq` missing or network fails. |
 | `DEV_TEAM_NO_BRANCH_CHECK` | Off-switch for the SessionStart branch-hygiene notice — set to any non-empty value to suppress it entirely. | Check runs every SessionStart; network-free and silent when the "gone" count is 0. |
 | `DEV_TEAM_GUARD` | **Force-ON** switch (not an off-switch) for the Bash guard — makes it check every Bash command regardless of whether a run is active. | Guard scope limited to an active run (`.dev-team/autopilot.json` present). |
+| `DEV_TEAM_NO_AUTO_HANDOFF` | Off-switch for auto-handoff — set to any non-empty value and completed tasks stop triggering the extra `HANDOFF.md` regenerate for this session (the checkpoint/RECORD regenerate still happens). | Auto-handoff runs: `HANDOFF.md` is regenerated after every completed task/workstream. |
+| `DEV_TEAM_NO_AUTO_COMMIT` | Off-switch for auto-commit — set to any non-empty value and completed-and-checked tasks stop getting their own local per-task commit this session (checkpoint/cycle commits still happen). | Auto-commit runs: each completed-and-checked task/workstream lands its own local commit (never pushed). |
 | `DISABLE_AUTOUPDATER` | Global Claude Code var: turns off Claude Code's own auto-update entirely, including marketplace-level plugin auto-update (the plugin's Layer-1 update path). | Claude Code auto-update (and marketplace auto-update, if enabled) behaves normally. |
 | `FORCE_AUTOUPDATE_PLUGINS` | Global Claude Code var: keeps plugin auto-updates running even if `DISABLE_AUTOUPDATER` has otherwise turned off Claude Code's auto-update. | Unset. |
 
@@ -574,11 +593,11 @@ The command deletes nothing without `--apply` (it prints the plan and stops for 
 
 ## Issue sync (optional)
 
-The suite already maintains issue-shaped ledgers — feature gaps (`FEATURES.md`), backlog and proposed features (`PROJECT.md`), security findings (`SECURITY.md`), review verdicts (`VERIFICATION.md`), Migration Stage Ledger items (`MIGRATION.md`), and gate-deferred items (`.dev-team/autopilot.json`). Issue sync exports them to GitHub Issues so they're actionable in your real tracker instead of trapped in markdown. It's **opt-in** and owned by the `sonnet-scribe` agent (cheap bookkeeping, not reasoning) — full detail in [issue-sync-protocol.md][issue-sync-protocol].
+The suite already maintains issue-shaped ledgers — feature gaps (`FEATURES.md`), backlog and proposed features (`PROJECT.md`), security findings (`SECURITY.md`), review verdicts (`VERIFICATION.md`), Migration Stage Ledger items (`MIGRATION.md`), and gate-deferred items (`.dev-team/autopilot.json`). Issue sync exports them to your project's tracker — **GitHub (via `gh`) or GitLab (via `glab`), auto-detected from the git remote** — so they're actionable in your real tracker instead of trapped in markdown. A plain-git repo with no detected platform simply skips issue sync (auto-handoff and auto-commit still work). It's **opt-in** and owned by the `sonnet-scribe` agent (cheap bookkeeping, not reasoning) — full detail in [issue-sync-protocol.md][issue-sync-protocol].
 
 Turn it on two ways:
 
-- The `issues=off|sync` argument (default **off**) on `dev-team-iterate`, `dev-team-security`, `dev-team-featurefind`, `dev-team-review`, `dev-team-autopilot`, or `dev-team-migrate` — set `issues=sync` to export that run's ledger items as it goes. [dev-team-docs](#dev-team-docs) also takes `issues=off|sync`, to export its `audit` mode's drift findings.
+- The `issues=off|sync|auto` argument (default **off**) on `dev-team-iterate`, `dev-team-security`, `dev-team-featurefind`, `dev-team-review`, `dev-team-autopilot`, or `dev-team-migrate` — `issues=sync` exports that run's ledger items at the normal sync points; `issues=auto` continuously reflects each item in the tracker as it completes/closes (per-task cadence). Both stay **confirm-first on the first sync per repo** and dedup-safe (and security findings still need the separate `sync-security` opt-in). [dev-team-docs](#dev-team-docs) also takes `issues=off|sync|auto`, to export its `audit` mode's drift findings.
 - [`/dev-team-sync-issues`][cmd-sync-issues] — run a sync pass over the current repo's ledgers on demand, independent of any skill run.
 
 **Mapping:**
@@ -593,13 +612,13 @@ Turn it on two ways:
 | `MIGRATION.md` Stage Ledger (migrate) | `M-` | `enhancement` |
 | `.dev-team/autopilot.json` gate-ledger | `G-` | `for consideration` |
 
-**Dedup is the core.** Each ledger item carries an `issue:` field holding its GitHub issue number once synced. An item with no `issue:` ref gets a new issue created (and the returned number written back); an item that already has one is updated in place — never a duplicate. The hidden `<!-- dev-team:<id> -->` footer marker is the identity backstop if a ledger ref is ever lost.
+**Dedup is the core.** Each ledger item carries an `issue:` field holding its GitHub/GitLab issue number once synced. An item with no `issue:` ref gets a new issue created (and the returned number written back); an item that already has one is updated in place — never a duplicate. The hidden `<!-- dev-team:<id> -->` footer marker is the identity backstop if a ledger ref is ever lost.
 
 **Close-on-done.** When an item's status becomes resolved/built/verified/merged, its issue is closed with a reference to the delivering commit/PR; a re-opened item re-opens its issue.
 
-**Confirm-first.** The first sync in a repo shows the set it will create (count + titles) and waits for your go-ahead before creating anything — the suite's standard gate posture. After that, syncs run and report a one-line summary (e.g. "issue sync: +2 created, 3 updated, 1 closed"). `--confirm-each` re-arms per-item confirmation; `--dry-run` reports without touching GitHub.
+**Confirm-first.** The first sync in a repo shows the set it will create (count + titles) and waits for your go-ahead before creating anything — the suite's standard gate posture. After that, syncs run and report a one-line summary (e.g. "issue sync: +2 created, 3 updated, 1 closed"). `--confirm-each` re-arms per-item confirmation; `--dry-run` reports without touching the tracker (GitHub or GitLab).
 
-**Safety.** Requires `gh` authenticated for the repo — if absent/unauthed, it does nothing and tells you how to enable it; issue sync never fails the surrounding run. It only ever touches issues it created (via the stored `issue:` ref or the hidden marker) — never edits or closes unrelated issues, and never deletes any issue.
+**Safety.** Requires the detected platform's CLI authenticated for the repo — `gh` for GitHub or `glab` for GitLab, auto-detected from the git remote; if that CLI is absent/unauthed, or the repo is plain-git with no platform, it does nothing and tells you how to enable it; issue sync never fails the surrounding run. It only ever touches issues it created (via the stored `issue:` ref or the hidden marker) — never edits or closes unrelated issues, and never deletes any issue.
 
 ---
 

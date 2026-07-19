@@ -6,6 +6,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.3.0] - <unreleased>
+
+### Added
+
+- **Continuous handoff / auto-log** capability, driven by `.dev-team/config.yml`, fail-open, following
+  the standard precedence chain (per-run arg > plain language > per-session env > repo config >
+  built-in default):
+  - `features.auto-handoff` (default `on`): regenerate `HANDOFF.md` after EVERY completed
+    task/workstream, not only at stage checkpoints/RECORD. `HANDOFF.md` is now ASSISTANT-AGNOSTIC —
+    a cold-readable resume card any LLM coding tool (Claude, Codex, Gemini, etc.) can pick up at a
+    stable repo-root path, committed alongside the work it describes so it survives a fresh clone.
+    Owned by `sonnet-scribe`. Per-session off-switch: `DEV_TEAM_NO_AUTO_HANDOFF`.
+  - `features.auto-commit` (default `on`): commit each COMPLETED-AND-CHECKED task/workstream as its
+    own LOCAL commit (NEVER push, NEVER open a PR). These are ADDITIONAL fine-grained rollback points
+    BETWEEN the existing per-checkpoint/per-cycle commits — they never replace the checkpoint commit
+    and only ever commit an integrated+checked unit, preserving the "never commit a broken/unverified
+    state" discipline. Commit message names the task/workstream. Per-session off-switch:
+    `DEV_TEAM_NO_AUTO_COMMIT`.
+  - `defaults.issues` gains a third value: `off | sync | auto` (default stays **off** — opt-in).
+    `auto` continuously reflects work in the tracker as each item completes/closes (per-task cadence)
+    instead of only at the `sync` sync points. Still confirm-first on the FIRST sync per repo,
+    security findings still require the separate `issues=sync-security` opt-in, still dedup-safe.
+  - Issue sync now supports BOTH **GitHub (`gh`)** and **GitLab (`glab`)**, platform auto-detected
+    from the git remote; a plain-git repo with no platform simply skips issues (handoff + commit
+    still work).
+
+### Changed
+
+- `agents/sonnet-scribe.md` + `model-routing.md`: `HANDOFF.md` added to the documentarian's enumerated
+  owned artifacts, reflecting continuous auto-handoff ownership.
+- Autopilot crash-recovery (`loop-runtime.md`): a reclaimed stale cycle now resets the working tree to
+  the run branch's current HEAD (keeping already-checked per-task auto-commits) rather than to
+  `last_commit`; `autopilot.json` is still written only at RECORD (read-first/write-last unchanged).
+
 ## [1.2.0] - <unreleased>
 
 ### Added
