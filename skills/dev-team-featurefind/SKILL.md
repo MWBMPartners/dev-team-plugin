@@ -119,8 +119,7 @@ Optional run arguments (defaults in brackets):
 - `scope=strict|balanced|loose` — how aggressively the validator excludes out-of-scope features [balanced]. `strict` keeps only clear purpose-fits; `loose` surfaces more adjacent ideas (still marked).
 - `focus=table-stakes|differentiators|all` — bias the hunt toward closing parity gaps, toward standout features, or both [all].
 - `depth=quick|standard|deep` — `quick`: top comparables, headline features. `standard`: full comparable set + category sweep + validate. `deep`: + changelog/recent-release mining and a second validation pass on high-importance gaps. [standard]
-- `issues=off|sync` — export this run's ledger items to GitHub Issues (dedup-safe, confirm-first;
-  see `skills/dev-team-orchestrator/references/issue-sync-protocol.md`). [off]
+- `issues=off|sync|auto` — reflect this run's gap-ledger items in the repo's issue tracker. `sync` exports at the normal sync points; `auto` continuously reflects each item as it is finalized (per-task cadence). Both are dedup-safe and confirm-first on the first sync per repo. Platform is auto-detected from the git remote — GitHub via `gh`, GitLab via `glab`; a plain-git repo with no platform simply skips issue sync. See `skills/dev-team-orchestrator/references/issue-sync-protocol.md`. [off]
 
 ## What carries over from dev-team-orchestrator (unchanged)
 

@@ -17,7 +17,8 @@ collaborator), not a per-session setting.
    value came from — `(from .dev-team/config.yml)` or `(built-in default)`. Keys the file doesn't
    set, or that failed to parse, are tagged `(built-in default)`.
 3. If a per-session env var is currently set that would override a `features:` toggle for this
-   session (`DEV_TEAM_NO_UPDATE_CHECK`, `DEV_TEAM_NO_BRANCH_CHECK`, `DEV_TEAM_GUARD`), note that
+   session (`DEV_TEAM_NO_UPDATE_CHECK`, `DEV_TEAM_NO_BRANCH_CHECK`, `DEV_TEAM_GUARD`,
+   `DEV_TEAM_NO_AUTO_HANDOFF`, `DEV_TEAM_NO_AUTO_COMMIT`), note that
    too, so the user can see the full precedence chain in effect right now, not just the file.
 4. If no `.dev-team/config.yml` exists, say so plainly and point to `/dev-team-config init`.
 

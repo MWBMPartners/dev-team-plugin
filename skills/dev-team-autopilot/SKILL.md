@@ -108,8 +108,21 @@ Optional run arguments (defaults in brackets):
 - `phases=<subset>` — restrict the mission (e.g. `phases=stabilize,secure,verify` to harden without feature work).
 - `delay=<seconds>` — wakeup pacing between cycles [~90; clamped to the loop's bounds].
 - `branch=<name>` — run branch [`autopilot/<date>`].
-- `issues=off|sync` — export each cycle's ledger items to GitHub Issues (dedup-safe, confirm-first;
-  see `skills/dev-team-orchestrator/references/issue-sync-protocol.md`). [off]
+- `issues=off|sync|auto` — export each cycle's ledger items to the repo's issue tracker — **GitHub
+  (`gh`) or GitLab (`glab`), platform auto-detected from the git remote**; a plain-git repo with no
+  platform simply **skips issues** (auto-handoff + auto-commit still work). `sync` reflects work at the
+  normal sync points; `auto` continuously reflects each item as it completes/closes (per-task cadence).
+  Both are dedup-safe and **confirm-first on the first sync per repo**; security findings still require
+  the separate sync-security opt-in (see
+  `skills/dev-team-orchestrator/references/issue-sync-protocol.md`). [off]
+- `auto-handoff=on|off` — regenerate the assistant-agnostic `HANDOFF.md` resume card after every
+  completed task/workstream (owned by `sonnet-scribe`; stable repo-root path — any LLM coding tool can
+  read it cold; committed with the work, never auto-pushed). Per-session off-switch env
+  `DEV_TEAM_NO_AUTO_HANDOFF`; repo config `features.auto-handoff`. [on]
+- `auto-commit=on|off` — commit each completed-and-checked task/workstream as its own LOCAL commit on
+  the run branch (never push, never PR) — additional fine-grained rollback points between the per-cycle
+  checkpoint commits, only for integrated+checked units. Per-session off-switch env
+  `DEV_TEAM_NO_AUTO_COMMIT`; repo config `features.auto-commit`. [on]
 
 ## What carries over from dev-team-orchestrator (unchanged)
 
@@ -118,7 +131,7 @@ Optional run arguments (defaults in brackets):
 - **Failed/stuck agents:** diagnose, re-brief, two strikes then re-scope or escalate (and two strikes is a hard-pause trigger).
 - **Debate mode** for consequential, contested decisions surfaced mid-loop.
 - **Composing other skills** — route the user's UI/testing/style skills to the relevant agents and have the checker verify conformance (unchanged).
-- **Documentarian** (`sonnet-scribe`, Sonnet tier) owns `PROJECT.md`; the conductor additionally owns `autopilot.json`.
+- **Documentarian** (`sonnet-scribe`, Sonnet tier) owns `PROJECT.md` and the assistant-agnostic `HANDOFF.md` resume card (regenerated after every completed task/workstream when `features.auto-handoff` is on — a stable repo-root file any LLM tool can cold-resume from, committed with the work); the conductor additionally owns `autopilot.json`.
 
 ## References (read at the matching step)
 

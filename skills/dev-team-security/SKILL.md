@@ -125,8 +125,7 @@ Optional run arguments (defaults in brackets):
 - `tools=auto|off` — run the SCA/SAST/secret/container scanners in Phase 0, or reason-only [auto: run whatever the stack supports].
 - `report-only` — audit, validate, and report findings without applying any fix (implies `fix=propose-only`) [off].
 - `branch=<name>` — override the default `security-audit/<date>` branch name.
-- `issues=off|sync` — export this run's ledger items to GitHub Issues (dedup-safe, confirm-first;
-  see `skills/dev-team-orchestrator/references/issue-sync-protocol.md`). [off]
+- `issues=off|sync|auto` — reflect this run's ledger items in the repo's issue tracker. `sync` exports at the normal sync points; `auto` continuously reflects each finding as it closes (per-task cadence). Both are dedup-safe and confirm-first on the first sync per repo; security findings still require the separate `sync-security` opt-in. Platform is auto-detected from the git remote — GitHub via `gh`, GitLab via `glab`; a plain-git repo with no platform simply skips issue sync. See `skills/dev-team-orchestrator/references/issue-sync-protocol.md`. [off]
 
 ## What carries over from dev-team-orchestrator (unchanged)
 

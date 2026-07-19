@@ -143,8 +143,7 @@ This skill accepts optional arguments to tune a run (defaults in brackets):
 - `branch=<name>` — override the default `iterate/<date>` branch name.
 - `models=economy|balanced|max` — cost posture biasing which tier does build work; verification
   always stays frontier (model-routing.md, "Cost posture"). [balanced]
-- `issues=off|sync` — export this run's ledger items to GitHub Issues (dedup-safe, confirm-first;
-  see `skills/dev-team-orchestrator/references/issue-sync-protocol.md`). [off]
+- `issues=off|sync|auto` — reflect this run's ledger items in the repo's issue tracker. `sync` exports at the normal sync points; `auto` continuously reflects each item as it completes/closes (per-task cadence). Both are dedup-safe and confirm-first on the first sync per repo. Platform is auto-detected from the git remote — GitHub via `gh`, GitLab via `glab`; a plain-git repo with no platform simply skips issue sync (handoff and per-task commits still run). See `skills/dev-team-orchestrator/references/issue-sync-protocol.md`. [off]
 
 ## Running with a focus
 

@@ -105,6 +105,8 @@ You do **not** read every diff. After a build wave, spawn the **checker** (the `
 
 You then engage directly **only** with the NEEDS-LEAD-REVIEW list. For each, decide: accept, send back with specific feedback (spawn a rework agent with the original brief + your notes + current state), or reframe the brief. If the checker reports nothing escalated and criteria pass, accept the wave without reading the diffs yourself.
 
+As each task/workstream is accepted (integrated + checked), two behaviors fire when enabled in `.dev-team/config.yml` (both default ON, fail-open; precedence and env off-switches in `references/config-and-toggles.md`, full contracts in `references/conventions.md`): **auto-commit** — you make an ADDITIONAL local commit naming that task/workstream (never push, never PR) as a fine-grained rollback point between checkpoint commits, only ever on a checker-cleared state; and **auto-handoff** — `sonnet-scribe` regenerates the assistant-agnostic `HANDOFF.md` (per `references/handoff-template.md`), which rides in that commit. Skip auto-commit for the session with `DEV_TEAM_NO_AUTO_COMMIT`, auto-handoff with `DEV_TEAM_NO_AUTO_HANDOFF`.
+
 Give feedback the way a good lead does: specific, about the work, with the reason. "The API layer duplicates validation that already lives in `models.py` — remove it there and import instead" beats "clean this up".
 
 ### 6a. When an agent comes back failed or stuck
@@ -119,7 +121,7 @@ A failed return is information, usually about the brief. Don't just re-run the s
 
 When a stage's waves are integrated and checked, run the **checkpoint**: re-read the stage's done-criteria, run the full check suite, and ask the real question — *is progress matching the plan?* Then:
 
-- **On track** → documentarian records the stage outcome; **commit the work** (a single commit at the passing checkpoint, message naming the stage). This gives a known-good rollback point and writes the plan-vs-actual trail into git as well as `PROJECT.md`. Branch FROM and target the default branch (`main`) for the run — never stack it on another feature branch — unless `.dev-team/config.yml` sets `git.stack-prs: true` (see conventions.md's "PR base / no-stack policy"). Then advance to the next stage.
+- **On track** → documentarian records the stage outcome; **commit the work** (a single commit at the passing checkpoint, message naming the stage). This gives a known-good rollback point and writes the plan-vs-actual trail into git as well as `PROJECT.md`. The per-task **auto-commit** commits (above) are ADDITIONAL points BETWEEN these checkpoint commits — they never replace the checkpoint commit. Branch FROM and target the default branch (`main`) for the run — never stack it on another feature branch — unless `.dev-team/config.yml` sets `git.stack-prs: true` (see conventions.md's "PR base / no-stack policy"). Then advance to the next stage.
 - **Drifting** (scope grew, an assumption broke, a criterion can't be met as planned) → revise the stage plan, and if it materially changes the project, take it to the user per your check-in policy. Don't commit a drifting/half-broken state as a checkpoint; fix or re-scope first, then commit.
 
 If a later wave goes wrong, the last checkpoint commit is your clean restore point — return to it rather than trying to hand-untangle a bad merge.

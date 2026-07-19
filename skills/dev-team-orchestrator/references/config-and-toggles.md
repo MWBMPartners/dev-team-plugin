@@ -39,7 +39,7 @@ defaults:            # override the skills' built-in argument defaults
   gates: hybrid      # autopilot gate policy: hybrid | pause-all | autonomy-envelope
   cap: 30            # autopilot convergence cap
   cycles: 5          # iterate cycle cap
-  issues: off        # issue-sync: off | sync   (security findings still require sync-security)
+  issues: off        # issue-sync: off | sync | auto  (auto = per-task cadence; security findings still require sync-security)
 
 git:
   stack-prs: false   # false (default) = every run branches FROM and targets the DEFAULT branch; never
@@ -54,6 +54,8 @@ features:            # enable/disable behaviours repo-wide (on|off; env var can 
   notifications: on      # autopilot gate/blocker/done notifications (v1.2.0)
   telemetry: on          # run-end telemetry + cost estimate         (v1.2.0)
   dry-run: off           # default plan-preview for building skills  (v1.2.0)
+  auto-handoff: on       # regenerate HANDOFF.md after every completed task/workstream (v1.3.0; per-session override: DEV_TEAM_NO_AUTO_HANDOFF)
+  auto-commit: on        # local commit per completed-and-checked task/workstream  (v1.3.0; per-session override: DEV_TEAM_NO_AUTO_COMMIT)
 ```
 
 `version: 1` is the only required key going forward — every other key has a built-in default, so a
@@ -71,7 +73,7 @@ which a per-run argument or plain language can still override for one run:
 | `gates` | `gates=hybrid\|pause-all\|autonomy-envelope` (autopilot) | `hybrid`, `pause-all`, `autonomy-envelope` | `hybrid` |
 | `cap` | `cap=N` (autopilot convergence backstop) | integer | `~30` |
 | `cycles` | `cycles=N` (iterate cycle cap) | integer | `5` |
-| `issues` | `issues=off\|sync` | `off`, `sync` (security findings still need the separate `sync-security` opt-in — see `issue-sync-protocol.md`) | `off` |
+| `issues` | `issues=off\|sync\|auto` | `off`, `sync`, `auto` (`auto` = per-task cadence; security findings still need the separate `sync-security` opt-in — see `issue-sync-protocol.md`) | `off` |
 
 ## `git:` — branch policy
 
@@ -94,6 +96,8 @@ full rule and why stacking is disallowed by default.
 | `notifications` | autopilot gate/blocker/done notifications (v1.2.0) | `on`, `off` | none yet — config-only | `on` |
 | `telemetry` | run-end telemetry + cost estimate (v1.2.0) | `on`, `off` | none yet — config-only | `on` |
 | `dry-run` | default plan-preview for building skills (v1.2.0) | `on`, `off` | none yet — config-only (a per-run argument on the relevant skill may still override for one run) | `off` |
+| `auto-handoff` | regenerate `HANDOFF.md` after every completed task/workstream (v1.3.0) | `on`, `off` | `DEV_TEAM_NO_AUTO_HANDOFF` (off-switch: any non-empty value disables) | `on` |
+| `auto-commit` | local commit per completed-and-checked task/workstream — never push, never PR (v1.3.0) | `on`, `off` | `DEV_TEAM_NO_AUTO_COMMIT` (off-switch: any non-empty value disables) | `on` |
 
 For `guard`, note the mode semantics are not a simple on/off pair: `off` disables the guard
 repo-wide (even if `DEV_TEAM_GUARD` is set); `on` forces it active regardless of whether a run is

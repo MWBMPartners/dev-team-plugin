@@ -22,8 +22,8 @@ Subagents are **leaves** — they cannot spawn their own subagents. When one ski
 | `VERIFICATION.md` + `verdict.json` | review | `dev-team-review/references/verdict-and-report-protocol.md` | user, autopilot (VERIFY phase) |
 | `MIGRATION.md` | sonnet-scribe (via dev-team-migrate) | `dev-team-migrate/references/migration-plan-protocol.md` | review, a later dev-team-migrate resume |
 | `.dev-team/autopilot.json` | autopilot conductor | `dev-team-autopilot/references/loop-runtime.md` | autopilot (cold-resume) |
-| `HANDOFF.md` | sonnet-scribe (all modes) | `handoff-template.md` | user + a resuming lead — DERIVED convenience card, not a source of truth |
-| GitHub Issues (optional) | sonnet-scribe (issue sync) | `issue-sync-protocol.md` | user's tracker — a dedup-safe export of the ledgers when `issues=sync` |
+| `HANDOFF.md` | sonnet-scribe (all modes) | `handoff-template.md` | ANY LLM coding tool (Claude, Codex, Gemini, …) + a resuming lead — DERIVED, assistant-agnostic resume card at a stable repo-root path; regenerated per completed task when `auto-handoff` on; committed with the work it describes (never auto-pushed); not a source of truth |
+| GitHub/GitLab Issues (optional) | sonnet-scribe (issue sync) | `issue-sync-protocol.md` | user's tracker — a dedup-safe export of the ledgers when `issues=sync` or `issues=auto`; platform (`gh`/`glab`) auto-detected from the remote, plain-git repos skip issues |
 
 `PROJECT.md` is the human-readable source of truth; `autopilot.json` is the machine state the conductor's loop reads first each iteration. Keep the two consistent.
 
@@ -56,13 +56,14 @@ State and ledger files carry a version marker so a consumer can tell a compatibl
 
 A review→security handoff carries the `V-`↔`F-` mapping so the regression projects back into `SECURITY.md`'s register (which is what a security resume reads).
 
-When `issues=sync` (or `/dev-team-sync-issues`) is used, each item's prefix+id maps to a GitHub issue (via the hidden `<!-- dev-team:<id> -->` marker), and the item stores the issue number in an `issue:` field for dedup — see `issue-sync-protocol.md`. Labels: `for consideration`, `security`, `enhancement`, `bug`.
+When `issues=sync` or `issues=auto` (or `/dev-team-sync-issues`) is used, each item's prefix+id maps to a GitHub/GitLab issue (via the hidden `<!-- dev-team:<id> -->` marker), and the item stores the issue number in an `issue:` field for dedup — see `issue-sync-protocol.md`. Labels: `for consideration`, `security`, `enhancement`, `bug`.
 
 ## Repo config & feature toggles
 
 `.dev-team/config.yml`, when the user commits it in their project repo, is the **repo-scoped**
 source of run defaults (`models`, `gates`, `cap`, `cycles`, `issues`) and feature toggles
-(`update-notifier`, `branch-notifier`, `guard`, `notifications`, `telemetry`, `dry-run`) —
+(`update-notifier`, `branch-notifier`, `guard`, `notifications`, `telemetry`, `dry-run`,
+`auto-handoff`, `auto-commit`) —
 applying to every session and every collaborator, not just the current one. It is the intended
 **primary switch mechanism**; per-run arguments, plain language, and per-session env vars (e.g.
 `DEV_TEAM_NO_UPDATE_CHECK`) are overrides layered on top of it. Precedence, highest first: per-run
@@ -109,9 +110,38 @@ terminal (documented, optional — not required for the in-report notice to work
 missing/malformed config leaves the default (`on`); `features.notifications: off` skips the notice
 entirely. See `dev-team-autopilot/references/loop-runtime.md` for the exact event hooks.
 
+## Auto-handoff
+
+When `features.auto-handoff` is `on` (the default; `.dev-team/config.yml`), the `sonnet-scribe`
+documentarian regenerates `HANDOFF.md` after **every completed task/workstream** — not only at stage
+checkpoints / RECORD. `HANDOFF.md` is **assistant-agnostic**: a one-glance resume card any LLM coding
+tool (Claude, Codex, Gemini, …) can read cold, written in plain tool-neutral markdown at a stable
+**repo-root path**, and *derived* — never a source of truth (`PROJECT.md` is). It is **committed
+alongside the work it describes** (it rides in the per-task auto-commit, or the checkpoint commit when
+auto-commit is off) so it travels with the repo for the next session or teammate to resume from; these
+behaviors never auto-push it or open a PR. Precedence follows the standard chain
+(`config-and-toggles.md`): per-run argument > plain language > per-session env `DEV_TEAM_NO_AUTO_HANDOFF`
+> repo config `features.auto-handoff` > built-in default `on`. Fail-open: a missing/malformed config or
+any regeneration error simply leaves the extra per-task regenerate un-done — the checkpoint/RECORD
+regenerate still behaves as before. Purely additive and outward-effect-free: it writes one local file.
+
+## Auto-commit
+
+When `features.auto-commit` is `on` (the default; `.dev-team/config.yml`), each **completed-and-checked**
+task/workstream is committed as its own **local** commit on the run branch, its message naming the
+task/workstream. These are **additional** fine-grained rollback points **between** the "one commit per
+passing cycle/checkpoint" commits (see "Git / branch model" below) — they never replace the checkpoint
+commit, and only ever commit a unit the checker has cleared, preserving the rule *never commit a
+broken/unverified state*. Auto-commit **never pushes and never opens a PR** — pushing stays the user's
+explicit choice, exactly as for every other commit in a run. The lead performs the commit (the
+conductor under `dev-team-autopilot`); it does **not** write machine state mid-cycle —
+`autopilot.json` is still read-first / written-last at RECORD, where `last_commit` is refreshed to the
+run branch's current HEAD. Precedence: per-run argument > plain language > per-session env
+`DEV_TEAM_NO_AUTO_COMMIT` > repo config `features.auto-commit` > built-in default `on`. Fail-open.
+
 ## Git / branch model
 
-- One run = one branch; **one commit per passing cycle/checkpoint**; never merge to `main` without asking.
+- One run = one branch; **one commit per passing cycle/checkpoint**; never merge to `main` without asking. With `auto-commit` on (the default), each completed-and-checked task/workstream also lands its own additional local commit *between* checkpoint commits — see "Auto-commit" above (never replaces the checkpoint commit, never pushes, only integrated+checked units).
 - Branch names: `iterate/<date>`, `security-audit/<date>`, `review-fix/<date>`, `stripe/<date>`, `autopilot/<date>` (suffix `-2`, `-3` on collision).
 - **Under the `dev-team-autopilot` conductor, siblings do NOT create their own branch** — every mode cycle commits to the single `autopilot/<date>` run branch.
 - A dirty working tree or a non-git repo is surfaced to the user before proceeding — and it forces full re-validation of any reused Codebase Map, not just branch hygiene.
