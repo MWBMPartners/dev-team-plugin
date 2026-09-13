@@ -165,6 +165,20 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
   - **Go back to Codex after 21:30 BST.** Run a FULL review of the whole branch against `main`, not
     just the latest fixes: both forms, at high effort. A wake-up is booked for 21:37 BST (scheduled
     job `cab4a9d3`, one-off).
+  - **Fallback review round 1 is done** (workflow `wf_5f68c5e8-6ce`): 15 findings confirmed (1 high, 8 medium,
+    6 low) and 18 refuted. Full detail: `.claude/plans/ledger-file-clashes/fallback-review-1.md`. Together with
+    the lead's three remaining fixes, that makes 18 fixes.
+  - **Fix round 1 is running** (workflow `fix-round-1-ledger-clashes`):
+    - First, side by side: hook and tests (Sonnet), and the canonical rules with their dependents (Opus).
+    - Then, side by side: the move-ledgers command (Sonnet), and README/CHANGELOG (Sonnet).
+    - When it reports, rerun all checks, read the diffs, commit per builder with "not fully reviewed —
+      Codex out of credit" in each message, push, and wait for the Codex catch-up review.
+    - **Extra check after the fix round:** run `git grep -n "dev-template" -- . ':!.claude/'` and
+      expect nothing. The `.claude/` folder is left out on purpose, because this note has to name the
+      typo to describe it. The
+      lead's fix brief mistyped the folder name as "dev-template" in three places (fixes B2, B3 and
+      D8). Builders read the real files, so it is probably harmless, but the ledger-path audit would
+      not catch that name if it were copied into a document. Any hit must be corrected to "dev-team".
   - **That booking exists only inside the Claude session that made it.** If the session was closed
     or restarted before 21:37, nothing will fire. A resuming session must start the Codex catch-up
     review itself, trying Codex first before anything else.
