@@ -22,8 +22,14 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Install jq, shellcheck, bats
         run: sudo apt-get update && sudo apt-get install -y jq shellcheck bats
-      - name: Install check-jsonschema (validates schemas/*.schema.json fixtures, e.g. verdict.schema.json)
-        run: pip install check-jsonschema
+      # Ubuntu 24.04's system Python marks itself "externally managed" (PEP 668), so a plain
+      # "pip install" into it is refused rather than silently succeeding — pipx installs into its
+      # own isolated environment instead, which Ubuntu allows. pipx itself ships pre-installed on
+      # GitHub's hosted Ubuntu runners (confirmed in actions/runner-images' own Ubuntu 24.04
+      # tool list, fetched 13 September 2026, which lists "Pipx 1.16.7"), so no extra install step
+      # is needed for pipx itself, only for the tool we want it to install.
+      - name: Install check-jsonschema via pipx (Ubuntu 24.04's system pip refuses a plain "pip install")
+        run: pipx install check-jsonschema
       - name: Smoke test (plugin-structure delivery)
         run: bash tests/smoke-structure.sh
       - name: Shellcheck

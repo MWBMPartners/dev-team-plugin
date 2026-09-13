@@ -203,6 +203,27 @@ run_ledger_guard() {
   [[ "$output" == *"dev-team guard"* ]]
 }
 
+# Fault found by a later reading of the hook: the JSON marker match required exactly one space
+# after the colon, so COMPACT json (no spaces at all — what a minifier or a hand-typed value would
+# produce) was not recognised as the marker. These two prove both spacings are now caught the same
+# way, and that a compact-marker write straight into .dev-team/ is still allowed as normal.
+@test "guard-ledgers: a top-level verdict.json carrying the COMPACT JSON marker (no spaces) is denied" {
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":"verdict.json","content":"{\"dev-team\":\"ledger=verdict schema=1.0\"}"}}'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"dev-team guard"* ]]
+}
+
+@test "guard-ledgers: a top-level verdict.json carrying the SPACED JSON marker is still denied" {
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":"verdict.json","content":"{\"dev-team\" : \"ledger=verdict schema=1.0\"}"}}'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"dev-team guard"* ]]
+}
+
+@test "guard-ledgers: the same compact JSON marker is allowed at the .dev-team/ path" {
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":".dev-team/verdict.json","content":"{\"dev-team\":\"ledger=verdict schema=1.0\"}"}}'
+  [ "$status" -eq 0 ]
+}
+
 @test "guard-ledgers: a MultiEdit inside .dev-team/ is allowed" {
   run run_ledger_guard "$SCRATCH" '{"tool_name":"MultiEdit","tool_input":{"file_path":".dev-team/PROJECT.md","edits":[{"old_string":"a","new_string":"b"}]}}'
   [ "$status" -eq 0 ]
@@ -258,6 +279,23 @@ run_ledger_guard() {
 @test "guard-ledgers: GitHub's own security-policy locations are covered too" {
   mkdir -p "$SCRATCH/.dev-team/loop.lock"
   run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":".github/SECURITY.md","content":"FG-012 something"}}'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"dev-team guard"* ]]
+}
+
+# Fault found by a later reading of the hook: the ledger-name match compared capitals only. On a
+# filesystem that ignores case (macOS, by default) "security.md" and "SECURITY.md" are the very
+# same file on disk, so a write spelled in a different case must be caught exactly the same way.
+@test "guard-ledgers: a lower-case \"security.md\" is caught the same as SECURITY.md" {
+  mkdir -p "$SCRATCH/.dev-team/loop.lock"
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Edit","tool_input":{"file_path":"security.md","new_string":"F-001 fixed"}}'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"dev-team guard"* ]]
+}
+
+@test "guard-ledgers: a mixed-case \"Features.md\" is caught the same as FEATURES.md" {
+  mkdir -p "$SCRATCH/.dev-team/loop.lock"
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Edit","tool_input":{"file_path":"Features.md","new_string":"FG-003 fixed"}}'
   [ "$status" -eq 2 ]
   [[ "$output" == *"dev-team guard"* ]]
 }

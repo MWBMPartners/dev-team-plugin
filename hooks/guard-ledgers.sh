@@ -42,6 +42,19 @@
 #   would have stopped the project owner editing their own top-level HANDOFF.md or FEATURES.md
 #   forever. `guard: off` in .dev-team/config.yml turns BOTH rules off, exactly like the Bash guard.
 #
+# Two faults found by a later reading of this file, both now fixed:
+#   - The JSON half of the marker match used to require exactly one space after each colon, so
+#     compact JSON — `{"dev-team":"ledger=verdict schema=1.0"}`, with no spaces at all — was not
+#     recognised as the marker even though it is exactly the same valid content. It now accepts
+#     any amount of whitespace (including none) around each colon.
+#   - Rule 2's ledger-name match used to compare capitals only. On a filesystem that ignores case
+#     (macOS, by default) "security.md" IS "SECURITY.md" — the same file on disk — so matching
+#     capitals only let a write spelled in lower case walk past the rule while still landing on the
+#     real file the rule exists to protect. Rule 2 now compares the name with case ignored. Rule
+#     1's separate ".dev-team/" folder test (just below) is left case-sensitive on purpose: refusing
+#     a write to something that merely looks like ".DEV-TEAM/" is the safe direction to be wrong
+#     in, whereas loosening it could let a write past the folder check entirely.
+#
 # Path handling: Claude Code sends the session's working folder as the top-level `cwd` field on
 # every hook call. When `tool_input.file_path` is absolute, this script strips a leading `<cwd>/`
 # (falling back to the shell's own $PWD only if `cwd` is missing from the payload) and then a
@@ -112,7 +125,16 @@ deny() {
 
 # The dev-team marker, as it appears in either a markdown ledger's HTML comment or verdict.json's
 # JSON field — see conventions.md, "Where the plugin writes, and the ownership rule".
-marker_pattern='<!-- dev-team: ledger=|"dev-team": "ledger='
+#
+# The JSON half of this pattern used to require exactly one space after each colon (matching only
+# `"dev-team": "ledger=`), because that is the one spacing the scribe always writes. That missed
+# COMPACT json, e.g. `{"dev-team":"ledger=verdict schema=1.0"}` with no spaces at all — the same
+# valid JSON, just written without the scribe's usual formatting (a person copying the value by
+# hand, or a minifier, would produce exactly this). `[[:space:]]*` around each colon now accepts
+# zero or more spaces (or tabs) on either side, so both the spaced and compact forms are caught.
+# The markdown half is left exactly as written on purpose — the scribe only ever writes it one way
+# (`<!-- dev-team: ledger=`), so there is no compact variant to worry about there.
+marker_pattern='<!-- dev-team: ledger=|"dev-team"[[:space:]]*:[[:space:]]*"ledger='
 # A dev-team record id: FG-001, F-002, B-003, G-004, V-005, I-006, M-007.
 id_pattern='\b(FG|F|B|G|V|I|M)-[0-9]{3}\b'
 
@@ -156,8 +178,18 @@ if [ -d "$(rel .dev-team/loop.lock)" ] || [ "$guard_mode" = "on" ] || [ -n "${DE
 fi
 
 if [ "$checked" -eq 1 ] && [ "$run_active" -eq 1 ]; then
-  case "$norm_path" in
-    PROJECT.md|FEATURES.md|SECURITY.md|VERIFICATION.md|MIGRATION.md|HANDOFF.md|verdict.json|.github/SECURITY.md|docs/SECURITY.md)
+  # Compare the ledger NAME with case ignored, because a filesystem that ignores case (macOS,
+  # by default) treats "security.md" and "SECURITY.md" as the very same file on disk — write to
+  # one and you have written to the other. Matching capitals only would let a write spelled with
+  # different capitals walk straight past this rule while still landing on the real file it is
+  # meant to protect. This is a separate variable, used only here — Rule 1's ".dev-team/" folder
+  # test just above stays case-SENSITIVE on purpose: a folder name really can differ only by case
+  # on a case-sensitive filesystem (most Linux CI runners), and refusing a write that merely looks
+  # like ".DEV-TEAM/" or "Dev-Team/" is the safe direction to be wrong in, since the cost of a
+  # wrongly-refused write is just "try the real path", not a ledger going to the wrong place.
+  norm_path_lc="$(printf '%s' "$norm_path" | tr '[:upper:]' '[:lower:]')"
+  case "$norm_path_lc" in
+    project.md|features.md|security.md|verification.md|migration.md|handoff.md|verdict.json|.github/security.md|docs/security.md)
       if printf '%s' "$content" | grep -Eq "$marker_pattern|$id_pattern"; then
         deny "\"$norm_path\" is a project-level file with a dev-team ledger name, and the content being written to it looks like this plugin's own output (the dev-team marker or a record id). The suite writes only into .dev-team/. If this is the project's own file and you meant to write to it, do it yourself, or turn the guard off (guard: off in .dev-team/config.yml)."
       fi
