@@ -103,6 +103,7 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
 | 9 | Hand test: does the hook fire for a sub-agent? | Waiting |
 | 10 | Follow-up issues | Done: #42 (findings public in public repositories), #43 (`autopilot.json` schema), #44 (Bash guard's "run in progress" test). SIGNula.id's `SECURITY.md` hand-fix belongs to that repository — left for the owner. |
 | 11 | One pull request to `alpha` | Later — owner's call when |
+| 13 | **Orchestrator v2 (new request, about 21:50 on 13 Sep).** The owner wants an intelligent, provider-agnostic orchestrator: routing by capability rather than model name; phase stickiness with a 12-hour pause-and-resume rule; locked plans; cross-provider review; local learning; quota and budgets; signed remote catalogue via MWBM-intAppsAPI; a simulator and tests. **The COMPLETE brief (sections 1–101)** was placed by the owner at the repo root as `orchestrator_prompt.md` (untracked; left untouched). A committed, byte-checked copy is at `.claude/plans/orchestrator-v2/owner-brief.md`, and the earlier incomplete copy was deleted. Sections 97–101 add: an implementation procedure (inspect first, extend existing abstractions, no duplicate systems); a completion gate with simulations; 55 acceptance criteria; 24 anti-patterns; and the desired behaviour. None of them change the five decisions. **Machine facts:** only Claude Code 2.1.265 and Codex 0.153.2 are installed (no Gemini, Kimi or Grok CLIs, no provider API keys); Python 3.14, Node 26, Deno 2.9, PHP 8.5 and Swift 6.3 are available. Before recommending Python, the analysis must check whether the language's standard library can verify a signed catalogue (Python's cannot do Ed25519 without a package; Node's built-in crypto can). **Deep analysis started** (workflow `orchestrator-v2-deep-analysis`: a Fable analyst, then an independent Fable checker, read-only). Five decisions put to the owner: what to build it as (recommended: phased, documents and schemas then a Python 3 engine); remote catalogue plugin side only (recommended yes); learning data local only; defaults as a preset; version 2.0.0 on the same branch. The owner allowed bundling it with #45 and R1–R4. | Next: after the brief is saved, a deep analysis by sequential Fable agents (read-only). Planning waits for the decisions and the rest of the brief. |
 | 12 | **New request (13 Sep):** list the owner's standard working-practice features, taken from the instruction block they pasted this session and their personal instructions, and show which the plugin already has. The owner then picks the missing ones to build. | **Mapped and shown to the owner — waiting for their choice.** Tracked in issue [#45](https://github.com/MWBMPartners/dev-team-plugin/issues/45); map committed in ef009c0. Two Fable agents in turn (map, then an independent check; no status changed). 36 features: 8 already in the plugin, 22 partly, 5 missing, 1 opposite (F13, push after each task, against "never auto-push"). Full detail with evidence: `.claude/plans/owner-standard-features/feature-map.md`. Choices put to the owner: F13 as a setting (off or on by default); F10 Codex replacing, or in addition to, the Claude checker; F5 "one after another" for analysis and planning only, keeping debates side by side; F7/F8 cheaper building as the built-in default or a per-project setting. Nothing is built until the owner picks IDs. |
 
 ## Baseline before any build change (13 September, commit 9830e8e, run in a separate copy of the branch)
@@ -179,6 +180,35 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
       lead's fix brief mistyped the folder name as "dev-template" in three places (fixes B2, B3 and
       D8). Builders read the real files, so it is probably harmless, but the ledger-path audit would
       not catch that name if it were copied into a document. Any hit must be corrected to "dev-team".
+  - **Fix round 1 result (workflow `wf_f1d2f362-737`):**
+    - Finished: the hook + tests builder (56 tests), the canonical-rules builder (Opus) and the
+      move-ledgers builder.
+    - **The README/CHANGELOG builder FAILED on a Claude usage limit** ("session limit · resets 9:20pm").
+      Claude hand-over event: rerun that builder after the reset (fixes D1–D8 in the workflow script),
+      then commit.
+    - **Update, 21:45:** usage credits are replenished and the owner asked to carry on.
+      - **Committed and pushed:** 0a2f286 (hook + tests), e062725 (canonical rules + dependents),
+        202bd2d (move-ledgers). Checks rerun by the lead: audit-ledger-paths OK, audit-model-ids OK,
+        smoke OK, shellcheck clean, bats 56 of 56, no "dev-template" outside `.claude/`, and both
+        refusal-prompt copies identical.
+      - **README/CHANGELOG:** the failed builder had left sound partial edits (D1, D3–D7 mostly
+        done). A fresh Sonnet builder is finishing D1–D8 in README.md, CHANGELOG.md and
+        CONTRIBUTING.md.
+      - **Codex:** a tiny test request returned OK, so Codex is available again. Its FULL catch-up
+        review of the whole branch starts once the README/CHANGELOG fix is committed.
+  - **The 21:37 Codex reminder fired.** The plan is to verify and commit the fix round, rerun the README
+    builder, commit, and only then run Codex's full catch-up review. That way Codex's credit is spent on
+    the finished branch, not on README errors already known. Codex availability was probed with a tiny
+    request first.
+  - **New owner request (about 21:40, 13 September):** a second standard prompt with ON/OFF defaults.
+    - Its labels settle F13 (push after each task: ON) and F10 (Codex review loop: ON).
+    - New features to map: R1 repo re-alignment (OFF), R2 issues and project-state sweep (ON), R3
+      suggest new work (OFF unless a parameter is given), R4 evidence sources, no assumptions.
+    - A read-only mapping is running (`owner-features-round-2`, sequential Fable map then verify).
+    - **Question put to the owner:** should these defaults become the plugin's built-in defaults, or a
+      named preset such as `profile: standard` in `.dev-team/config.yml`? The lead recommends the preset.
+    - The lead decided, subject to the owner's objection: Codex review runs in addition to the Claude
+      checker; analysis and planning run one agent after another; debates stay side by side.
   - **That booking exists only inside the Claude session that made it.** If the session was closed
     or restarted before 21:37, nothing will fire. A resuming session must start the Codex catch-up
     review itself, trying Codex first before anything else.
