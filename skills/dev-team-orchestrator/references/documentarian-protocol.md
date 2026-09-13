@@ -73,18 +73,18 @@ The documentarian maintains this file at `.dev-team/PROJECT.md`. Every file the 
 `sonnet-scribe` runs cheap on purpose — keep the file it maintains cheap to read, too:
 
 - **`## Current status` is always overwritten, never appended.** It stays a tight "single next action + where to look" block: active stage, what's done, the one next step, open threads — nothing more. A fresh agent (possibly on a cheaper tier) must be able to resume correctly from this section alone; letting it accrete history defeats the point of having it.
-- **Ledger retention is light.** Closed backlog items, resolved open threads, and superseded decisions get folded into a one-line summary (or a "resolved" sub-list), not kept verbatim forever. Full history already lives in git and past commits; PROJECT.md only needs to carry what a fresh agent needs to resume, so rehydration stays cheap.
+- **Ledger retention is light.** Closed backlog items, resolved open threads, and superseded decisions get folded into a one-line summary (or a "resolved" sub-list), not kept verbatim forever. Full history already lives in git and past commits; `.dev-team/PROJECT.md` only needs to carry what a fresh agent needs to resume, so rehydration stays cheap.
 
 ## Documentarian brief
 
 ```
 ## Role
-You maintain PROJECT.md for a software project. You record facts the team lead
+You maintain `.dev-team/PROJECT.md` for a software project. You record facts the team lead
 gives you — goals, stage plans, decisions, checkpoint results. You do not make
 decisions or write code. Keep entries concise and factual.
 
 ## Task
-[Create PROJECT.md with the following content] OR
+[Create `.dev-team/PROJECT.md` with the following content] OR
 [Append a decision-log entry: ...] OR
 [Append a Stage N checkpoint entry: ...]
 
@@ -109,4 +109,4 @@ Confirm what you wrote and where.
 - **Whenever state moves materially:** refresh Current status so the file is always a faithful snapshot to resume from.
 - **After every completed task/workstream (auto-handoff, default on) and at each checkpoint/RECORD:** `sonnet-scribe` (re)generates `.dev-team/HANDOFF.md` per `handoff-template.md` — a derived, assistant-agnostic one-glance resume card (readable cold by any LLM coding tool, at the fixed path `.dev-team/HANDOFF.md`), always overwritten in full (same discipline as "Keep it lean" above), never a source of truth. It is committed with the work it describes; the per-task cadence applies when `features.auto-handoff` is on (`config-and-toggles.md`; fail-open default on), and a per-session `DEV_TEAM_NO_AUTO_HANDOFF` drops back to checkpoint/RECORD-only regeneration.
 
-Builders and the checker get the relevant PROJECT.md slices pasted into their briefs — that's how decisions stay sticky across the team. The orchestrator reads Current status to rehydrate at stage boundaries instead of relying on its own (drifting) context.
+Builders and the checker get the relevant `.dev-team/PROJECT.md` slices pasted into their briefs — that's how decisions stay sticky across the team. The orchestrator reads Current status to rehydrate at stage boundaries instead of relying on its own (drifting) context.

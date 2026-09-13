@@ -119,7 +119,7 @@ The documentarian writes into `.dev-team/SECURITY.md`:
 - **Threat model** — assets, entry points, trust boundaries, adversaries, crown jewels.
 - **Attack-surface map** — the checklist with applies / N/A (reason) / investigate, and the files per class.
 - **Coverage ledger** — one row per checklist class: `tested? | how (which tool + manual red lens) | result | gaps`. This is the artifact the completeness critic checks against at the end and the proof behind any "every surface" claim. Tooling-sweep hits and the multi-role fixture status are recorded here too.
-- **Findings register** (starts empty; filled by red-team) — see `red-team-protocol.md` for the row schema (incl. CWE + CVSS vector).
+- **Findings** (starts empty; filled by red-team) — see `red-team-protocol.md` for the row schema (incl. CWE + CVSS vector).
 - **Sandbox & test setup** — how to run the app locally, how tests run, and the multi-role fixtures available.
 
 ### Coverage ledger row
@@ -150,7 +150,7 @@ heading per section this protocol fills in:
 
 ## Coverage ledger
 
-## Findings register
+## Findings
 
 ## Sandbox & test setup
 ```

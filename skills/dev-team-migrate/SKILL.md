@@ -84,7 +84,7 @@ Same shape as the orchestrator, specialized for migration work:
   Opus/frontier tier — never routed cheaper (model-routing.md, invariant 1).
 - **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Owns `.dev-team/MIGRATION.md` — this skill's
   own external memory, following the same schema-versioning and "Current status stays overwritten"
-  discipline as `PROJECT.md`/`SECURITY.md` (`dev-team-orchestrator/references/documentarian-protocol.md`,
+  discipline as `.dev-team/PROJECT.md`/`.dev-team/SECURITY.md` (`dev-team-orchestrator/references/documentarian-protocol.md`,
   `references/conventions.md`'s "Schema versioning"): the **Migration Plan**, the **Stage Ledger**,
   and the **compatibility-shims-in-play** table. See `references/migration-plan-protocol.md` for the
   full schema.
@@ -96,7 +96,7 @@ Same shape as the orchestrator, specialized for migration work:
   Assesses the surface, chooses a strategy, defines the staged plan, and **stops for approval** —
   no code moves.
 - **`execute`** — a Migration Plan already exists and is **approved** (from this session's `plan`
-  step, or a prior run's `MIGRATION.md` that the Cold-resume check validates as still current — see
+  step, or a prior run's `.dev-team/MIGRATION.md` that the Cold-resume check validates as still current — see
   below). Runs the characterization-net gate, then the staged cutover, stage by stage.
 - **Infer** when not given explicitly: no valid, approved `.dev-team/MIGRATION.md` in the repo → `plan`. A
   valid approved plan exists and the user says "go ahead" / "execute it" / "start migrating" →
@@ -126,7 +126,7 @@ Follow `references/migration-plan-protocol.md` end to end:
 5. **Size the risk** — overall and per stage; anything High-risk gets extra scrutiny (a smaller
    slice, a parallel-run sub-strategy, or an explicit rollback rehearsal) before it's allowed to run.
 6. The documentarian writes the **Migration Plan** and the initial **Stage Ledger** into
-   `MIGRATION.md`.
+   `.dev-team/MIGRATION.md`.
 7. **Stop.** Present the plan — strategy + reasoning, the staged breakdown, the risk sizing, and (if
    `strategy=big-bang`) the specific called-out risk — to the user and wait for explicit approval.
    **This is a hard gate, not a toggle** — distinct from `dry-run` (which, inside an *already
@@ -160,7 +160,7 @@ Follow `references/characterization-and-cutover-protocol.md` end to end:
 ## Definition of done
 
 - [ ] An **approved** Migration Plan is on record (strategy + reasoning, staged breakdown, risk
-      sizing) in `MIGRATION.md`.
+      sizing) in `.dev-team/MIGRATION.md`.
 - [ ] A characterization-test net exists and demonstrably pins the pre-migration behavior (or the
       conservative/parallel-run fallback is explicitly documented and in effect).
 - [ ] The codebase is **fully** on the `to=` target — no half-migrated state anywhere.
@@ -231,8 +231,8 @@ Optional run arguments (defaults in brackets):
 - Checker triage (`checker-protocol.md`) — runs on `opus-builder`; verification stays on the
   Opus/frontier tier, never routed cheaper (model-routing.md, invariant 1).
 - Documentarian discipline (`documentarian-protocol.md`) — schema versioning, "Current status" kept
-  overwritten not appended, light ledger retention — applied here to `MIGRATION.md` instead of
-  `PROJECT.md`.
+  overwritten not appended, light ledger retention — applied here to `.dev-team/MIGRATION.md` instead of
+  `.dev-team/PROJECT.md`.
 - Failed/stuck agents: diagnose, re-brief, two strikes then re-scope.
 - Debate mode (`debate-protocol.md`) for the strategy choice, dependency-order conflicts, or a
   contested data-model transformation.
@@ -254,7 +254,7 @@ Reused from `dev-team-orchestrator/references/`: `task-brief-template.md`, `chec
 
 The suite's **shared contracts** — artifact ownership & schemas, ID prefixes, the branch model, the
 flattening rule, gates, and safety — live in
-`dev-team-orchestrator/references/conventions.md`; read it once. (`MIGRATION.md` follows that file's
+`dev-team-orchestrator/references/conventions.md`; read it once. (`.dev-team/MIGRATION.md` follows that file's
 schema-versioning and Cold-resume discipline as this skill's own owned artifact.)
 
 ## Anti-patterns (in addition to the orchestrator's)

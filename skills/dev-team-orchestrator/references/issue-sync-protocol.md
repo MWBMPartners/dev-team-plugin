@@ -12,7 +12,7 @@ featurefind, review, autopilot, migrate), or run `/dev-team-sync-issues` manuall
 unless the switch is `sync`/`auto` or the command is invoked. `sync` exports at the normal sync points;
 `auto` behaves like `sync` but on a **per-task cadence** — it continuously reflects work in the tracker
 as each item completes/closes, instead of only at those sync points. Both are still confirm-first on the
-FIRST sync per repo (see Confirm-first) and still dedup-safe. `SECURITY.md` findings are the one
+FIRST sync per repo (see Confirm-first) and still dedup-safe. `.dev-team/SECURITY.md` findings are the one
 exception: `issues=sync`/`auto` alone does NOT sync them — that needs the separate `issues=sync-security`
 opt-in (see Safety rule 5).
 
@@ -94,10 +94,10 @@ the `for consideration` convention (color `D4C5F9`) for propose-only items, plus
    hand-assembled command string. This mirrors ci-medic's
    untrusted-names rule (`dev-team-ci-medic/SKILL.md`) applied to ledger text instead of
    branch/ref names.
-5. **Security findings are redacted and opt-in only.** Syncing `SECURITY.md` findings (`F-`
+5. **Security findings are redacted and opt-in only.** Syncing `.dev-team/SECURITY.md` findings (`F-`
    prefix, `security` label) is NOT part of the default `issues=sync` switch — it requires a
    separate, explicit opt-in (e.g. `issues=sync-security`) because a GitHub/GitLab issue is far more
-   visible than the local `SECURITY.md` file. When opted in, the synced issue body carries ONLY
+   visible than the local `.dev-team/SECURITY.md` file. When opted in, the synced issue body carries ONLY
    the finding's title, severity, and CWE/location — NEVER the `evidence`/PoC/repro field. This
    holds even on update passes: re-syncing a security item never adds evidence/PoC text to the
    issue body or a comment. Aligns with dev-team-security's "findings stay private" posture.

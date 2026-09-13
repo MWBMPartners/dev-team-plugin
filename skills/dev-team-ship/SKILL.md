@@ -116,7 +116,7 @@ config with byte-for-byte required-check names), and `references/release-protoco
    orphan, the gitleaks CLI genuinely ran (paste output), and any push-based chain was
    bridged and tested.
 7. **Document**: the `sonnet-scribe` documentarian records what pipeline now exists in
-   `PROJECT.md`.
+   `.dev-team/PROJECT.md`.
 8. **Hand back secrets**: any secret the pipeline needs (a PAT for the anti-recursion
    bridge, a `GITLEAKS_LICENSE` only if the user explicitly wants the paid action's
    PR-comment feature) is handed to the user as exact web-UI steps (rule 4) — never set
@@ -145,7 +145,7 @@ Follow `references/branch-protection-protocol.md`'s cross-check and
    gitleaks CLI actually scans, no broken merge→deploy (or release→publish) chain, and the
    release flow still works.
 5. **Document & report**: the `sonnet-scribe` documentarian records the audit result and
-   any fix in `PROJECT.md`; report what was fixed vs proposed vs already clean.
+   any fix in `.dev-team/PROJECT.md`; report what was fixed vs proposed vs already clean.
 
 ## Definition of done
 
@@ -195,7 +195,7 @@ Optional run arguments (defaults in brackets):
 - Checker triage (`checker-protocol.md`) — runs on `opus-builder`; verification stays on
   the Opus/frontier tier, never routed cheaper (model-routing.md invariant 1).
 - Documentarian (`documentarian-protocol.md`) — the `sonnet-scribe` agent records what
-  shipped in `PROJECT.md`; ship introduces no new ledger.
+  shipped in `.dev-team/PROJECT.md`; ship introduces no new ledger.
 - Failed/stuck agents: diagnose, re-brief, two strikes then re-scope.
 - Debate mode (`debate-protocol.md`) for a contested infra decision (rulesets vs classic
   protection, automated vs manual release).

@@ -26,7 +26,7 @@ This is the **verification variant** of `dev-team-orchestrator`. It **reuses tha
 - **Verifier agents** — the `opus-builder` agent (Opus tier), adversarial and independent. Take a group of claims and **try to prove each false**; a claim survives only with fresh evidence. They also flag **inefficiencies** noticed in passing (works, but slow / wasteful / redundant) as *improvement findings*, not just claim failures. Follow `references/claim-extraction-and-verification-protocol.md`. Read-only. The whole point of this skill is independent verification, so it stays on the Opus/frontier tier — never routed cheaper (model routing: `skills/dev-team-orchestrator/references/model-routing.md`, invariant 1).
 - **Runner** — a verifier (or dedicated agent) that actually launches the app and exercises flows using the user's `verify` / `run` skills (route them in the brief). Behavior verification, not just "tests pass."
 - **Completeness critic** — the `opus-builder` agent (Opus tier), end of pass. Confirms every claim in `.dev-team/PROJECT.md` was checked and flags any claim that had no evidence to begin with.
-- **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Writes the standalone **`.dev-team/VERIFICATION.md`** report (kept independent of the `.dev-team/PROJECT.md` whose claims are under review) and notes the verdict in PROJECT.md's status.
+- **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Writes the standalone **`.dev-team/VERIFICATION.md`** report (kept independent of the `.dev-team/PROJECT.md` whose claims are under review) and notes the verdict in `.dev-team/PROJECT.md`'s status.
 - **Remediation cycle** — by default, after the report, every gap and inefficiency is fixed by **activating the matching sibling skill** (`dev-team-iterate` for bugs/inefficiency/refactor, `dev-team-security` for security findings, `dev-team-orchestrator` for larger rework), on a branch, then **re-verified**. Same builder/checker discipline as the orchestrator.
 
 ## The operating loop
@@ -39,7 +39,7 @@ READ .dev-team/PROJECT.md (+ .dev-team/SECURITY.md) → EXTRACT CLAIMS + load pr
         · flaky re-runs · AND flag INEFFICIENCIES noticed in passing (not just claim failures)
    → INTEGRATION CHECK (clean-room: build + run from a fresh checkout; do the primary task end-to-end)
    → COMPLETENESS CRITIC (every claim covered? evidence-less claims? regressions vs the last report?)
-   → REPORT to VERIFICATION.md (+ machine-readable .dev-team/verdict.json): verdicts + overall + prioritized gaps
+   → REPORT to .dev-team/VERIFICATION.md (+ machine-readable .dev-team/verdict.json): verdicts + overall + prioritized gaps
    → FIX PHASE (default): activate dev-team cycles to correct EVERYTHING found — bugs AND
         inefficiencies (improve even what isn't broken) — on a branch → RE-VERIFY → update report
 ```
@@ -150,4 +150,4 @@ The suite's **shared contracts** — artifact ownership & schemas, ID prefixes, 
 - **Quoting old evidence.** Evidence must be generated in this pass; a pasted log from the build run doesn't count. Re-run the builder's exact pasted commands — stale or forged output is FAILED/DRIFTED, not a pass.
 - **Warm-tree-only checks.** Verify from a clean checkout; "works in my working tree" hides missing-from-manifest deps and uncommitted files.
 - **Fixing without re-verifying.** The fix phase corrects findings by default, but a finding is resolved only when a fresh verification pass turns it VERIFIED — never on the builder's say-so. Fixes go on a branch, not `main`.
-- **Editing the `.dev-team/PROJECT.md` you're reviewing.** Keep the verification artifact (`.dev-team/VERIFICATION.md`) independent; only the documentarian updates PROJECT.md's status line.
+- **Editing the `.dev-team/PROJECT.md` you're reviewing.** Keep the verification artifact (`.dev-team/VERIFICATION.md`) independent; only the documentarian updates `.dev-team/PROJECT.md`'s status line.

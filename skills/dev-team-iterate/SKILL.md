@@ -42,7 +42,7 @@ You are always in an existing repo. Follow `references/audit-and-backlog-protoco
 1. **Scouts (read-only)** map the repo: stack, entry points, run/build/test commands, conventions, dependency manifest, **test coverage**, and what the app actually *does* — full on a first run, only the drifted areas on a resume. They write/update the **Codebase Map**.
 2. Synthesize an **inferred purpose** — 1–2 sentences: what this app is, who it's for, what the core user task is. (On resume, reuse the stored purpose unless drift changed it.)
 3. **Audit agents** produce a **scored backlog**: each item has `{area, type, description, impact, effort, risk, evidence}`, scored *conservatively*. Audit dimensions include correctness/bugs, UX (per the rubric), feature gaps, code redundancy, **IA/UX redundancy** (overlapping tabs/views/controls), efficiency/perf, tests, docs, and **security & dependency hygiene**. The backlog is **re-derived each run** (the code changed since last time) but cheaply — seeded by the Codebase Map rather than a cold read.
-4. The documentarian writes/updates the Codebase Map, run record, inferred purpose, backlog, and trajectory baseline in `PROJECT.md`.
+4. The documentarian writes/updates the Codebase Map, run record, inferred purpose, backlog, and trajectory baseline in `.dev-team/PROJECT.md`.
 
 ### The Approval Gate (autonomy for improvement work)
 
@@ -77,7 +77,7 @@ This is the **UX-first** policy: simplification and small UX wins are prioritize
 
 - **Build autonomously (non-feature work):** refactors, dedup, perf, bug fixes, and **UX polish/robustness** — validation, empty/loading/error states, a11y fixes, consolidating redundant surfaces. These don't change *what the app can do*, so they ship under the invariants without a feature gate.
 - **Every net-new feature goes through the Feature Spec Gate (below) before implementation — regardless of size.** A "feature" = net-new user-facing capability or behavior. The skill never builds a feature the user hasn't approved, both *that* it's included and *exactly how it works*. (The robustness/polish items above are not features.)
-- Candidate features live in the **Proposed-Features ledger** in `PROJECT.md` with rationale + purpose-fit. Major dependency upgrades are also propose-only (they break things); patch-level security bumps may be built.
+- Candidate features live in the **Proposed-Features ledger** in `.dev-team/PROJECT.md` with rationale + purpose-fit. Major dependency upgrades are also propose-only (they break things); patch-level security bumps may be built.
 - `propose-threshold` tunes only the non-feature/UX build-vs-propose boundary; it does **not** let any feature skip the spec gate.
 
 ### The Feature Spec Gate (features only)
@@ -128,7 +128,7 @@ The loop ends — and stopping is a **success state, not a failure** — when:
 - the **cycle cap** is reached (default ~5), **OR**
 - the token/effort budget is exhausted.
 
-Then **report and hand back**: what changed across cycles, the trajectory ledger (metrics before → after), the remaining low-impact backlog, and the **Proposed-Features ledger** for the user to pick the next round from. A later `dev-team-iterate` run reads `PROJECT.md`, **reuses the Codebase Map** (delta-updating only what drifted via the Step-0 freshness check), and resumes from the persisted backlog and ledger — skipping the full re-scout.
+Then **report and hand back**: what changed across cycles, the trajectory ledger (metrics before → after), the remaining low-impact backlog, and the **Proposed-Features ledger** for the user to pick the next round from. A later `dev-team-iterate` run reads `.dev-team/PROJECT.md`, **reuses the Codebase Map** (delta-updating only what drifted via the Step-0 freshness check), and resumes from the persisted backlog and ledger — skipping the full re-scout.
 
 **Restraint is the rule.** The audit scores impact conservatively and is forbidden from manufacturing work to justify the loop. "Nothing high-impact left — here's what I'd leave alone" is the correct, expected outcome. Do not gold-plate, do not add features the purpose doesn't call for, do not churn for the metric.
 
@@ -189,7 +189,7 @@ Read the orchestrator skill for the detail on each:
 - **Checker triage** — `references/checker-protocol.md`; you read only NEEDS-LEAD-REVIEW.
 - **Failed/stuck agents** — diagnose, re-brief with specifics, two strikes then re-scope.
 - **Debate mode** — `references/debate-protocol.md` for consequential, contested decisions (e.g. a big architectural refactor strategy surfaced by the audit).
-- **Documentarian** — `references/documentarian-protocol.md`; the `sonnet-scribe` agent (Sonnet tier) owns `PROJECT.md`.
+- **Documentarian** — `references/documentarian-protocol.md`; the `sonnet-scribe` agent (Sonnet tier) owns `.dev-team/PROJECT.md`.
 - **Composing other skills** — route the user's UI/testing/style skills to the relevant agents and have the checker verify conformance.
 
 ## References (new — read at the matching step)

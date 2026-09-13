@@ -17,7 +17,7 @@ You spawn three kinds of agents with the Task tool:
 
 - **Builders / scouts** — the `opus-builder` agent (Opus tier). They implement and investigate.
 - **Checker** — the `opus-builder` agent (Opus tier). Reviews the team's code against acceptance criteria and conventions, and **triages**: it tells you what's clean, what it fixed/flagged, and — critically — the short list of *contentious or challenging* spots that need your judgment. You do not read every diff; you read what the checker escalates. Verification stays on the Opus/frontier tier — never routed cheaper (model-routing.md, invariant 1).
-- **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Owns `.dev-team/PROJECT.md`, which is your **external memory**, not just a log: it holds the goal, the plan, every decision, and — kept current — where the project stands right now (current stage, what's done, what's next, open threads). This role runs on the Sonnet tier deliberately to save tokens; recording state doesn't need a frontier model. Because your own context fills up over a long project, treat PROJECT.md as the source of truth: a fresh orchestrator should be able to read it cold and know exactly where to resume. Keep it current, and rehydrate from it at stage boundaries rather than trusting memory. Every file the dev-team suite writes for itself lives in `.dev-team/` and carries the dev-team marker on line 2; a file at that path without the marker is never written to — the run stops and asks. See `dev-team-orchestrator/references/conventions.md`, "Where the plugin writes, and the ownership rule".
+- **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Owns `.dev-team/PROJECT.md`, which is your **external memory**, not just a log: it holds the goal, the plan, every decision, and — kept current — where the project stands right now (current stage, what's done, what's next, open threads). This role runs on the Sonnet tier deliberately to save tokens; recording state doesn't need a frontier model. Because your own context fills up over a long project, treat `.dev-team/PROJECT.md` as the source of truth: a fresh orchestrator should be able to read it cold and know exactly where to resume. Keep it current, and rehydrate from it at stage boundaries rather than trusting memory. Every file the dev-team suite writes for itself lives in `.dev-team/` and carries the dev-team marker on line 2; a file at that path without the marker is never written to — the run stops and asks. See `dev-team-orchestrator/references/conventions.md`, "Where the plugin writes, and the ownership rule".
 
 ## The operating loop
 
@@ -46,7 +46,7 @@ Judge the size of the task honestly, then break the path to the final product in
 
 - Small task → 1–2 stages. Large project → several, sequenced by dependency.
 - Each stage states its own goal and its own done-criteria (a subset of the project's).
-- The documentarian records the stage plan in `PROJECT.md` so progress is trackable.
+- The documentarian records the stage plan in `.dev-team/PROJECT.md` so progress is trackable.
 
 You run the inner loop (plan → delegate → check → checkpoint) **once per stage**, and only move to the next stage when the current one's checkpoint passes.
 
@@ -74,7 +74,7 @@ Within the current stage, break the work into **workstreams** — units one agen
 | Big architectural unknowns | Debate first (see Decision Protocol), then build |
 | Existing/unfamiliar codebase | Scout agent(s) first — see below — then builders |
 
-**Working in an existing repo? Scout the conventions before building.** Greenfield projects you can just start. But in an existing codebase, agents will reinvent or clash with house style unless someone establishes it first. Send a scout (it modifies nothing) to report, as a first-class output: the test framework and how tests are run, the lint/format config, the directory layout, the dependency manifest, and the existing patterns for the kind of thing you're about to build. Capture that in `PROJECT.md` and paste the relevant slice into every builder brief — alongside any user skills (see "Composing other skills"). The repo's own conventions and the user's skills together define "house style"; both go into briefs.
+**Working in an existing repo? Scout the conventions before building.** Greenfield projects you can just start. But in an existing codebase, agents will reinvent or clash with house style unless someone establishes it first. Send a scout (it modifies nothing) to report, as a first-class output: the test framework and how tests are run, the lint/format config, the directory layout, the dependency manifest, and the existing patterns for the kind of thing you're about to build. Capture that in `.dev-team/PROJECT.md` and paste the relevant slice into every builder brief — alongside any user skills (see "Composing other skills"). The repo's own conventions and the user's skills together define "house style"; both go into briefs.
 
 Rules of thumb:
 - Parallelize only work that **doesn't touch the same files**. Two agents editing one file = merge pain you will own.
@@ -122,12 +122,12 @@ A failed return is information, usually about the brief. Don't just re-run the s
 
 When a stage's waves are integrated and checked, run the **checkpoint**: re-read the stage's done-criteria, run the full check suite, and ask the real question — *is progress matching the plan?* Then:
 
-- **On track** → documentarian records the stage outcome; **commit the work** (a single commit at the passing checkpoint, message naming the stage). This gives a known-good rollback point and writes the plan-vs-actual trail into git as well as `PROJECT.md`. The per-task **auto-commit** commits (above) are ADDITIONAL points BETWEEN these checkpoint commits — they never replace the checkpoint commit. Branch FROM and target the default branch (`main`) for the run — never stack it on another feature branch — unless `.dev-team/config.yml` sets `git.stack-prs: true` (see conventions.md's "PR base / no-stack policy"). Then advance to the next stage.
+- **On track** → documentarian records the stage outcome; **commit the work** (a single commit at the passing checkpoint, message naming the stage). This gives a known-good rollback point and writes the plan-vs-actual trail into git as well as `.dev-team/PROJECT.md`. The per-task **auto-commit** commits (above) are ADDITIONAL points BETWEEN these checkpoint commits — they never replace the checkpoint commit. Branch FROM and target the default branch (`main`) for the run — never stack it on another feature branch — unless `.dev-team/config.yml` sets `git.stack-prs: true` (see conventions.md's "PR base / no-stack policy"). Then advance to the next stage.
 - **Drifting** (scope grew, an assumption broke, a criterion can't be met as planned) → revise the stage plan, and if it materially changes the project, take it to the user per your check-in policy. Don't commit a drifting/half-broken state as a checkpoint; fix or re-scope first, then commit.
 
 If a later wave goes wrong, the last checkpoint commit is your clean restore point — return to it rather than trying to hand-untangle a bad merge.
 
-The documentarian logs every checkpoint result in `PROJECT.md` so the plan-vs-actual trail is always visible.
+The documentarian logs every checkpoint result in `.dev-team/PROJECT.md` so the plan-vs-actual trail is always visible.
 
 ### 8. Decision Protocol (debate mode)
 
@@ -136,14 +136,14 @@ For consequential decisions with several plausible options — architecture, fra
 1. Identify 2–4 genuinely distinct options.
 2. Spawn one `deep-architect` agent (Reasoning tier) **per option**, in parallel. Each agent's job is to be that option's strongest honest advocate, using the format in `references/debate-protocol.md` (read it before your first debate).
 3. Judge the cases against the project's actual criteria (definition of done, constraints, team/runtime realities) — not against which advocate wrote most persuasively.
-4. Have the documentarian record the decision and reason in `PROJECT.md`. Future agents get this context in their briefs so the decision sticks.
+4. Have the documentarian record the decision and reason in `.dev-team/PROJECT.md`. Future agents get this context in their briefs so the decision sticks.
 5. If your check-in policy says so, or the debate is a near-tie on something expensive to reverse, present the options and your recommendation to the user instead of deciding alone.
 
 Use debates sparingly — they cost a wave of agents. Reversible or low-stakes choices you just make yourself, like any lead would.
 
 ### 9. Verify and report
 
-The project loop only ends when every project-level done-criterion is demonstrably met — by running it, not by asserting it. At milestones and at the end, report to the user as a lead would: what was built, key decisions (and why), what was verified and how, and anything deferred. Keep it short; point to `PROJECT.md` for the full decision and stage log. At the very end of a run, also emit a short run summary — agents spawned by tier, commits made, and a rough cost estimate, per `references/run-report.md` — honoring the repo's `.dev-team/config.yml` `features.telemetry` toggle (skip only on an explicit `off`; fail-open otherwise).
+The project loop only ends when every project-level done-criterion is demonstrably met — by running it, not by asserting it. At milestones and at the end, report to the user as a lead would: what was built, key decisions (and why), what was verified and how, and anything deferred. Keep it short; point to `.dev-team/PROJECT.md` for the full decision and stage log. At the very end of a run, also emit a short run summary — agents spawned by tier, commits made, and a rough cost estimate, per `references/run-report.md` — honoring the repo's `.dev-team/config.yml` `features.telemetry` toggle (skip only on an explicit `off`; fail-open otherwise).
 
 ## Composing other skills
 
@@ -155,7 +155,7 @@ Skills are just files on disk (a `SKILL.md` plus resources), and your agents hav
 2. **Match skill to workstream.** Give the UI skill to the agent building the UI, not the backend agent. Don't dump every skill on every agent — that's noise.
 3. **Route it in the brief.** In the relevant builder's brief, name the skill and its path and instruct: *"Read the skill at `<path>/SKILL.md` and follow its conventions for this task."* If you know the skill is short and critical, you can also paste its key constraints directly so they can't be missed.
 4. **Tell the checker.** When a skill governs a workstream, the checker's brief should say so — "verify the UI conforms to the conventions in `<ui-skill>/SKILL.md`" — so conformance is actually checked, not assumed.
-5. **Record it.** The documentarian notes which skills are in play in `PROJECT.md` so the routing survives across stages and a fresh orchestrator inherits it.
+5. **Record it.** The documentarian notes which skills are in play in `.dev-team/PROJECT.md` so the routing survives across stages and a fresh orchestrator inherits it.
 
 Finding a skill's path: skills live in `~/.claude/skills/` (user) or `.claude/skills/` (project). The `available_skills` entries identify them; point agents at the `SKILL.md` inside.
 
@@ -177,7 +177,7 @@ Optional run arguments (defaults in brackets):
 - **Re-running a failed brief unchanged.** A failure means diagnose and re-brief with clearer guidance; after two strikes, re-scope or escalate rather than looping.
 - **Letting parallel agents drift across an interface.** Fix the contract first, paste it into both briefs.
 - **Burning Opus on bookkeeping.** Decision/stage logging goes to the `sonnet-scribe` documentarian, not a frontier-model agent and not you.
-- **Trusting memory over PROJECT.md.** On a long project your context drifts; PROJECT.md is the source of truth. Rehydrate from it, don't reconstruct from memory.
+- **Trusting memory over `.dev-team/PROJECT.md`.** On a long project your context drifts; `.dev-team/PROJECT.md` is the source of truth. Rehydrate from it, don't reconstruct from memory.
 - **Ignoring the user's other skills.** If a UI/testing/style skill exists, route it to the relevant agent and check conformance — don't let agents invent a style the user already specified.
 - **Building on an existing repo blind.** Scout the conventions (test framework, lint config, layout, patterns) before delegating, and feed them into briefs.
 - **Parallel agents editing the dependency manifest.** You own dependency decisions; agents flag needs, they don't independently install.
