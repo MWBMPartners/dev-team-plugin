@@ -95,8 +95,8 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
 | 2 | Device-wide rules | Already present in `~/.claude/CLAUDE.md` |
 | 3 | Deep analysis (Fable) | Done |
 | 4 | Deep plan (Fable) + lead review | Done |
-| 5 | Build stage 1: WP1 rules text (Opus) alongside WP2 hook + WP9 schema (Sonnet) | Running — workflow `wf_e347b9fb-ffd` |
-| 6 | Build stage 2: WP4–WP6 document edits (Sonnet); WP7 commands (Opus) | Waiting on WP1 |
+| 5 | Build stage 1: WP1 rules text (Opus) alongside WP2 hook + WP9 schema (Sonnet) | **Done.** Checks rerun by the lead: all pass, bats 39 of 39. Committed separately: 2f1cdf0 (WP1), 1abe635 (WP2 + WP9). The lead's read-through found three small hook faults, now being fixed in stage 2: compact JSON marker not caught, file names matched in capitals only, CI `pip install` may be refused on Ubuntu 24.04 (switching to `pipx`). |
+| 6 | Build stage 2: WP4 orchestrator files, WP5a and WP5b skill references, WP6 agents and SKILL.md (all Sonnet); WP7 commands and `/dev-team-move-ledgers` (Opus); the hook fixes (Sonnet) | **Running**, all six side by side on separate files. Each builder checks its own files with a temporary script in the session scratchpad (`check-ledger-mentions.sh`, an approximation of the future WP3 audit). |
 | 7 | Build stage 3: WP8 README, CHANGELOG, version (Sonnet), then WP3 self-check script (Sonnet) | Waiting on stage 2 |
 | 8 | Run all checks; Codex review, fix, re-review until clean | Waiting |
 | 9 | Hand test: does the hook fire for a sub-agent? | Waiting |
@@ -121,12 +121,28 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
 
 ## What to do next
 
-Stage 1 is running. When it reports:
+Stage 2 is running as workflow `wf_00ebca32-590`. If the session is interrupted, pick it up again with
+its saved script and that run number. Builders that already finished are not rerun.
 
-1. Check both builders' pasted test output by rerunning the checks yourself.
-2. Commit WP1 on its own, then WP2 + WP9, adding only each package's own files.
-3. Push.
-4. Start stage 2 with WP1's exact wording pasted into the briefs.
+When it reports:
+
+1. Pull each builder's full report from the workflow's `journal.jsonl`, since the notification
+   cuts long results short.
+2. Rerun every check yourself:
+   - `bash scripts/audit-model-ids.sh`
+   - `bash tests/smoke-structure.sh`
+   - `shellcheck scripts/*.sh hooks/*.sh tests/*.sh`
+   - `bats tests/scripts.bats`
+   - the scratchpad `check-ledger-mentions.sh` over every changed file
+3. Read the diffs, not just the check results — at least the new `commands/dev-team-move-ledgers.md`,
+   the hook fixes, and a sample of the document edits.
+4. Commit each package on its own, adding only its files, in this order: the hook fixes, WP4, WP5a,
+   WP5b, WP6, WP7. Then push.
+5. Start stage 3: WP8 (README, CONTRIBUTING, tests/README, CHANGELOG, version 1.5.0), then WP3 (the
+   self-check script and its tests), on Sonnet.
+
+If the scratchpad has been cleared, the check script is gone. Its checks are described in plan.md
+WP3 (checks C–F), so it can be recreated from there.
 
 **WP3 moved to the end.** The self-check script's tests live in the same file as the hook's tests, and
 they only pass once every document is updated. Building WP3 early would make each commit in between
