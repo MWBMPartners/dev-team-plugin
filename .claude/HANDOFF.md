@@ -96,12 +96,14 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
 | 3 | Deep analysis (Fable) | Done |
 | 4 | Deep plan (Fable) + lead review | Done |
 | 5 | Build stage 1: WP1 rules text (Opus) alongside WP2 hook + WP9 schema (Sonnet) | **Done.** Checks rerun by the lead: all pass, bats 39 of 39. Committed separately: 2f1cdf0 (WP1), 1abe635 (WP2 + WP9). The lead's read-through found three small hook faults, now being fixed in stage 2: compact JSON marker not caught, file names matched in capitals only, CI `pip install` may be refused on Ubuntu 24.04 (switching to `pipx`). |
-| 6 | Build stage 2: WP4 orchestrator files, WP5a and WP5b skill references, WP6 agents and SKILL.md (all Sonnet); WP7 commands and `/dev-team-move-ledgers` (Opus); the hook fixes (Sonnet) | **Running**, all six side by side on separate files. Each builder checks its own files with a temporary script in the session scratchpad (`check-ledger-mentions.sh`, an approximation of the future WP3 audit). |
+| 6 | Build stage 2: WP4 orchestrator files, WP5a and WP5b skill references, WP6 agents and SKILL.md (all Sonnet); WP7 commands and `/dev-team-move-ledgers` (Opus); the hook fixes (Sonnet) | **Done.** Checks rerun by the lead: audit OK, smoke OK, shellcheck clean, bats 44 of 44, and the mention check OK over all 46 changed files. Committed as six separate commits, one per package. `/dev-team-move-ledgers` was walked against seven real projects read-only, and every required outcome held. |
+| 6b | Tidy-up pass (Sonnet): remaining bare file names that are instructions (mostly iterate, migrate, ship and orchestrator files); rename the security layout's `## Findings register` heading to `## Findings` so the existing `#Findings` links work | Next, alongside stage 3 |
 | 7 | Build stage 3: WP8 README, CHANGELOG, version (Sonnet), then WP3 self-check script (Sonnet) | Waiting on stage 2 |
 | 8 | Run all checks; Codex review, fix, re-review until clean | Waiting |
 | 9 | Hand test: does the hook fire for a sub-agent? | Waiting |
 | 10 | Follow-up issues | Done: #42 (findings public in public repositories), #43 (`autopilot.json` schema), #44 (Bash guard's "run in progress" test). SIGNula.id's `SECURITY.md` hand-fix belongs to that repository — left for the owner. |
 | 11 | One pull request to `alpha` | Later — owner's call when |
+| 12 | **New request (13 Sep):** list the owner's standard working-practice features, taken from the instruction block they pasted this session and their personal instructions, and show which the plugin already has. The owner then picks the missing ones to build. | Running: sequential Fable map then Fable verify (read-only). The result goes to the owner as a table. Nothing will be built until they choose. |
 
 ## Baseline before any build change (13 September, commit 9830e8e, run in a separate copy of the branch)
 
@@ -121,10 +123,20 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
 
 ## What to do next
 
-Stage 2 is running as workflow `wf_00ebca32-590`. If the session is interrupted, pick it up again with
-its saved script and that run number. Builders that already finished are not rerun.
+**Current (latest):**
 
-When it reports:
+- **Stage 2 is committed and pushed:** fc23f11, 7195f7b, 85195f2, 0b03ee4, 5dfb138, 0cc44d1.
+- **Stage 3 is running as one workflow** (see the Workflow tool's saved script `ledger-build-stage-3-*`):
+  1. the tidy-up pass (6b) and WP8 run side by side;
+  2. then WP3, the self-check script, runs over the finished tree.
+- **When stage 3 reports,** follow the same steps as below, then run the Codex review loop:
+  - `codex review --base main "<focus>"`;
+  - fix what it finds with a Sonnet builder;
+  - review again until a round comes back clean.
+- **If Codex cannot run,** say so plainly in the commit message and report, use a fresh Opus reviewer that
+  did not build anything, and treat the change as not fully reviewed.
+
+The steps used after stage 2 (reuse them for stage 3):
 
 1. Pull each builder's full report from the workflow's `journal.jsonl`, since the notification
    cuts long results short.
