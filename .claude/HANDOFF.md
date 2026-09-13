@@ -199,11 +199,23 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
       - **Update, about 22:10:**
         - README/CHANGELOG are committed (daa25c7, all checks pass). The brief and the R1–R4 map are
           committed (786bee2).
-        - **Codex's full catch-up review (round 2) is running.** It is ONE run, not two: at 18:43,
-          two runs side by side used up Codex's allowance before either finished. It uses `codex exec`,
-          high effort, read-only, with the focused prompt `codex-exec-prompt-2.md` (whole branch against
-          `main`). Output goes to the scratchpad files `codex-review-2-focused.md` and `.log`. Check
-          the banner says high effort, and that a review actually completed.
+        - **CORRECTION — Codex review round 2 did NOT happen.** The single high-effort run (started
+          21:51) stopped at once with "You've hit your usage limit … try again at Sep 14th, 2026
+          2:31 AM". An earlier commit (fa7b649) said this review "is running"; that was written before
+          the check and is wrong. No announcement was posted on issue #41, because the check that
+          guards it held it back.
+        - **Hand-over again, per the owner's rule.** The review had not started, so the brief's
+          12-hour "pause the phase and wait" rule does not apply. The next most independent reviewer
+          is used now: workflow `fallback-verify-fix-round-1`. A fresh Fable reviewer checks whether
+          fix round 1's 18 fixes really work and whether they introduced new problems, and an Opus
+          refuter challenges each finding. It is read-only.
+        - **Codex catch-up:** a one-off wake-up is booked for 02:37 BST on 14 September (job made by
+          CronCreate; it exists only in this session). It runs ONE full review of the whole branch.
+          If this session has been closed, start it by hand: `codex exec -c model_reasoning_effort='"high"'
+          -s read-only` with the focused prompt (see memory note `codex-cli-review-gotchas`).
+        - **Lesson:** on this ChatGPT plan, Codex's allowance runs out after about one high-effort
+          whole-branch review, and the reset can be hours away. Plan Codex reviews as single, spaced
+          runs, and save them for the most valuable check.
         - **The owner said to go ahead** with a thorough, sequential Fable analysis and then build the
           orchestrator features, integrated into the plugin. The lead will follow the checked
           recommendations for the five decisions, unless the owner objects. The engine language will be
