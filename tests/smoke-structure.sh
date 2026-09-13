@@ -67,6 +67,14 @@ else
       note "hooks.json references non-executable path: $rel"
     fi
   done < <(jq -r '.. | .command? // empty' hooks/hooks.json 2>/dev/null)
+  # A PreToolUse entry must actually cover Write, or the whole point of the issue #41 ledger
+  # guard (hooks/guard-ledgers.sh, which denies certain Write/Edit/MultiEdit calls — see its own
+  # header comment) silently stops firing if a future edit to hooks.json narrows or removes its
+  # matcher without anyone noticing.
+  if command -v jq >/dev/null 2>&1 && [ -f "hooks/hooks.json" ]; then
+    has_write_matcher="$(jq -r '[.hooks.PreToolUse[]?.matcher? // empty] | any(test("Write"))' hooks/hooks.json 2>/dev/null)"
+    [ "$has_write_matcher" = "true" ] || note "hooks.json has no PreToolUse matcher covering Write"
+  fi
 fi
 
 # 5) Each skills/*/SKILL.md exists and has frontmatter name: + description:.
@@ -98,6 +106,33 @@ else
       note "invalid JSON: $f"
     fi
   done
+fi
+
+# 8) Every schemas/*.schema.json is valid JSON and has $schema, title and description — a schema
+#    file with a mistake in it is worse than no schema at all, because a validator would run
+#    against it with no warning and either crash or (worse) rubber-stamp everything. This is a
+#    structure check only: it confirms a schema is well-formed and self-describing, not that any
+#    particular data file matches it (see tests/scripts.bats for that, e.g. the verdict.schema.json
+#    fixture tests).
+if ! command -v jq >/dev/null 2>&1; then
+  note "jq not installed — cannot validate schemas/*.schema.json"
+else
+  shopt -s nullglob
+  schema_files=(schemas/*.schema.json)
+  for f in "${schema_files[@]}"; do
+    if ! jq empty "$f" >/dev/null 2>&1; then
+      note "invalid JSON: $f"
+      continue
+    fi
+    # These are literal JSON property names being looped over, not variables to expand — the
+    # single quotes are deliberate (shellcheck SC2016 would otherwise flag '$schema' as a likely
+    # mistake).
+    # shellcheck disable=SC2016
+    for key in '$schema' title description; do
+      jq -e --arg k "$key" 'has($k)' "$f" >/dev/null 2>&1 || note "$f missing top-level '$key'"
+    done
+  done
+  shopt -u nullglob
 fi
 
 [ "$fail" -eq 0 ] && echo "SMOKE OK"

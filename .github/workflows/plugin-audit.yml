@@ -22,6 +22,8 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Install jq, shellcheck, bats
         run: sudo apt-get update && sudo apt-get install -y jq shellcheck bats
+      - name: Install check-jsonschema (validates schemas/*.schema.json fixtures, e.g. verdict.schema.json)
+        run: pip install check-jsonschema
       - name: Smoke test (plugin-structure delivery)
         run: bash tests/smoke-structure.sh
       - name: Shellcheck
