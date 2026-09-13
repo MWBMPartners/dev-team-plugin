@@ -46,7 +46,7 @@ READ .dev-team/PROJECT.md (+ .dev-team/SECURITY.md) → EXTRACT CLAIMS + load pr
 
 ### 1. Read the recorded work & extract claims
 
-Locate `.dev-team/PROJECT.md` (and `.dev-team/SECURITY.md`) through the lookup order — the source of intent the other team wrote. If neither exists, there's nothing to verify against: tell the user, and offer to either derive criteria from the code or take an intent statement from them. Otherwise extract the **claims** (full taxonomy in `references/claim-extraction-and-verification-protocol.md`):
+Locate `.dev-team/PROJECT.md` (and `.dev-team/SECURITY.md`) through the lookup order — the source of intent the other team wrote. This phase changes nothing, so a marked legacy root file is read where it is: move and commit nothing, and report the move as pending — "`<name>` is still at the top level of the project — run `/dev-team-move-ledgers` to move it into `.dev-team/`." (`dev-team-orchestrator/references/conventions.md`, "Where the plugin writes, and the ownership rule", point 5, read-only commands and phases). If neither exists, there's nothing to verify against: tell the user, and offer to either derive criteria from the code or take an intent statement from them. Otherwise extract the **claims** (full taxonomy in `references/claim-extraction-and-verification-protocol.md`):
 
 - **Goal / inferred purpose** — the app should actually do this (the integration check).
 - **Definition of done** — each checkable criterion.

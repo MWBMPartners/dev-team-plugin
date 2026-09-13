@@ -40,6 +40,15 @@ This is **read-only** — never create, edit, or touch the file for `show`.
    never be committed, and the README tells a person browsing the repo what the folder is. Tell the
    user which of the two were created and which were already there. Never edit the project's own
    `.gitignore`.
+   Then offer the pointer sentence (`conventions.md`, "Where the plugin writes, and the ownership
+   rule", point 8): when one of `CLAUDE.md`, `.claude/CLAUDE.md`, `AGENTS.md` and `GEMINI.md`
+   exists and does not already contain it, and the config does not already say
+   `pointer-sentence: declined`, offer once — never add it silently — to add "Dev-team plugin state
+   and the current handover live in `.dev-team/` — read `.dev-team/HANDOFF.md` first." word for word
+   to each of those files that lacks it. If the user declines, set `pointer-sentence: declined`
+   under `features:` in the `.dev-team/config.yml` just written, and tell them. *Why here:* `init`
+   often creates `.dev-team/` before any other run, and an earlier wording offered the sentence only
+   on "the run that creates `.dev-team/`" — so after `init` no run ever offered it.
 3. Tell the user clearly: **this file is meant to be committed** — once it's in the repo, its
    defaults and toggles apply to every session and every collaborator who clones the repo, not
    just this one. Suggest `git add .dev-team/config.yml` and reviewing the values before

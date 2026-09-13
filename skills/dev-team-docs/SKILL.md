@@ -141,7 +141,11 @@ Read-only — mirrors `dev-team-review`'s posture, scoped to docs:
    `mode=maintain` run to fix them.
 4. **Document**: the `sonnet-scribe` documentarian records the audit result (counts by
    severity, headline findings) in `.dev-team/PROJECT.md`'s Current status if it exists
-   (found through the lookup order) — no new ledger file is created.
+   (found through the lookup order) — no new ledger file is created. Audit mode moves and commits
+   nothing, so if the only `PROJECT.md` is a marked legacy root file, record nothing into it and
+   report the move as pending instead — "`PROJECT.md` is still at the top level of the project —
+   run `/dev-team-move-ledgers` to move it into `.dev-team/`." (`conventions.md`, "Where the plugin
+   writes, and the ownership rule", point 5, read-only commands and phases).
 5. Optionally, `issues=sync` (or `auto`) exports the drift findings to the repo's issue tracker — GitHub or GitLab, auto-detected from the git remote (see Arguments).
 
 ## Definition of done

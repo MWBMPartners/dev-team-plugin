@@ -92,7 +92,7 @@ decisions or write code. Keep entries concise and factual.
 [paste the exact facts: the decision + reason, or the checkpoint result, etc.]
 
 ## Constraints
-- Edit only `.dev-team/PROJECT.md`.
+- Edit only `.dev-team/PROJECT.md` — except on a project-start spawn, which may also create `.dev-team/.gitignore` and `.dev-team/README.md` if either is absent (never overwriting one that already exists; `conventions.md`, "Where the plugin writes, and the ownership rule", point 7). The ownership rule still applies to every file written.
 - Before writing, read the target and apply the ownership rule (`conventions.md`, "Where the plugin writes, and the ownership rule"); after writing, re-read line 2 and confirm the marker is there — report a missing marker as a failed write.
 - Preserve existing content; append to logs, but **keep "Current status" overwritten to reflect reality now** (it's the one section that's not append-only), and follow the ledger-retention rule in "Keep it lean" above.
 - Match the existing section structure.

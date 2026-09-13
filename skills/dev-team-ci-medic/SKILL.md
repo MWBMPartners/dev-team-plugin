@@ -48,7 +48,11 @@ is reported, not attempted. There is no mode that auto-resolves everything — s
   the end of the pass: what was watched, what was fixed, what was proposed, what was blocked.
   If `.dev-team/PROJECT.md` exists (found through the lookup order), append a note to its
   Current status; otherwise just report the summary directly. Ci-medic introduces no new
-  required artifact.
+  required artifact. It commits only to the pull-request branch it is fixing, never a branch of
+  its own, so it never moves a ledger: if the only `PROJECT.md` is a marked legacy root file, it
+  records nothing into it and reports the move as pending — "`PROJECT.md` is still at the top
+  level of the project — run `/dev-team-move-ledgers` to move it into `.dev-team/`."
+  (`conventions.md`, "Where the plugin writes, and the ownership rule", point 5).
 
 ## Classification
 

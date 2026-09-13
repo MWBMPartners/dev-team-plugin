@@ -13,7 +13,10 @@ or any other network/mutating git command.
 1. **Check for dev-team state.** Look for `.dev-team/autopilot.json`, and for `.dev-team/PROJECT.md`
    through the lookup order (`conventions.md`, "Where the plugin writes, and the ownership rule",
    point 5), which never reads a file without the dev-team marker as the ledger — a legacy root
-   `PROJECT.md` without the marker does not count as dev-team state. If **neither** exists, say plainly "no dev-team run detected in this repo" and point to `/dev-team` (to start
+   `PROJECT.md` without the marker does not count as dev-team state. A legacy root `PROJECT.md`
+   that does carry the marker is read where it is: this command moves and commits nothing, and the
+   report says the move is pending — "`PROJECT.md` is still at the top level of the project — run
+   `/dev-team-move-ledgers` to move it into `.dev-team/`." (point 5, read-only commands). If **neither** exists, say plainly "no dev-team run detected in this repo" and point to `/dev-team` (to start
    one) or `/dev-team-status` (for a live dashboard), then stop.
 2. **Resolve the base branch.** Precedence: the `branch=<base>` argument if given > `.dev-team/config.yml`'s
    `git.default-branch` if it names an explicit branch > auto-detect (`git symbolic-ref --quiet

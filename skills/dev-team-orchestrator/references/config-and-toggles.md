@@ -59,6 +59,7 @@ features:            # enable/disable behaviours repo-wide (on|off; env var can 
   dry-run: off           # default plan-preview for building skills  (v1.2.0)
   auto-handoff: on       # regenerate .dev-team/HANDOFF.md after every completed task/workstream (v1.3.0; per-session override: DEV_TEAM_NO_AUTO_HANDOFF)
   auto-commit: on        # local commit per completed-and-checked task/workstream  (v1.3.0; per-session override: DEV_TEAM_NO_AUTO_COMMIT)
+  pointer-sentence: ask  # ask (not yet asked: offer the .dev-team/ pointer sentence) | declined (never offer it again)  (v1.5.0)
 ```
 
 `version: 1` is the only required key going forward — every other key has a built-in default, so a
@@ -103,6 +104,17 @@ the full rules and why duplicate/stacked PRs are disallowed by default.
 | `dry-run` | default plan-preview for building skills (v1.2.0) | `on`, `off` | none yet — config-only (a per-run argument on the relevant skill may still override for one run) | `off` |
 | `auto-handoff` | regenerate `.dev-team/HANDOFF.md` after every completed task/workstream (v1.3.0) | `on`, `off` | `DEV_TEAM_NO_AUTO_HANDOFF` (off-switch: any non-empty value disables) | `on` |
 | `auto-commit` | local commit per completed-and-checked task/workstream — never push, never PR (v1.3.0) | `on`, `off` | `DEV_TEAM_NO_AUTO_COMMIT` (off-switch: any non-empty value disables) | `on` |
+| `pointer-sentence` | whether an interactive run offers to add the `.dev-team/` pointer sentence to `CLAUDE.md` / `.claude/CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (v1.5.0; `conventions.md`, "Where the plugin writes, and the ownership rule", point 8) | `ask`, `declined` | none — config-only | `ask` (not yet asked) |
+
+`pointer-sentence` is the one key the plugin writes itself. When a user declines the pointer
+sentence, the run sets `pointer-sentence: declined` here and tells the user; if
+`.dev-team/config.yml` does not exist yet, it creates a minimal file holding `version: 1` and
+that key, and says so. *Why here:* this is the file that already holds repo-wide choices a person
+made, and it is committed, so one decline holds for every collaborator and can be undone by
+deleting one line. A plugin-owned ledger was rejected because none of them exists for every run
+that can make the offer (`/dev-team-config init` creates no ledger), and `.dev-team/README.md` is
+fixed text that is never rewritten. Loading stays fail-open: a missing, unreadable or unrecognised
+value counts as `ask`, so in that case the offer can come round again.
 
 For `guard`, note the mode semantics are not a simple on/off pair, and — since v1.5.0 — one toggle
 now governs two separate hooks that each judge "is a run active" a different way:
@@ -112,12 +124,17 @@ now governs two separate hooks that each judge "is a run active" a different way
   (the default) preserves today's behavior — active only while a run is in progress
   (`.dev-team/autopilot.json` present), unless `DEV_TEAM_GUARD` forces it on for the session.
 - **`hooks/guard-ledgers.sh`** (the ledger guard): `off` turns off BOTH of its rules. Rule 1 — a
-  Write whose new content carries the dev-team marker, aimed at a path outside `.dev-team/` — stays
-  ON in `auto` mode regardless of whether a run is active; only `off` disables it. That is
-  deliberate: only content the plugin itself generated ever carries the marker, so Rule 1 can never
-  block a person editing their own file, and the mistake it guards against — a stale instruction
-  telling a scribe to write a ledger at the legacy root location — can happen in a one-off session
-  just as easily as inside a run. Rule 2 — a write to a top-level file with one of the seven ledger
+  Write whose new content carries the dev-team marker in its first three lines, whose file name
+  (ignoring capitals) is one of the seven ledger names, and whose path, once any "." and ".." parts
+  are worked out, is outside `.dev-team/` — stays ON in `auto` mode regardless of whether a run is
+  active; only `off` disables it. That is deliberate: the mistake it guards against — a stale
+  instruction telling a scribe to write a ledger at the legacy root location — can happen in a
+  one-off session just as easily as inside a run. Working out "." and ".." matters because
+  `.dev-team/../SECURITY.md` starts with `.dev-team/` but names the top-level file. Rule 1 can only
+  block a ledger-named file outside `.dev-team/` whose content carries the dev-team marker — for
+  example a person pasting a copy of a ledger into `docs/FEATURES.md`; to proceed, write the file
+  under `.dev-team/` instead, or set `guard: off`. (An earlier wording said Rule 1 could never block
+  a person; that overstated it.) Rule 2 — a write to a top-level file with one of the seven ledger
   names, whose content looks like plugin output — is active only while `.dev-team/loop.lock/`
   exists, `guard: on` is set, or `DEV_TEAM_GUARD` is set. Rule 2 **never** activates merely because
   `.dev-team/autopilot.json` exists, unlike `guard-dev-team.sh`'s own `auto` test above: some real
