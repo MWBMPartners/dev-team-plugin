@@ -236,10 +236,11 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
             exit 0 with empty stderr; top-level README.md with the marker exits 2;
             `/.dev-team/SECURITY.md` exits 2; an absolute path inside `<cwd>/.dev-team/` exits 0.
           - No "dev-template" outside `.claude/`.
-          - **Unverified:** tests now need bats ≥ 1.5.0 (`run --separate-stderr`), and the version
-            installed by apt on GitHub's ubuntu-latest runner has not been checked. The file
-            declares the minimum, so an old bats fails clearly. Watch the first CI run on the pull
-            request.
+          - **Verified (about 23:25):** tests now need bats ≥ 1.5.0 (`run --separate-stderr`).
+            GitHub's `ubuntu-latest` is Ubuntu 24.04 (runner-images README), and Ubuntu 24.04
+            "noble" ships `bats 1.10.0-1` (packages.ubuntu.com), so CI is fine. Caution: Ubuntu
+            22.04 "jammy" ships bats 1.2.1, which is too old. If the workflow is ever pinned to
+            `ubuntu-22.04`, the minimum-version line will fail it on purpose.
           - **#41 is now waiting only for Codex's catch-up review** (booked for 02:37 on 14 September).
         - **Lesson:** on this ChatGPT plan, Codex's allowance runs out after about one high-effort
           whole-branch review, and the reset can be hours away. Plan Codex reviews as single, spaced
