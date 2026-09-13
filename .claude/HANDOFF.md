@@ -125,10 +125,46 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
 
 **Current (latest):**
 
-- **Stage 2 is committed and pushed:** fc23f11, 7195f7b, 85195f2, 0b03ee4, 5dfb138, 0cc44d1.
-- **Stage 3 is running as one workflow** (see the Workflow tool's saved script `ledger-build-stage-3-*`):
-  1. the tidy-up pass (6b) and WP8 run side by side;
-  2. then WP3, the self-check script, runs over the finished tree.
+- **All three build stages are committed and pushed.**
+  - Stage 2: fc23f11, 7195f7b, 85195f2, 0b03ee4, 5dfb138, 0cc44d1.
+  - Stage 3: 5e85c43 (tidy-up pass and the Findings heading), c5f76d9 (README, CHANGELOG, version
+    1.5.0 and the self-check script — one commit, because both builders edited the same three files).
+  - Checks rerun by the lead: audit-ledger-paths OK, audit-model-ids OK, smoke OK, shellcheck clean,
+    bats 47 of 47, workflow YAML parses, README links resolve.
+- **Codex review round 1, first attempt: FAILED — no review happened.**
+  `codex review --base main "<instructions>"` is refused by Codex CLI 0.153.2 with
+  `the argument '--base <BRANCH>' cannot be used with '[PROMPT]'`. A branch review and custom instructions cannot
+  be combined in `codex review`. Do not retry that form.
+- **Codex review round 1, now running as two read-only reviews side by side:**
+  - (a) `codex review --base main` — Codex's built-in reviewer, with no custom focus. Output goes to
+    the scratchpad file `codex-review-1a-builtin.out`.
+  - (b) `codex exec -s read-only -C <repo> -o <file> -` — fed the focused instructions
+    (`codex-exec-prompt.md`, built from `codex-review-prompt.md` plus "read `git diff main...HEAD`
+    yourself, change nothing"). Its final message goes to `codex-review-1b-focused.md`.
+  - If the scratchpad is gone, rerun both with the same focus: stale instructions, hook correctness,
+    move-ledgers safety, the audit script, schema against example, CI, and claims in README and
+    CHANGELOG.
+  - **Set aside (stopped by the lead):** both of those runs printed `reasoning effort: none` in their
+    startup banner. That is this machine's Codex default, and it would likely give a shallow review.
+    Both were stopped after about two minutes, before reporting anything.
+  - **Rerun at high effort** by adding `-c model_reasoning_effort='"high"'` to both commands. Output
+    goes to the scratchpad files `codex-review-1a-builtin-high.out` and
+    `codex-review-1b-focused-high.md` (with `.log`). Always pass that setting for Codex reviews on this
+    machine, and check the banner shows `reasoning effort: high`.
+- **Known fixes the lead found**, deliberately NOT given to Codex so its review stays independent.
+  Fix them in the same round as Codex's findings:
+  1. CHANGELOG 1.5.0 says names are compared ignoring case "in the lookup order" too. Only Rule 2 of
+     `hooks/guard-ledgers.sh` ignores case; its `.dev-team/` folder test is case-sensitive on purpose,
+     and the lookup order says nothing about case.
+  2. README "Upgrading from 1.4 or earlier" says "there's nothing you're required to do". That is wrong
+     for old top-level files without the marker (CueRCode, Go2My.Link): the ownership rule makes a
+     run stop and ask, and autopilot goes BLOCKED (`ledger-ownership`). Say so, and point to
+     `/dev-team-move-ledgers`.
+  3. The same section implies a hand-written `FEATURES.md` or `HANDOFF.md` is asked about. Under the
+     command's rules, a file without a ledger's shape is "not ours" and left alone without a
+     question; only look-alikes are asked about.
+  4. README line ~141, the iterate skill's Cold-resume paragraph: "looks for a `PROJECT.md`" should
+     be `.dev-team/PROJECT.md` (found through the lookup order).
 - **When stage 3 reports,** follow the same steps as below, then run the Codex review loop:
   - `codex review --base main "<focus>"`;
   - fix what it finds with a Sonnet builder;
