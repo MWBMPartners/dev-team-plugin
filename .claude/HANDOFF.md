@@ -196,6 +196,18 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
         CONTRIBUTING.md.
       - **Codex:** a tiny test request returned OK, so Codex is available again. Its FULL catch-up
         review of the whole branch starts once the README/CHANGELOG fix is committed.
+      - **Update, about 22:10:**
+        - README/CHANGELOG are committed (daa25c7, all checks pass). The brief and the R1–R4 map are
+          committed (786bee2).
+        - **Codex's full catch-up review (round 2) is running.** It is ONE run, not two: at 18:43,
+          two runs side by side used up Codex's allowance before either finished. It uses `codex exec`,
+          high effort, read-only, with the focused prompt `codex-exec-prompt-2.md` (whole branch against
+          `main`). Output goes to the scratchpad files `codex-review-2-focused.md` and `.log`. Check
+          the banner says high effort, and that a review actually completed.
+        - **The owner said to go ahead** with a thorough, sequential Fable analysis and then build the
+          orchestrator features, integrated into the plugin. The lead will follow the checked
+          recommendations for the five decisions, unless the owner objects. The engine language will be
+          confirmed with the owner before building.
   - **The 21:37 Codex reminder fired.** The plan is to verify and commit the fix round, rerun the README
     builder, commit, and only then run Codex's full catch-up review. That way Codex's credit is spent on
     the finished branch, not on README errors already known. Codex availability was probed with a tiny
