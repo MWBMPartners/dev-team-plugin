@@ -213,6 +213,20 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
           CronCreate; it exists only in this session). It runs ONE full review of the whole branch.
           If this session has been closed, start it by hand: `codex exec -c model_reasoning_effort='"high"'
           -s read-only` with the focused prompt (see memory note `codex-cli-review-gotchas`).
+        - **Stand-in verification result (about 22:35):** all fixes from round 1 are confirmed fixed
+          (one README guard description only partly). Six new problems were confirmed (1 medium, 5 low):
+          - Rule 1 lost README.md protection;
+          - an unbound-variable message under bash 3.2;
+          - an absolute `/.dev-team/…` path is judged to be inside the project;
+          - the move-ledgers decline is never committed and the rollback mishandles it;
+          - one README row still describes only the Bash guard;
+          - two tests do not prove the path resolver works.
+
+          Saved at `.claude/plans/ledger-file-clashes/fallback-review-2-verify.md`. **Fix round 2 is
+          running** (workflow `fix-round-2-ledger-clashes`): a Sonnet builder on the hook and tests,
+          and a Sonnet builder on conventions, config-and-toggles, README, CHANGELOG and move-ledgers.
+          When it reports, rerun all checks and probe the hook under /bin/bash, then commit per builder
+          (stating "not fully reviewed"), push, and update #41.
         - **Lesson:** on this ChatGPT plan, Codex's allowance runs out after about one high-effort
           whole-branch review, and the reset can be hours away. Plan Codex reviews as single, spaced
           runs, and save them for the most valuable check.
