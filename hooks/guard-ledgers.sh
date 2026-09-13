@@ -12,14 +12,21 @@
 # Two separate rules, both read from the tool call's own JSON (stdin), never from the filesystem
 # except .dev-team/config.yml and .dev-team/loop.lock/:
 #
-#   Rule 1 (Write only; on all the time unless `guard: off`) — a WRITE whose new content carries
-#   the dev-team marker (`<!-- dev-team: ledger=` or `"dev-team": "ledger=`) on one of its first
-#   three lines, aimed at a path outside .dev-team/, is refused. Only content the plugin itself
-#   generated ever carries that marker, so this can only catch a scribe about to write a ledger to
-#   the wrong place — it can never block a person editing their own file, because their file will
-#   not have the marker. That is also why this rule stays on even outside an active run: the
-#   mistake it is guarding against (a stale instruction telling a scribe to write at the old
-#   top-level path) can happen in a one-off session just as easily as inside an autopilot cycle.
+#   Rule 1 (Write only; on all the time unless `guard: off`) — a WRITE is refused when ALL three of
+#   these hold: (a) the new content carries the dev-team marker (`<!-- dev-team: ledger=` or
+#   `"dev-team": "ledger=`) on one of its first three lines; (b) the target's FILE NAME, with case
+#   ignored, is one of the seven ledger names (PROJECT.md, FEATURES.md, SECURITY.md,
+#   VERIFICATION.md, MIGRATION.md, HANDOFF.md, verdict.json); (c) the path, once resolved (see
+#   "Path handling" below), is outside .dev-team/. So yes, this CAN block a person — but only in
+#   one narrow shape: a file that is both named exactly like one of the plugin's ledgers AND
+#   already starts with the plugin's own marker text. No project's own file looks like that unless
+#   someone has copied a plugin ledger's content into it by hand, which is itself almost certainly
+#   a mistake worth stopping to ask about. That is also why this rule stays on even outside an
+#   active run: the mistake it is guarding against (a stale instruction telling a scribe to write
+#   at the old top-level path) can happen in a one-off session just as easily as inside an
+#   autopilot cycle. The refusal message says how to proceed either way: move the file under
+#   .dev-team/, or, if it genuinely is the project's own file, set `guard: off` in
+#   .dev-team/config.yml.
 #
 #   Rule 2 (Write, Edit or MultiEdit; only while a run is judged to be active, or the config or
 #   environment forces it on) — a write to one of the seven ledger names at the project's top
@@ -42,7 +49,7 @@
 #   would have stopped the project owner editing their own top-level HANDOFF.md or FEATURES.md
 #   forever. `guard: off` in .dev-team/config.yml turns BOTH rules off, exactly like the Bash guard.
 #
-# Two faults found by a later reading of this file, both now fixed:
+# Four faults found by later readings of this file, all now fixed:
 #   - The JSON half of the marker match used to require exactly one space after each colon, so
 #     compact JSON — `{"dev-team":"ledger=verdict schema=1.0"}`, with no spaces at all — was not
 #     recognised as the marker even though it is exactly the same valid content. It now accepts
@@ -54,12 +61,39 @@
 #     1's separate ".dev-team/" folder test (just below) is left case-sensitive on purpose: refusing
 #     a write to something that merely looks like ".DEV-TEAM/" is the safe direction to be wrong
 #     in, whereas loosening it could let a write past the folder check entirely.
+#   - Rule 1 used to fire on ANY path outside .dev-team/ that carried the marker on its first three
+#     lines, with no check on the file's name. That refused this very plugin's own test fixture,
+#     tests/fixtures/verdict.sample.json — whose whole purpose is to hold real marker-bearing
+#     sample content for the schema tests to check against, and which is nobody's ledger. A rule
+#     that blocks the plugin's own repository from writing its own fixtures contradicts the "can
+#     never block a person" claim this comment used to make. Rule 1 now also requires the file
+#     NAME to be one of the seven ledger names before it fires, so a fixture, a sample, or any
+#     other file that merely happens to quote the marker inside marker-unrelated content is left
+#     alone.
+#   - Path handling used to strip a leading "<cwd>/" once and then a leading "./" once, which is
+#     one pass, not a resolution. A path built from "." and ".." segments — ".dev-team/../
+#     SECURITY.md", or "././SECURITY.md" — walks straight past a single strip: the first still
+#     starts with ".dev-team/" as far as a literal string match is concerned even though it
+#     actually names a file one level up, and the second still starts with "./" after only one
+#     strip. Both rules now resolve the path lexically first (see "Path handling" below), so a
+#     write that only LOOKS like it targets .dev-team/, or only looks like a distinct top-level
+#     ledger name, is judged by where it actually lands.
 #
 # Path handling: Claude Code sends the session's working folder as the top-level `cwd` field on
 # every hook call. When `tool_input.file_path` is absolute, this script strips a leading `<cwd>/`
-# (falling back to the shell's own $PWD only if `cwd` is missing from the payload) and then a
-# leading `./`, and reads .dev-team/config.yml and .dev-team/loop.lock/ relative to that same
-# `cwd` when it is present. Confirmed against Claude Code's official hooks documentation
+# (falling back to the shell's own $PWD only if `cwd` is missing from the payload). What is left is
+# then resolved LEXICALLY, in pure bash: split on "/", drop every empty and "." piece, and for each
+# ".." remove the piece before it. This is text-only, on purpose — it does not touch the real
+# filesystem (no `realpath`, no `cd`), because the file being written often does not exist yet, and
+# `realpath`'s exact behaviour differs between macOS and Linux. If a ".." would remove a piece that
+# is not there (the path tries to climb above where it started), the path is treated as having left
+# the project: it counts as outside .dev-team/ for Rule 1, and it is not matched against any of
+# Rule 2's top-level names — but Rule 1 still checks such a path by its file name, since a marker-
+# bearing ledger-named file written anywhere outside the project is exactly as wrong as one written
+# inside it at the wrong spot. .dev-team/config.yml and .dev-team/loop.lock/ are read relative to
+# `cwd` when it is present, unresolved — those two paths are always written by this plugin itself
+# with no user-supplied segments, so there is nothing for them to walk past. Confirmed against
+# Claude Code's official hooks documentation
 # (https://code.claude.com/docs/en/hooks and .../hooks-guide, fetched 13 September 2026): the
 # top-level `cwd` field is shown in the documented PreToolUse example payload; `tool_input.
 # file_path` and `tool_input.content` (Write) are shown in the "Block edits to protected files"
@@ -108,15 +142,52 @@ file_path="$(jqr '.tool_input.file_path // empty')"
 # No file_path (or no tool_input at all) => nothing to check against => allow.
 [ -n "$file_path" ] || exit 0
 
-# Normalise the path per the header comment: strip a leading "<cwd>/" (or "$PWD/" when `cwd` is
-# absent from the payload), then a leading "./". Quoting the pattern operand keeps it literal —
-# a path is never treated as a glob here.
+# Strip a leading "<cwd>/" (or "$PWD/" when `cwd` is absent from the payload). Quoting the pattern
+# operand keeps it literal — a path is never treated as a glob here. What is left, $norm_path, is
+# the path as the caller wrote it — still carrying any "." or ".." segments — kept around only for
+# the messages below, so a refusal quotes back what the caller actually typed.
 strip_prefix="${cwd:-$PWD}"
 case "$file_path" in
   "$strip_prefix"/*) norm_path="${file_path#"$strip_prefix"/}" ;;
   *) norm_path="$file_path" ;;
 esac
-norm_path="${norm_path#./}"
+
+# Resolve $norm_path lexically — see the "Path handling" header comment for why this has to be a
+# pure text operation and cannot call out to `realpath`. Sets two globals: $resolved (the path with
+# every "." and "sibling .." pair collapsed away) and $escaped (1 if a ".." ever tried to remove a
+# piece that was not there, meaning the path climbed above where it started and has left the
+# project; 0 otherwise). Bash's own field-splitting on IFS='/' turns "a//b" into "a", "", "b" — the
+# empty piece is one of the two kinds this function is told to drop, so a doubled slash is handled
+# for free. Written to avoid bash 4+-only features (no `${arr[-1]}` negative indexing) because
+# macOS ships bash 3.2.
+resolve_lexical() {
+  local input="$1" seg
+  local -a segs=() parts=()
+  local old_ifs="$IFS"
+  IFS='/'
+  read -ra segs <<< "$input"
+  IFS="$old_ifs"
+  escaped=0
+  for seg in "${segs[@]}"; do
+    case "$seg" in
+      ''|'.') continue ;;
+      '..')
+        if [ "${#parts[@]}" -gt 0 ]; then
+          # Drop the last kept piece by slicing it off — plain array slicing, not a negative
+          # index, so this still works under bash 3.2.
+          parts=("${parts[@]:0:$((${#parts[@]} - 1))}")
+        else
+          # Nothing left to remove: this ".." would step above the directory the path started
+          # in. Once true, stays true for the rest of this path — see the header comment.
+          escaped=1
+        fi
+        ;;
+      *) parts+=("$seg") ;;
+    esac
+  done
+  resolved="$(IFS='/'; echo "${parts[*]}")"
+}
+resolve_lexical "$norm_path"
 
 deny() {
   echo "dev-team guard: $1" >&2
@@ -159,13 +230,35 @@ case "$tool_name" in
     ;;
 esac
 
-# --- Rule 1: marker-bearing content, written outside .dev-team/, by a Write. ---------------------
+# Is $resolved inside .dev-team/? An escaped path (one that climbed above the project) can never
+# count as inside it, whatever its text happens to look like afterwards — see resolve_lexical's
+# header comment. This test is deliberately case-SENSITIVE: a folder name really can differ only by
+# case on a case-sensitive filesystem (most Linux CI runners), and refusing a write to something
+# that merely looks like ".DEV-TEAM/" is the safe direction to be wrong in, since the cost of a
+# wrongly-refused write is just "try the real path", not a ledger going to the wrong place.
+in_devteam=0
+if [ "$escaped" -eq 0 ]; then
+  case "$resolved" in
+    .dev-team/*) in_devteam=1 ;;
+  esac
+fi
+
+# --- Rule 1: a Write whose content carries the marker AND whose file name is one of the seven
+#     ledger names AND whose resolved path lands outside .dev-team/. All three together — not the
+#     marker alone — because a fixture or sample file can legitimately quote the marker without
+#     being a ledger, and this plugin ships exactly one such file (tests/fixtures/verdict.sample.
+#     json), which must never be refused. See the header comment for the fault this fixes. --------
 if [ "$checked" -eq 1 ] && [ "$tool_name" = "Write" ]; then
   first_three="$(printf '%s\n' "$content" | head -n 3)"
   if printf '%s' "$first_three" | grep -Eq "$marker_pattern"; then
-    case "$norm_path" in
-      .dev-team/*) : ;; # inside .dev-team/ — exactly where it belongs.
-      *) deny "this content carries the dev-team marker but the path \"$norm_path\" is outside .dev-team/. Ledgers live only in .dev-team/." ;;
+    base_name="${resolved##*/}"
+    base_lc="$(printf '%s' "$base_name" | tr '[:upper:]' '[:lower:]')"
+    case "$base_lc" in
+      project.md|features.md|security.md|verification.md|migration.md|handoff.md|verdict.json)
+        if [ "$in_devteam" -eq 0 ]; then
+          deny "this content carries the dev-team marker and \"$base_name\" is one of this plugin's ledger names, but the path \"$norm_path\" resolves outside .dev-team/. Write it under .dev-team/ instead — or, if this really is your own project's file, set \"guard: off\" in .dev-team/config.yml."
+        fi
+        ;;
     esac
   fi
 fi
@@ -177,18 +270,21 @@ if [ -d "$(rel .dev-team/loop.lock)" ] || [ "$guard_mode" = "on" ] || [ -n "${DE
   run_active=1
 fi
 
-if [ "$checked" -eq 1 ] && [ "$run_active" -eq 1 ]; then
-  # Compare the ledger NAME with case ignored, because a filesystem that ignores case (macOS,
-  # by default) treats "security.md" and "SECURITY.md" as the very same file on disk — write to
-  # one and you have written to the other. Matching capitals only would let a write spelled with
-  # different capitals walk straight past this rule while still landing on the real file it is
-  # meant to protect. This is a separate variable, used only here — Rule 1's ".dev-team/" folder
-  # test just above stays case-SENSITIVE on purpose: a folder name really can differ only by case
-  # on a case-sensitive filesystem (most Linux CI runners), and refusing a write that merely looks
-  # like ".DEV-TEAM/" or "Dev-Team/" is the safe direction to be wrong in, since the cost of a
-  # wrongly-refused write is just "try the real path", not a ledger going to the wrong place.
-  norm_path_lc="$(printf '%s' "$norm_path" | tr '[:upper:]' '[:lower:]')"
-  case "$norm_path_lc" in
+if [ "$checked" -eq 1 ] && [ "$run_active" -eq 1 ] && [ "$escaped" -eq 0 ]; then
+  # Compare the full resolved path with case ignored, because a filesystem that ignores case
+  # (macOS, by default) treats "security.md" and "SECURITY.md" as the very same file on disk —
+  # write to one and you have written to the other. Matching capitals only would let a write
+  # spelled with different capitals walk straight past this rule while still landing on the real
+  # file it is meant to protect. This is a separate variable, used only here — Rule 1's
+  # ".dev-team/" folder test just above stays case-SENSITIVE on purpose: a folder name really can
+  # differ only by case on a case-sensitive filesystem (most Linux CI runners), and refusing a
+  # write that merely looks like ".DEV-TEAM/" or "Dev-Team/" is the safe direction to be wrong in,
+  # since the cost of a wrongly-refused write is just "try the real path", not a ledger going to
+  # the wrong place. An escaped path (see resolve_lexical) is skipped here entirely: it has left
+  # the project, so it cannot be "the project's own top-level file" this rule exists to protect —
+  # Rule 1 above still judges it by file name regardless.
+  resolved_lc="$(printf '%s' "$resolved" | tr '[:upper:]' '[:lower:]')"
+  case "$resolved_lc" in
     project.md|features.md|security.md|verification.md|migration.md|handoff.md|verdict.json|.github/security.md|docs/security.md)
       if printf '%s' "$content" | grep -Eq "$marker_pattern|$id_pattern"; then
         deny "\"$norm_path\" is a project-level file with a dev-team ledger name, and the content being written to it looks like this plugin's own output (the dev-team marker or a record id). The suite writes only into .dev-team/. If this is the project's own file and you meant to write to it, do it yourself, or turn the guard off (guard: off in .dev-team/config.yml)."

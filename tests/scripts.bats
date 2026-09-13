@@ -81,24 +81,53 @@ run_ledger_guard() {
   [[ "$output" == *"LEDGER-PATHS OK"* ]]
 }
 
-@test "audit-ledger-paths: fails on a ledger named at the repo root without the .dev-team/ prefix" {
+# Fault found by a later reading of these tests: the one sentence used to inject a failure ("The
+# documentarian writes `PROJECT.md` at the repo root.") trips BOTH check C ("repo root" plus a bare
+# ledger name) and check E (the exact legacy phrase "at the repo root") at once, so a test passing
+# proved only that ONE of the two fired — never which — and nothing here exercised check F at all.
+# Each test below now injects a sentence built to trip exactly one check and asserts that check's
+# own label in the output, confirmed by running each sample on its own through the real script
+# before it was written here (see the builder's report for that proof).
+TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
+
+@test "audit-ledger-paths: check C fires alone on a \"sibling to\" sentence naming a bare ledger" {
   # The script cd's to its own script's parent dir, so it always audits THIS repo regardless of
   # caller cwd — the injected file must live inside the real tree, under skills/ (in scope).
-  printf '%s\n' 'The documentarian writes `PROJECT.md` at the repo root.' \
-    > "$REPO_ROOT/skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
+  printf '%s\n' 'Put `HANDOFF.md` sibling to package.json.' \
+    > "$REPO_ROOT/$TMP_LEDGER_AUDIT"
   run bash "$REPO_ROOT/scripts/audit-ledger-paths.sh"
-  rm -f "$REPO_ROOT/skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
+  rm -f "$REPO_ROOT/$TMP_LEDGER_AUDIT"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"LEDGER-PATHS FAIL"* ]]
+  [[ "$output" == *"LEDGER-PATHS FAIL: C:"* ]]
+  [[ "$output" != *"LEDGER-PATHS FAIL: E:"* ]]
 }
 
-@test "audit-ledger-paths: fails on a ledger anchor with no .dev-team/ prefix" {
+@test "audit-ledger-paths: check D fires alone on a ledger anchor with no .dev-team/ prefix" {
   printf '%s\n' 'See `SECURITY.md#Findings` for the full register.' \
-    > "$REPO_ROOT/skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
+    > "$REPO_ROOT/$TMP_LEDGER_AUDIT"
   run bash "$REPO_ROOT/scripts/audit-ledger-paths.sh"
-  rm -f "$REPO_ROOT/skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
+  rm -f "$REPO_ROOT/$TMP_LEDGER_AUDIT"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"LEDGER-PATHS FAIL"* ]]
+  [[ "$output" == *"LEDGER-PATHS FAIL: D:"* ]]
+}
+
+@test "audit-ledger-paths: check E fires alone on a legacy repo-root phrase with no ledger name on the line" {
+  printf '%s\n' 'Config files used to live at the repo root before this project reorganised its layout.' \
+    > "$REPO_ROOT/$TMP_LEDGER_AUDIT"
+  run bash "$REPO_ROOT/scripts/audit-ledger-paths.sh"
+  rm -f "$REPO_ROOT/$TMP_LEDGER_AUDIT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"LEDGER-PATHS FAIL: E:"* ]]
+  [[ "$output" != *"LEDGER-PATHS FAIL: C:"* ]]
+}
+
+@test "audit-ledger-paths: check F fires alone on the old marker text with no \"legacy\" nearby" {
+  printf '%s\n' 'This file still uses <!-- dev-team-schema: 1.0 --> in one place.' \
+    > "$REPO_ROOT/$TMP_LEDGER_AUDIT"
+  run bash "$REPO_ROOT/scripts/audit-ledger-paths.sh"
+  rm -f "$REPO_ROOT/$TMP_LEDGER_AUDIT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"LEDGER-PATHS FAIL: F:"* ]]
 }
 
 # ---------------------------------------------------------------------------
@@ -196,10 +225,30 @@ run_ledger_guard() {
   [ "$status" -eq 0 ]
 }
 
-@test "guard-ledgers: marker content aimed anywhere else outside .dev-team/ is denied" {
-  run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":"docs/notes.md","content":"line1\n<!-- dev-team: ledger=features schema=1.0 -->\nline3"}}'
+@test "guard-ledgers: a top-level path with a ledger name elsewhere in the tree (docs/FEATURES.md) is still denied" {
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":"docs/FEATURES.md","content":"line1\n<!-- dev-team: ledger=features schema=1.0 -->\nline3"}}'
   [ "$status" -eq 2 ]
   [[ "$output" == *"dev-team guard"* ]]
+}
+
+# Fault found by a later reading of the hook: Rule 1 used to fire on ANY path outside .dev-team/
+# that carried the marker, with no check on the file's NAME. That refused a Write of this very
+# plugin's own test fixture, tests/fixtures/verdict.sample.json, whose whole purpose is to hold
+# real marker-bearing sample content for the schema tests below — it is nobody's ledger, just a
+# file that happens to quote the marker inside it. Rule 1 now also requires the file name to be one
+# of the seven ledger names, so this fixture (named "verdict.sample.json", not "verdict.json") and
+# any other non-ledger file that merely mentions the marker text pass straight through.
+@test "guard-ledgers: this plugin's own verdict fixture, with its real content, is never blocked" {
+  content="$(cat "$REPO_ROOT/tests/fixtures/verdict.sample.json")"
+  payload="$(jq -n --arg fp "tests/fixtures/verdict.sample.json" --arg content "$content" \
+    '{tool_name:"Write", tool_input:{file_path:$fp, content:$content}}')"
+  run run_ledger_guard "$SCRATCH" "$payload"
+  [ "$status" -eq 0 ]
+}
+
+@test "guard-ledgers: marker content aimed at a file whose name is not a ledger name is allowed" {
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":"notes/plan.md","content":"line1\n<!-- dev-team: ledger=features schema=1.0 -->\nline3"}}'
+  [ "$status" -eq 0 ]
 }
 
 @test "guard-ledgers: a user's own file with no marker is never blocked" {
@@ -215,7 +264,10 @@ run_ledger_guard() {
 @test "guard-ledgers: config guard=off allows marker content outside .dev-team/, even with an active run" {
   mkdir -p "$SCRATCH/.dev-team"
   printf 'features:\n  guard: off\n' > "$SCRATCH/.dev-team/config.yml"
-  : > "$SCRATCH/.dev-team/autopilot.json"
+  # An active run has to be a REAL one for this test's name to be true — a committed
+  # autopilot.json does not mean a cycle is running (see the Rule 2 tests below), so only
+  # .dev-team/loop.lock/ actually makes "even with an active run" a fact rather than a claim.
+  mkdir -p "$SCRATCH/.dev-team/loop.lock"
   run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":"FEATURES.md","content":"line1\n<!-- dev-team: ledger=features schema=1.0 -->\nline3"}}'
   [ "$status" -eq 0 ]
 }
@@ -271,6 +323,29 @@ run_ledger_guard() {
   run run_ledger_guard "$other" '{"cwd":"'"$SCRATCH"'","tool_name":"Write","tool_input":{"file_path":"'"$SCRATCH"'/.dev-team/FEATURES.md","content":"line1\n<!-- dev-team: ledger=features schema=1.0 -->\nline3"}}'
   rm -rf "$other"
   [ "$status" -eq 0 ]
+}
+
+# Fault found by a later reading of the hook: path handling used to strip a leading "<cwd>/" and
+# then a leading "./" ONCE each, which is one pass, not a resolution. A path built from "." and
+# ".." segments walks straight past a single strip — ".dev-team/../SECURITY.md" still starts with
+# the literal text ".dev-team/" even though it actually names a file one level above it, and
+# "././SECURITY.md" still starts with "./" after only one strip is removed. These prove the path is
+# now resolved lexically (collapse every "." and every "x/.." pair) before either rule looks at it.
+@test "guard-ledgers: \".dev-team/../SECURITY.md\" resolves to the top level, not to .dev-team/, and is denied" {
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":".dev-team/../SECURITY.md","content":"line1\n<!-- dev-team: ledger=security schema=1.0 -->\nline3"}}'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"dev-team guard"* ]]
+}
+
+@test "guard-ledgers: \".dev-team/./FEATURES.md\" still resolves inside .dev-team/ and is allowed" {
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":".dev-team/./FEATURES.md","content":"line1\n<!-- dev-team: ledger=features schema=1.0 -->\nline3"}}'
+  [ "$status" -eq 0 ]
+}
+
+@test "guard-ledgers: \"docs/../FEATURES.md\" resolves to the top level and is denied" {
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":"docs/../FEATURES.md","content":"line1\n<!-- dev-team: ledger=features schema=1.0 -->\nline3"}}'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"dev-team guard"* ]]
 }
 
 # ---------------------------------------------------------------------------
@@ -330,6 +405,23 @@ run_ledger_guard() {
 @test "guard-ledgers: a mixed-case \"Features.md\" is caught the same as FEATURES.md" {
   mkdir -p "$SCRATCH/.dev-team/loop.lock"
   run run_ledger_guard "$SCRATCH" '{"tool_name":"Edit","tool_input":{"file_path":"Features.md","new_string":"FG-003 fixed"}}'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"dev-team guard"* ]]
+}
+
+# Same path-normalisation fault as the Rule 1 tests above, checked here against Rule 2: a single
+# strip of "<cwd>/" and "./" left a repeated or doubled "./" prefix untouched, so a path spelled
+# with extra "." or ".." segments walked past the top-level-name match entirely.
+@test "guard-ledgers: \"././SECURITY.md\" still resolves to the top-level name and is denied mid-cycle" {
+  mkdir -p "$SCRATCH/.dev-team/loop.lock"
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Edit","tool_input":{"file_path":"././SECURITY.md","new_string":"F-001 fixed"}}'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"dev-team guard"* ]]
+}
+
+@test "guard-ledgers: \"a/b/../../PROJECT.md\" resolves to the top-level name and is denied mid-cycle" {
+  mkdir -p "$SCRATCH/.dev-team/loop.lock"
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Edit","tool_input":{"file_path":"a/b/../../PROJECT.md","new_string":"B-004 fixed"}}'
   [ "$status" -eq 2 ]
   [[ "$output" == *"dev-team guard"* ]]
 }

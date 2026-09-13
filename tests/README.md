@@ -59,11 +59,25 @@ the wider word "legacy" alone. Prints `LEDGER-PATHS OK` and exits 0 on success, 
 exact phrases and patterns above, in the plugin's own files only — a stale instruction worded some
 genuinely new way can still pass, and it never looks at a user's project.
 
-The bats tests for it: (i) it passes on the clean repo; (ii) a file injected under
-`skills/dev-team-orchestrator/references/.tmp-ledger-audit.md` containing "The documentarian writes
-`` `PROJECT.md` `` at the repo root" fails with `LEDGER-PATHS FAIL`; (iii) a file containing
-`` `SECURITY.md#Findings` `` (a ledger anchor with no `.dev-team/` prefix) also fails. Both injected
-files are removed immediately after the assertions and again in `teardown()`, the same
+The bats tests for it: (i) it passes on the clean repo; (ii)-(v) one file injected under
+`skills/dev-team-orchestrator/references/.tmp-ledger-audit.md` per negative check, each built to
+trip exactly one of C, D, E or F and asserting that check's own label (`LEDGER-PATHS FAIL: C:`, and
+so on) appears in the output — check C ("Put `` `HANDOFF.md` `` sibling to package.json."), check D
+("See `` `SECURITY.md#Findings` `` for the full register."), check E ("Config files used to live at
+the repo root before this project reorganised its layout." — a legacy phrase with no ledger name on
+the line, so check C's "names a ledger" half never fires), and check F ("This file still uses
+`<!-- dev-team-schema: 1.0 -->` in one place." — the old marker text with no word "legacy" nearby).
+
+Fault found by a later reading of these tests: the two negative cases that used to exist here
+injected a single sentence — "The documentarian writes `` `PROJECT.md` `` at the repo root." — that
+trips BOTH check C (a "repo root" line naming a bare ledger) and check E (the exact legacy phrase
+"at the repo root") at the same time. A test asserting only `LEDGER-PATHS FAIL` (with no check
+letter) passing proved that *one* of the checks fired, never *which* — so a change that broke check
+C while check E still fired, or the reverse, would pass unnoticed. Check F, meanwhile, had no test
+at all. Each sample above was run once through the real script from a scratch copy of the repo
+before being written into this file, to confirm it trips only its own check and no other.
+
+Every injected file is removed immediately after its assertions and again in `teardown()`, the same
 belt-and-braces cleanup as the `audit-model-ids.sh` injection tests above.
 
 ### `hooks/guard-ledgers.sh` — the ledger guard's test matrix
@@ -73,14 +87,22 @@ written rule in `conventions.md`, "Where the plugin writes, and the ownership ru
 mistaken write into a project's top-level file before it happens. It checks two separate things,
 and the test matrix is split the same way:
 
-- **Rule 1 (marker content written outside `.dev-team/`) — on all the time unless `guard: off`.**
-  Cases cover: a `Write` whose content carries the dev-team marker on line 2 aimed at a top-level
-  path is denied; the identical content aimed at a `.dev-team/` path (relative or absolute) is
-  allowed; a marker further down the file (past the first three lines) does not trip the check; a
-  plain file with no marker is never blocked, whatever the path; `guard: off` in
-  `.dev-team/config.yml` allows it even with an active run; both the spaced and compact-JSON forms
-  of the `verdict.json` marker (`"dev-team": "ledger=..."` and `"dev-team":"ledger=..."` with no
-  spaces at all) are recognised.
+- **Rule 1 (marker content, ledger file name, written outside `.dev-team/`) — on all the time
+  unless `guard: off`.** Fires only when all three hold: the content carries the marker on one of
+  its first three lines; the target's file NAME (case ignored) is one of the seven ledger names;
+  the resolved path lands outside `.dev-team/`. Cases cover: a `Write` whose content carries the
+  dev-team marker on line 2 aimed at a top-level path with a ledger name is denied; the identical
+  content aimed at a `.dev-team/` path (relative or absolute) is allowed; a marker further down the
+  file (past the first three lines) does not trip the check; a plain file with no marker is never
+  blocked, whatever the path; a ledger-named file further down the tree (`docs/FEATURES.md`) is
+  still denied; **this plugin's own test fixture, `tests/fixtures/verdict.sample.json`, is never
+  blocked even though its real content starts with the marker on line 2** — its file name is
+  "verdict.sample.json", not "verdict.json", so it fails the name test and Rule 1 never fires (see
+  the fault note in the bats file); marker content aimed at any other non-ledger file name
+  (`notes/plan.md`) is likewise allowed; `guard: off` in `.dev-team/config.yml` allows a ledger-
+  named file even with a genuinely active run (`.dev-team/loop.lock/` actually present — see the
+  fault note below); both the spaced and compact-JSON forms of the `verdict.json` marker
+  (`"dev-team": "ledger=..."` and `"dev-team":"ledger=..."` with no spaces at all) are recognised.
 - **Rule 2 (a write to a top-level ledger name during an active run) — only while
   `.dev-team/loop.lock/` exists, `guard: on` is set, or `DEV_TEAM_GUARD` is set.** Cases cover: a
   **committed** `.dev-team/autopilot.json` present with no lock never triggers it, on its own,
@@ -95,9 +117,22 @@ and the test matrix is split the same way:
   same file on disk; a `MultiEdit` is checked across every one of its edits, not just the first;
   `guard: on` forces Rule 2 on with no lock file present, and `guard: off` wins even with a lock
   file present.
-- **Path handling.** A case with an absolute `file_path` under the test's own scratch directory and
-  a matching `cwd` field confirms the hook resolves paths against the session's own working folder
-  from the hook's JSON input, not the test runner's process directory.
+- **Path normalisation (both rules).** Fault found by a later reading of the hook: stripping a
+  leading `<cwd>/` (or `$PWD/`) and a leading `./` was done ONCE each, which is one pass, not a
+  resolution — a path spelled with `.` or `..` segments walked straight past both rules.
+  `.dev-team/../SECURITY.md` used to be let through as if it were inside `.dev-team/` (a literal
+  string match on the prefix, ignoring what the path actually resolves to); with
+  `.dev-team/loop.lock/` present, an `Edit` adding `F-001` to `././SECURITY.md` used to be allowed,
+  because only the first `./` was ever stripped. The hook now resolves the path lexically — splits
+  on `/`, drops empty and `.` pieces, and for each `..` removes the piece before it — before either
+  rule looks at it. Cases cover both rules: `.dev-team/../SECURITY.md` (Rule 1, marker `Write`) and
+  `docs/../FEATURES.md` (Rule 1, marker `Write`) both resolve to the top level and are denied;
+  `.dev-team/./FEATURES.md` (Rule 1, marker `Write`) still resolves inside `.dev-team/` and is
+  allowed; `././SECURITY.md` and `a/b/../../PROJECT.md` (Rule 2, `Edit` with a record id and
+  `loop.lock/` present) both resolve to a bare top-level ledger name and are denied. A case with an
+  absolute `file_path` under the test's own scratch directory and a matching `cwd` field confirms
+  the hook resolves paths against the session's own working folder from the hook's JSON input, not
+  the test runner's process directory.
 
 ### `schemas/verdict.schema.json` — schema validation tests
 
