@@ -6,7 +6,7 @@ Run the issue-sync protocol over this repo's dev-team ledgers. Arguments: $ARGUM
 
 Follow `skills/dev-team-orchestrator/references/issue-sync-protocol.md` exactly. In short:
 1. Detect the tracker platform from the git remote: GitHub → use `gh`, GitLab → use `glab`. If the resolved CLI is not authenticated for this repo, tell the user how to enable it and stop. If the repo is plain git with no GitHub/GitLab remote, say so and skip issue-sync entirely (this is fine — auto-handoff and auto-commit still operate). Never fail loudly.
-2. Read the ledgers present: FEATURES.md, PROJECT.md (Backlog + Proposed-Features), SECURITY.md, VERIFICATION.md, .dev-team/autopilot.json.
+2. Read the ledgers present, each found through the lookup order in `dev-team-orchestrator/references/conventions.md` ("Where the plugin writes, and the ownership rule", point 5), which never reads a file without the dev-team marker as the ledger: `.dev-team/FEATURES.md`, `.dev-team/PROJECT.md` (Backlog + Proposed-Features), `.dev-team/SECURITY.md`, `.dev-team/VERIFICATION.md`, `.dev-team/autopilot.json`. Writing an issue number back into a ledger is a write, so the ownership rule applies to it: a file without the marker gets nothing written to it — stop and ask.
 3. For each OPEN item, create-or-update its tracker issue (GitHub or GitLab, per the platform detected in step 1) per the DEDUP rule — an item with a stored `issue:` ref updates that issue; an item without one creates a new issue and writes the returned number back into the ledger. Never create duplicates; the hidden `<!-- dev-team:<id> -->` marker is the identity backstop.
 4. Close the issues of items now done/resolved/verified, referencing the delivering commit/PR.
 5. The first run in a repo (or `--confirm-each`): show the planned set and get the user's go-ahead before creating. With `--dry-run`: report only, change nothing.
@@ -20,7 +20,7 @@ The `sonnet-scribe` agent does the actual `gh`/`glab` calls (cheap bookkeeping),
   reading the body from that temp file as a single quoted argument:
   `glab issue create --title "$t" --description "$(cat "$file")"`); pass search terms and other
   values as quoted, individually-passed arguments.
-- **Security findings are opt-in and redacted.** Do NOT sync `SECURITY.md` findings (`F-` items)
+- **Security findings are opt-in and redacted.** Do NOT sync `.dev-team/SECURITY.md` findings (`F-` items)
   under a plain `issues=sync` — that requires the separate, explicit `issues=sync-security`
   opt-in. When opted in, the synced issue carries only title, severity, and CWE/location — never
   the `evidence`/PoC field.

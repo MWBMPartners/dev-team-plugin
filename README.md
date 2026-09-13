@@ -351,6 +351,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 | [`/dev-team-sync-issues`][cmd-sync-issues] | `--dry-run`, `--confirm-each` | Export the suite's ledgers (feature gaps, backlog, security findings, review verdicts, gate items) to your GitHub or GitLab tracker (platform auto-detected; see [Issue sync](#issue-sync-optional)); opt-in, dedup-safe. |
 | [`/dev-team-config`][cmd-config] | `show\|init` | Print the effective config (built-in defaults overlaid with `.dev-team/config.yml`), or scaffold a starter repo-scoped config file (see [Configuration & feature toggles](#configuration--feature-toggles)). |
 | [`/dev-team-report`][cmd-report] | `[branch=<base>]` | Read-only, on-demand run report — phases/cycles, commits, agents by tier, a rough (not-a-bill) cost estimate — regardless of the `features.telemetry` toggle (see [Run reports & cost](#run-reports--cost)). |
+| [`/dev-team-move-ledgers`](commands/dev-team-move-ledgers.md) | `[--apply]` | Move dev-team ledgers written before v1.5.0 from the legacy root location into `.dev-team/`. Read-only preview by default; `--apply` moves only files carrying the dev-team marker without asking, asks about look-alikes, never touches a project's own file or a mixed one, and makes one commit (never pushes). |
 
 **Detail worth knowing:**
 

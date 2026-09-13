@@ -32,6 +32,14 @@ This is **read-only** — never create, edit, or touch the file for `show`.
    starter schema from `config-and-toggles.md` verbatim (the same `version: 1` / `defaults:` /
    `git:` / `features:` block, with its inline comments) so the file is self-documenting on first
    read.
+   In the same step, if `.dev-team/.gitignore` is absent, create it containing exactly one line,
+   `loop.lock/`; and if `.dev-team/README.md` is absent, create it with the fixed text in
+   `dev-team-orchestrator/references/conventions.md` ("Where the plugin writes, and the ownership
+   rule", point 7), copied from there rather than retyped. Never overwrite either file once it
+   exists. *Why:* the lock folder only means "a cycle is running on this machine right now" and must
+   never be committed, and the README tells a person browsing the repo what the folder is. Tell the
+   user which of the two were created and which were already there. Never edit the project's own
+   `.gitignore`.
 3. Tell the user clearly: **this file is meant to be committed** — once it's in the repo, its
    defaults and toggles apply to every session and every collaborator who clones the repo, not
    just this one. Suggest `git add .dev-team/config.yml` and reviewing the values before
