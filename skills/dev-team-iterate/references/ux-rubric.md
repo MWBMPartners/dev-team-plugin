@@ -10,7 +10,7 @@ Paste this file into the brief of any builder doing UI work, and name it in the 
 
 ## The guardrails (the checker enforces every one on UI-touching cycles)
 
-1. **Steps-to-primary-action never increases.** Count the clicks/taps/keystrokes to complete each core user task (from `PROJECT.md`'s metrics). After the change the count is **flat or lower**. Ideally a cycle *reduces* it. An increase fails the cycle.
+1. **Steps-to-primary-action never increases.** Count the clicks/taps/keystrokes to complete each core user task (from `.dev-team/PROJECT.md`'s metrics). After the change the count is **flat or lower**. Ideally a cycle *reduces* it. An increase fails the cycle.
 
 2. **Default-view clutter never increases.** The on-screen element count on the main/default views stays flat or drops, **even as features are added**. New capability lives behind progressive disclosure — an expandable "advanced" section, a command palette, a context menu, inline actions, a detail drawer — not new always-visible chrome.
 

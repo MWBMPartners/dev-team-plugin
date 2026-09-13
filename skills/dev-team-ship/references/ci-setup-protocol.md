@@ -146,7 +146,7 @@ whenever a workflow auto-commits/auto-merges/auto-tags to a branch with a downst
    steps for the PAT (name it, tell them where to generate the token and what scopes it
    needs) — never generate or paste the token value yourself.
 3. **Document a manual first-dispatch** — if automation is overkill for this repo, say so
-   plainly in `PROJECT.md` / the release runbook: "after merging, manually run
+   plainly in `.dev-team/PROJECT.md` / the release runbook: "after merging, manually run
    `/deploy.yml` (or the equivalent) once."
 
 ## Step 5 — Verifying a setup or an audit fix

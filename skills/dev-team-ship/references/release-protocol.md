@@ -96,7 +96,7 @@ never deployed.
 ## Path B — Manual: a documented runbook
 
 For repos where full automation isn't worth the maintenance, document the exact steps
-instead (in `PROJECT.md` or a `RELEASING.md`, the user's call):
+instead (in `.dev-team/PROJECT.md` or a `RELEASING.md`, the user's call):
 
 1. Decide the new version (semver) and confirm it against the changes since the last tag.
 2. Bump the version in the manifest (`package.json`, `plugin.json`, `pyproject.toml`,
@@ -119,7 +119,7 @@ does not need to be automated to count as "shipped" (`SKILL.md`'s Definition of 
 Ask (or infer from release cadence/repo activity): frequent releases + low tolerance for
 manual toil → Path A; infrequent releases, or a team that wants a human eyes-on gate every
 time → Path B. If genuinely contested, run the orchestrator's debate protocol and record
-the decision in `PROJECT.md`'s decision log — this is exactly the kind of real
+the decision in `.dev-team/PROJECT.md`'s decision log — this is exactly the kind of real
 architecture-adjacent tradeoff that protocol exists for.
 
 ## Verifying the release lane (checker)
@@ -127,7 +127,7 @@ architecture-adjacent tradeoff that protocol exists for.
 - **Path A:** a real dry-run (a version bump on a throwaway branch/PR, or a manually
   dispatched run) produces a tag + release, and — if a downstream workflow depends on it —
   the bridge step actually fires it. Paste the run URLs.
-- **Path B:** the runbook is written down somewhere durable (`PROJECT.md` /
+- **Path B:** the runbook is written down somewhere durable (`.dev-team/PROJECT.md` /
   `RELEASING.md`), and a dry run of the steps (up to but not including the actual
   push/tag, unless the user asks to cut a real release) confirms every command in it is
   correct against the current manifest/CHANGELOG state.

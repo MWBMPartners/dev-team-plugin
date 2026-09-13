@@ -10,24 +10,24 @@ Each mode is a sibling skill whose protocol you follow for **exactly one cycle**
 
 | Mode | Source skill | What "one cycle" is | Commit |
 |---|---|---|---|
-| **discovery** | `dev-team-featurefind` | One research-and-score pass that creates/refreshes `FEATURES.md`. Usually only at bootstrap and when in-scope gaps run low. | doc-only (ledger) |
+| **discovery** | `dev-team-featurefind` | One research-and-score pass that creates/refreshes `.dev-team/FEATURES.md`. Usually only at bootstrap and when in-scope gaps run low. | doc-only (ledger) |
 | **iterate** | `dev-team-iterate` | One cycle contract: pick top backlog item(s) of a theme → builders → checker (UX rubric / perf evidence / purpose-fit) → checkpoint → one commit. | one per cycle |
-| **security: Phase 0** | `dev-team-security` | The first SECURE iteration only: security scout + tooling sweep (SCA/SAST/secret/container) + sandbox + multi-role fixtures + threat model + attack-surface map + coverage ledger → `SECURITY.md`. Heavy setup; it **yields before any attack**. | doc-only (`SECURITY.md`) |
+| **security: Phase 0** | `dev-team-security` | The first SECURE iteration only: security scout + tooling sweep (SCA/SAST/secret/container) + sandbox + multi-role fixtures + threat model + attack-surface map + coverage ledger → `.dev-team/SECURITY.md`. Heavy setup; it **yields before any attack**. | doc-only (`SECURITY.md`) |
 | **security: purple-team** | `dev-team-security` | Each later SECURE iteration: one purple-team cycle on a surface/class — RED (attack→PoC, seeded by Phase-0 leads) → VALIDATE (skeptic) → BLUE (fix + regression test) → VERIFY (re-attack the fix) → one commit. | one per finding/batch |
 | **feature build** | `dev-team-orchestrator` | One stage of an **approved** feature spec: plan → delegate → check → checkpoint → one commit. Only runs on a gate-ledger item the user already approved, citing its authored full spec verbatim. | one per stage |
 | **verify** | `dev-team-review` | One verification workstream (a claim-group, or the clean-room integration check) → fresh evidence → verdicts. **Read-only (verdicts only).** | none (read-only) |
 
-Splitting security setup from its attack cycles, like DISCOVER's setup is already split out, is what keeps the heavy Phase-0 work from blowing the one-small-cycle blast-radius guarantee. Keep every cycle inside the mode's blast-radius cap; if a "cycle" is ballooning, split it. After the cycle: documentarian writes `PROJECT.md`, you update `autopilot.json`, you yield.
+Splitting security setup from its attack cycles, like DISCOVER's setup is already split out, is what keeps the heavy Phase-0 work from blowing the one-small-cycle blast-radius guarantee. Keep every cycle inside the mode's blast-radius cap; if a "cycle" is ballooning, split it. After the cycle: documentarian writes `.dev-team/PROJECT.md`, you update `autopilot.json`, you yield.
 
 ### VERIFY is report-only under the conductor (no recursion, no second branch)
-`dev-team-review` defaults to `remediate=fix`, whose fix phase "activates" sibling skills on a `review-fix/<date>` branch and re-verifies — which would recurse into a second orchestration, cut a second branch, and break the flattened one-cycle-per-commit model. So the conductor **always runs review-mode with `remediate=report` on the run branch**: it produces verdicts + `VERIFICATION.md` + `verdict.json` only. It does NOT enter review's fix phase, does NOT create a `review-fix` branch, and does NOT activate sibling skills. Each FAILED/DRIFTED/HOLLOW verdict is converted by the conductor into a queued item / **phase re-open** under the normal gate policy (bug → STABILIZE, security → SECURE, feature-spec drift → COMPLETE) and fixed on a *later* iteration as an ordinary one-cycle move on the run branch. (`dev-team-review`'s own "Running inside the conductor" section states the same, so the skill stays correct standalone.)
+`dev-team-review` defaults to `remediate=fix`, whose fix phase "activates" sibling skills on a `review-fix/<date>` branch and re-verifies — which would recurse into a second orchestration, cut a second branch, and break the flattened one-cycle-per-commit model. So the conductor **always runs review-mode with `remediate=report` on the run branch**: it produces verdicts + `.dev-team/VERIFICATION.md` + `.dev-team/verdict.json` only. It does NOT enter review's fix phase, does NOT create a `review-fix` branch, and does NOT activate sibling skills. Each FAILED/DRIFTED/HOLLOW verdict is converted by the conductor into a queued item / **phase re-open** under the normal gate policy (bug → STABILIZE, security → SECURE, feature-spec drift → COMPLETE) and fixed on a *later* iteration as an ordinary one-cycle move on the run branch. (`dev-team-review`'s own "Running inside the conductor" section states the same, so the skill stays correct standalone.)
 
 ### Reusing prior state across modes
 The modes share the same external memory, so they compound instead of repeating:
-- `featurefind` and `iterate` both reuse the **Codebase Map** in `PROJECT.md` (don't re-scout what's mapped).
+- `featurefind` and `iterate` both reuse the **Codebase Map** in `.dev-team/PROJECT.md` (don't re-scout what's mapped).
 - **Global gate — iterate's safety-net.** Before any *behaviour-touching* cycle in any mode: thin coverage → a characterization-test cycle is forced first. Never refactor or fix blind. (If a net genuinely can't be established and only behaviour-touching work remains, that's a Bucket-3 hard pause.)
 - **Global gate — security's active-compromise rule.** If any cycle surfaces evidence the live system is *already* compromised, it is incident response, not an audit: hard-pause immediately and do not auto-fix (Bucket 3 below). This overrides the autonomous-fix bucket regardless of how clear the remediation looks.
-- `security` writes `SECURITY.md`; `review` reads `PROJECT.md` + `SECURITY.md`. `autopilot.json` points at all three.
+- `security` writes `.dev-team/SECURITY.md`; `review` reads `.dev-team/PROJECT.md` + `SECURITY.md`. `autopilot.json` points at all three.
 
 ## The hybrid gate policy
 
@@ -54,7 +54,7 @@ The loop performs these unattended, cycle after cycle. Safe because they hold th
 - performance work (with before/after evidence),
 - code dedup / refactor under a test net,
 - docs,
-- **net-new features that pass the autonomy test** (all four criteria above). The conductor authors the full spec, **records the justification** (why table-stakes + why net-positive + why not Bucket-3-class) in `PROJECT.md` and the gate-ledger item (`status: auto-cleared`, `cleared_by: autonomy-test`, with the justification — this logged justification is the **approval-of-record** under the conductor), builds it through a normal feature cycle (checker + UX rubric + tests + blast-radius cap + one commit on the run branch; → `status: built` when its stages complete), and **surfaces it in the report line**. This is safe *because* the feature still passes the full quality cycle and lands as revertible commits on the run branch — never merged to `main` without the user, so anything you disagree with on review is a revert.
+- **net-new features that pass the autonomy test** (all four criteria above). The conductor authors the full spec, **records the justification** (why table-stakes + why net-positive + why not Bucket-3-class) in `.dev-team/PROJECT.md` and the gate-ledger item (`status: auto-cleared`, `cleared_by: autonomy-test`, with the justification — this logged justification is the **approval-of-record** under the conductor), builds it through a normal feature cycle (checker + UX rubric + tests + blast-radius cap + one commit on the run branch; → `status: built` when its stages complete), and **surfaces it in the report line**. This is safe *because* the feature still passes the full quality cycle and lands as revertible commits on the run branch — never merged to `main` without the user, so anything you disagree with on review is a revert.
 
 These — plus the obvious in-scope features — are the bulk of production-readiness. The loop should spend most iterations here.
 
@@ -88,4 +88,4 @@ On a hard pause: set `blocked = {is:true, reason, since}`, `state:"BLOCKED"`, su
 
 ## Surfacing — the user always sees the queue
 
-Whatever the policy, every iteration's report line names what was deferred and why, and any blocker. The gate-ledger is the running approval queue; the user can glance at `autopilot.json`/`PROJECT.md` between cycles, approve or redirect, and re-fire. Silent accumulation is a failure mode — the whole point of "surface, don't block" is that the user stays informed without having to babysit.
+Whatever the policy, every iteration's report line names what was deferred and why, and any blocker. The gate-ledger is the running approval queue; the user can glance at `autopilot.json`/`.dev-team/PROJECT.md` between cycles, approve or redirect, and re-fire. Silent accumulation is a failure mode — the whole point of "surface, don't block" is that the user stays informed without having to babysit.

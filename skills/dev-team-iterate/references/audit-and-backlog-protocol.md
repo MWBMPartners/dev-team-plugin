@@ -1,12 +1,12 @@
 # Audit & Backlog Protocol (Phase 0)
 
-This is the front end of `dev-team-iterate`: there is no spec, so you **reverse-engineer the goal** and **build a scored backlog** before any improvement work. Steps: **resume check → scout → infer purpose → audit into a backlog**. The documentarian records all of it in `PROJECT.md`. The expensive whole-codebase understanding is cached in a **Codebase Map** so re-runs reference it instead of re-gathering everything from cold.
+This is the front end of `dev-team-iterate`: there is no spec, so you **reverse-engineer the goal** and **build a scored backlog** before any improvement work. Steps: **resume check → scout → infer purpose → audit into a backlog**. The documentarian records all of it in `.dev-team/PROJECT.md`. The expensive whole-codebase understanding is cached in a **Codebase Map** so re-runs reference it instead of re-gathering everything from cold.
 
 ## Step 0 — Resume check & Codebase-Map freshness
 
 Before scouting, find out whether a prior run already gathered the context. This is what makes re-runs cheap: **gather the full picture once; reference + delta-update thereafter.**
 
-1. **Look for prior state.** Check the repo root for a `PROJECT.md` containing a **Codebase Map** section and a **run record** (`map-commit`, `last-run` date) written by a previous `dev-team-iterate` run.
+1. **Look for prior state.** Look for `.dev-team/PROJECT.md` first; only if that is absent, look for the legacy root `PROJECT.md`, through the lookup order (`conventions.md`, "Where the plugin writes, and the ownership rule", point 5) — a legacy root file without the dev-team marker is asked about, never read as the ledger. It should contain a **Codebase Map** section and a **run record** (`map-commit`, `last-run` date) written by a previous `dev-team-iterate` run.
 2. **No prior map** (file absent, not a git repo, or it's clearly for a different project) → do a **full scout** (Step 1) and write the Codebase Map fresh.
 3. **Prior map exists → validate it's current; never trust it blindly:**
    - **Drift check:** first run `git status --porcelain` (and `git diff`) to capture uncommitted changes, then `git diff --stat <map-commit>..HEAD` for what's landed since the map was written (this includes the prior run's own commits — known and fine); fold both into the drift surface. If `git diff --stat <map-commit>..HEAD` errors (no longer a git repo, or map-commit unreachable — rewritten/squashed history, shallow clone) → treat the map as stale and do a full re-scout. No committed *and* no uncommitted changes → the map is current; reuse as-is and skip to Step 2 — but a dirty tree always keeps the spot-check (below), directed at the dirtied paths.
@@ -97,7 +97,7 @@ Cover all of these, but **let the run's focus drive depth**. On a **balanced run
 
 ## Output of Phase 0
 
-The documentarian writes into `PROJECT.md` (extending the orchestrator's structure):
+The documentarian writes into `.dev-team/PROJECT.md` (extending the orchestrator's structure):
 
 - **Codebase Map** — the durable "what the code does" reference (structure below). Cached across runs; delta-updated, not rebuilt from scratch.
 - **Run record** — `last-run: <date>`, `map-commit: <hash>`, `cycles-done: <n>`. Drives the Step-0 freshness check next time.

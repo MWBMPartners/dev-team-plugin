@@ -115,7 +115,7 @@ context on the codebase:
 - **The big picture** — a system diagram (even ASCII is fine), the major components, and how
   data/control flows between them.
 - **Key design decisions and why** — link to the project's decision log/ADRs if one exists
-  (e.g. `PROJECT.md`'s Decision log, from a prior `dev-team-orchestrator`/`iterate` run) rather
+  (e.g. `.dev-team/PROJECT.md`'s Decision log, from a prior `dev-team-orchestrator`/`iterate` run) rather
   than re-deriving the rationale from scratch.
 - **Where to start reading the code** — the entry points a new contributor should open first,
   and the order that makes the rest make sense.
