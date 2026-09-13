@@ -95,15 +95,28 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
 | 2 | Device-wide rules | Already present in `~/.claude/CLAUDE.md` |
 | 3 | Deep analysis (Fable) | Done |
 | 4 | Deep plan (Fable) + lead review | Done |
-| 5 | Build stage 1: WP1 rules text (Opus); WP2 hook, WP3 audit script, WP9 schema (Sonnet) | Next |
+| 5 | Build stage 1: WP1 rules text (Opus) alongside WP2 hook + WP9 schema (Sonnet) | Running — workflow `wf_e347b9fb-ffd` |
 | 6 | Build stage 2: WP4–WP6 document edits (Sonnet); WP7 commands (Opus) | Waiting on WP1 |
-| 7 | Build stage 3: WP8 README, CHANGELOG, version (Sonnet) | Waiting on stage 2 |
+| 7 | Build stage 3: WP8 README, CHANGELOG, version (Sonnet), then WP3 self-check script (Sonnet) | Waiting on stage 2 |
 | 8 | Run all checks; Codex review, fix, re-review until clean | Waiting |
 | 9 | Hand test: does the hook fire for a sub-agent? | Waiting |
-| 10 | Open follow-up issues (see plan-review.md) | Waiting |
+| 10 | Follow-up issues | Done: #42 (findings public in public repositories), #43 (`autopilot.json` schema), #44 (Bash guard's "run in progress" test). SIGNula.id's `SECURITY.md` hand-fix belongs to that repository — left for the owner. |
 | 11 | One pull request to `alpha` | Later — owner's call when |
+
+## Baseline before any build change (13 September, commit 9830e8e, run in a separate copy of the branch)
+
+`scripts/audit-model-ids.sh` AUDIT OK · `tests/smoke-structure.sh` SMOKE OK · `shellcheck` clean ·
+`bats tests/scripts.bats` 17 of 17 passed. So any failure from here on was introduced by this work.
 
 ## What to do next
 
-Start build stage 1 exactly as split in plan-review.md, Correction 4. Builders do not commit; the lead
-commits each work package on its own and pushes. Commit WP3 last.
+Stage 1 is running. When it reports:
+
+1. Check both builders' pasted test output by rerunning the checks yourself.
+2. Commit WP1 on its own, then WP2 + WP9, adding only each package's own files.
+3. Push.
+4. Start stage 2 with WP1's exact wording pasted into the briefs.
+
+**WP3 moved to the end.** The self-check script's tests live in the same file as the hook's tests, and
+they only pass once every document is updated. Building WP3 early would make each commit in between
+fail its own tests, so it is built after WP8.

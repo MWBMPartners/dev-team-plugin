@@ -94,7 +94,7 @@ Builders **do not commit**. The lead commits each work package separately, addin
 | Stage | Package | Model | Files this builder may edit — and no others |
 | --- | --- | --- | --- |
 | 1 | WP1 | Opus | `skills/dev-team-orchestrator/references/conventions.md` |
-| 1 | WP2 + WP3 + WP9 | Sonnet | `hooks/guard-ledgers.sh` (new), `hooks/hooks.json`, `scripts/audit-ledger-paths.sh` (new), `schemas/verdict.schema.json` (new), `tests/fixtures/verdict.sample.json` (new), `tests/scripts.bats`, `tests/smoke-structure.sh`, `.github/workflows/plugin-audit.yml` |
+| 1 | WP2 + WP9 | Sonnet | `hooks/guard-ledgers.sh` (new), `hooks/hooks.json`, `schemas/verdict.schema.json` (new), `tests/fixtures/verdict.sample.json` (new), `tests/scripts.bats`, `tests/smoke-structure.sh`, `.github/workflows/plugin-audit.yml` |
 | 2 | WP4 | Sonnet | every file under `skills/dev-team-orchestrator/` except `conventions.md` |
 | 2 | WP5 | Sonnet | every file under `skills/*/references/` outside `dev-team-orchestrator/` |
 | 2 | WP6 | Sonnet | `agents/*.md`, and every `skills/*/SKILL.md` except `dev-team-orchestrator/SKILL.md` |
@@ -109,7 +109,19 @@ Notes on that split:
 - The README, CONTRIBUTING and tests/README mentions of the new hook, audit script and schema, which
   plan.md scatters across WP2, WP3 and WP9, are all done in WP8.
 
-## Follow-ups to record as separate issues (not built in this change)
+## Correction 5 — WP3 is built last
+
+The WP3 self-check script's bats tests go in `tests/scripts.bats`, the same file as WP2's and WP9's tests.
+Its "passes on the clean repo" test can only pass once every document has been updated. So WP3 is built
+by its own Sonnet builder **after WP8**, not in stage 1. That keeps each commit on the branch passing its
+own tests. The file list for that builder is `scripts/audit-ledger-paths.sh` (new), `tests/scripts.bats`,
+`tests/smoke-structure.sh`, `.github/workflows/plugin-audit.yml`, `CONTRIBUTING.md` and `tests/README.md`.
+It adds only the WP3 parts to the last three.
+
+## Follow-ups opened as separate issues (not built in this change)
+
+Items 1–3 below are GitHub issues #42, #43 and #44. Item 4 is for SIGNula.id's own repository and
+is left for the owner.
 
 1. **Security findings are committed to the repository.** Moving them into `.dev-team/SECURITY.md` does
    not make them private, so a public repository publishes its findings and proof-of-concept details.
