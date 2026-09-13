@@ -228,6 +228,19 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
           and a Sonnet builder on conventions, config-and-toggles, README, CHANGELOG and move-ledgers.
           When it reports, rerun all checks and probe the hook under /bin/bash, then commit per builder
           (stating "not fully reviewed"), push, and update #41.
+        - **Fix round 2 DONE (about 23:15):** committed as two commits (hook + tests; then docs, rules
+          and move-ledgers), pushed, and #41 updated.
+          - Lead's checks: audit-ledger-paths OK, audit-model-ids OK, smoke OK, shellcheck clean,
+            bats 63 of 63.
+          - Hand probes under /bin/bash 3.2.57 and bash 5.3.15 are identical: empty-resolving paths
+            exit 0 with empty stderr; top-level README.md with the marker exits 2;
+            `/.dev-team/SECURITY.md` exits 2; an absolute path inside `<cwd>/.dev-team/` exits 0.
+          - No "dev-template" outside `.claude/`.
+          - **Unverified:** tests now need bats ≥ 1.5.0 (`run --separate-stderr`), and the version
+            installed by apt on GitHub's ubuntu-latest runner has not been checked. The file
+            declares the minimum, so an old bats fails clearly. Watch the first CI run on the pull
+            request.
+          - **#41 is now waiting only for Codex's catch-up review** (booked for 02:37 on 14 September).
         - **Lesson:** on this ChatGPT plan, Codex's allowance runs out after about one high-effort
           whole-branch review, and the reset can be hours away. Plan Codex reviews as single, spaced
           runs, and save them for the most valuable check.
