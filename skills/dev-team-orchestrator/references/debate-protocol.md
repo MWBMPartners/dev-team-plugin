@@ -47,6 +47,6 @@ Explicitly discount rhetoric: an option does not win because its write-up was lo
 
 ## Closing the debate
 
-- Write a decision-log entry in `PROJECT.md`: the decision, the runner-up, the deciding reasons, and the chosen option's kill condition (so the project knows when to revisit).
+- Write a decision-log entry in `.dev-team/PROJECT.md`: the decision, the runner-up, the deciding reasons, and the chosen option's kill condition (so the project knows when to revisit).
 - If it's a near-tie on something expensive to reverse, or your check-in policy is decision-level: present a 5-line summary of each case plus your recommendation to the user and let them call it.
 - Optional second round (rare): if two cases directly contradict on a checkable fact, spawn one neutral agent to verify that fact, then decide. Do not run open-ended rebuttal rounds.

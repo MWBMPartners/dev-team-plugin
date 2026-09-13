@@ -1,18 +1,18 @@
 # Documentarian Protocol
 
-The documentarian is spawned as the **`sonnet-scribe`** agent (Sonnet tier; model routing: `skills/dev-team-orchestrator/references/model-routing.md`) that owns `PROJECT.md`. Recording state and decisions doesn't need a frontier model, so this role runs on the Sonnet tier to save tokens. Spawn it at project start to create the file, then re-spawn it (or append to its thread) whenever there's something new to record: a stage plan, a decision, a checkpoint result, or a change in current status.
+The documentarian is spawned as the **`sonnet-scribe`** agent (Sonnet tier; model routing: `skills/dev-team-orchestrator/references/model-routing.md`) that owns `.dev-team/PROJECT.md`. Recording state and decisions doesn't need a frontier model, so this role runs on the Sonnet tier to save tokens. Spawn it at project start to create the file, then re-spawn it (or append to its thread) whenever there's something new to record: a stage plan, a decision, a checkpoint result, or a change in current status.
 
 `PROJECT.md` is the orchestrator's **external memory**. Its job is not just to log history but to answer, at any moment, "where does this project stand and what's next" — so a fresh orchestrator with no prior context could read it and resume correctly. That means a **Current status** section that is kept up to date, not only append-only logs.
 
-**Schema:** the `<!-- dev-team-schema: 1.0 -->` HTML comment right under the title is this document's format version — the same versioning discipline as `.dev-team/autopilot.json`'s `schema` field (`loop-runtime.md`). A missing comment is treated as `1.0`; see `conventions.md`'s "Schema versioning" subsection for the shared rule.
+**Schema:** line 2, right under the title, carries the dev-team marker `<!-- dev-team: ledger=project schema=1.0 -->` — one line that is both this document's format version and the plugin's proof that the file is its own (see `conventions.md`, "Where the plugin writes, and the ownership rule"). The legacy marker `<!-- dev-team-schema: 1.0 -->`, written before v1.5.0, is still accepted as proof of ownership when reading, and is replaced by the new form the next time the file is written. A missing marker means different things depending on what is about to happen — see `conventions.md`'s "Schema versioning" subsection for the shared rule.
 
 ## PROJECT.md structure
 
-The documentarian maintains this file at the repo root:
+The documentarian maintains this file at `.dev-team/PROJECT.md`. Every file the dev-team suite writes for itself lives in `.dev-team/` and carries the dev-team marker on line 2; a file at that path without the marker is never written to — the run stops and asks. See `dev-team-orchestrator/references/conventions.md`, "Where the plugin writes, and the ownership rule".
 
 ```markdown
 # [Project name]
-<!-- dev-team-schema: 1.0 -->
+<!-- dev-team: ledger=project schema=1.0 -->
 
 ## Goal
 [one or two sentences, as the user stated it]
@@ -92,7 +92,8 @@ decisions or write code. Keep entries concise and factual.
 [paste the exact facts: the decision + reason, or the checkpoint result, etc.]
 
 ## Constraints
-- Edit only PROJECT.md.
+- Edit only `.dev-team/PROJECT.md`.
+- Before writing, read the target and apply the ownership rule (`conventions.md`, "Where the plugin writes, and the ownership rule"); after writing, re-read line 2 and confirm the marker is there — report a missing marker as a failed write.
 - Preserve existing content; append to logs, but **keep "Current status" overwritten to reflect reality now** (it's the one section that's not append-only), and follow the ledger-retention rule in "Keep it lean" above.
 - Match the existing section structure.
 
@@ -102,10 +103,10 @@ Confirm what you wrote and where.
 
 ## When the orchestrator invokes it
 
-- **Project start:** create PROJECT.md with goal, done-criteria, constraints, the stage plan, and an initial Current status.
+- **Project start:** create `.dev-team/PROJECT.md` (creating the `.dev-team/` folder, its `.gitignore` and `README.md` if absent) with goal, done-criteria, constraints, the stage plan, and an initial Current status.
 - **After a decision/debate:** append a decision-log entry.
 - **After each stage checkpoint:** append a checkpoint entry, update the stage's status, and refresh Current status.
 - **Whenever state moves materially:** refresh Current status so the file is always a faithful snapshot to resume from.
-- **After every completed task/workstream (auto-handoff, default on) and at each checkpoint/RECORD:** `sonnet-scribe` (re)generates `HANDOFF.md` per `handoff-template.md` — a derived, assistant-agnostic one-glance resume card (readable cold by any LLM coding tool, at a stable repo-root path), always overwritten in full (same discipline as "Keep it lean" above), never a source of truth. It is committed with the work it describes; the per-task cadence applies when `features.auto-handoff` is on (`config-and-toggles.md`; fail-open default on), and a per-session `DEV_TEAM_NO_AUTO_HANDOFF` drops back to checkpoint/RECORD-only regeneration.
+- **After every completed task/workstream (auto-handoff, default on) and at each checkpoint/RECORD:** `sonnet-scribe` (re)generates `.dev-team/HANDOFF.md` per `handoff-template.md` — a derived, assistant-agnostic one-glance resume card (readable cold by any LLM coding tool, at the fixed path `.dev-team/HANDOFF.md`), always overwritten in full (same discipline as "Keep it lean" above), never a source of truth. It is committed with the work it describes; the per-task cadence applies when `features.auto-handoff` is on (`config-and-toggles.md`; fail-open default on), and a per-session `DEV_TEAM_NO_AUTO_HANDOFF` drops back to checkpoint/RECORD-only regeneration.
 
 Builders and the checker get the relevant PROJECT.md slices pasted into their briefs — that's how decisions stay sticky across the team. The orchestrator reads Current status to rehydrate at stage boundaries instead of relying on its own (drifting) context.

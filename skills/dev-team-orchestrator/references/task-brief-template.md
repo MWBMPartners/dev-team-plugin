@@ -17,7 +17,7 @@ workstream needs that tier. See `model-routing.md`. Verification roles never go 
 - Stack & conventions: [language, framework, style rules, package manager]
 - Skills to follow: [name + path of any applicable skill, e.g. "UI design skill at
   ~/.claude/skills/ui-design/SKILL.md — read it and follow its conventions"; or "none"]
-- Relevant prior decisions: [paste relevant decision-log entries from PROJECT.md]
+- Relevant prior decisions: [paste relevant decision-log entries from `.dev-team/PROJECT.md`]
 - Current state: [what already exists that matters to this task]
 
 ## Your task

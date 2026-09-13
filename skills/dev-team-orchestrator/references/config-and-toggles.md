@@ -57,7 +57,7 @@ features:            # enable/disable behaviours repo-wide (on|off; env var can 
   notifications: on      # autopilot gate/blocker/done notifications (v1.2.0)
   telemetry: on          # run-end telemetry + cost estimate         (v1.2.0)
   dry-run: off           # default plan-preview for building skills  (v1.2.0)
-  auto-handoff: on       # regenerate HANDOFF.md after every completed task/workstream (v1.3.0; per-session override: DEV_TEAM_NO_AUTO_HANDOFF)
+  auto-handoff: on       # regenerate .dev-team/HANDOFF.md after every completed task/workstream (v1.3.0; per-session override: DEV_TEAM_NO_AUTO_HANDOFF)
   auto-commit: on        # local commit per completed-and-checked task/workstream  (v1.3.0; per-session override: DEV_TEAM_NO_AUTO_COMMIT)
 ```
 
@@ -97,20 +97,40 @@ the full rules and why duplicate/stacked PRs are disallowed by default.
 |---|---|---|---|---|
 | `update-notifier` | `hooks/check-update.sh` (SessionStart update check) | `on`, `off` | `DEV_TEAM_NO_UPDATE_CHECK` (off-switch: any non-empty value disables) | `on` |
 | `branch-notifier` | `hooks/sync-branches-check.sh` (SessionStart gone-branch notice) | `on`, `off` | `DEV_TEAM_NO_BRANCH_CHECK` (off-switch: any non-empty value disables) | `on` |
-| `guard` | `hooks/guard-dev-team.sh` (PreToolUse Bash safety net) | `on`, `off`, `auto` | `DEV_TEAM_GUARD` (force-ON switch — makes the guard check every Bash command regardless of an active run) | `auto` (active only during a run — `.dev-team/autopilot.json` present) |
+| `guard` | `hooks/guard-dev-team.sh` (PreToolUse Bash safety net) **and** `hooks/guard-ledgers.sh` (PreToolUse Write/Edit/MultiEdit ledger guard, added for issue #41 — see `conventions.md`, "Where the plugin writes, and the ownership rule") | `on`, `off`, `auto` | `DEV_TEAM_GUARD` (force-ON switch — makes both hooks check every call regardless of an active run) | `auto` (each hook judges "a run is active" its own way — see below) |
 | `notifications` | autopilot gate/blocker/done notifications (v1.2.0) | `on`, `off` | none yet — config-only | `on` |
 | `telemetry` | run-end telemetry + cost estimate (v1.2.0) | `on`, `off` | none yet — config-only | `on` |
 | `dry-run` | default plan-preview for building skills (v1.2.0) | `on`, `off` | none yet — config-only (a per-run argument on the relevant skill may still override for one run) | `off` |
-| `auto-handoff` | regenerate `HANDOFF.md` after every completed task/workstream (v1.3.0) | `on`, `off` | `DEV_TEAM_NO_AUTO_HANDOFF` (off-switch: any non-empty value disables) | `on` |
+| `auto-handoff` | regenerate `.dev-team/HANDOFF.md` after every completed task/workstream (v1.3.0) | `on`, `off` | `DEV_TEAM_NO_AUTO_HANDOFF` (off-switch: any non-empty value disables) | `on` |
 | `auto-commit` | local commit per completed-and-checked task/workstream — never push, never PR (v1.3.0) | `on`, `off` | `DEV_TEAM_NO_AUTO_COMMIT` (off-switch: any non-empty value disables) | `on` |
 
-For `guard`, note the mode semantics are not a simple on/off pair: `off` disables the guard
-repo-wide (even if `DEV_TEAM_GUARD` is set); `on` forces it active regardless of whether a run is
-in progress; `auto` (the default) preserves today's behavior — active only while a run is in
-progress (`.dev-team/autopilot.json` present), unless `DEV_TEAM_GUARD` forces it on for the
-session. `guard: off` in the repo config wins over a session's `DEV_TEAM_GUARD` — a repo owner who
-has decided the guard should never run in this repo can rely on that even if a collaborator's
-shell happens to have `DEV_TEAM_GUARD` set.
+For `guard`, note the mode semantics are not a simple on/off pair, and — since v1.5.0 — one toggle
+now governs two separate hooks that each judge "is a run active" a different way:
+
+- **`hooks/guard-dev-team.sh`** (the Bash safety net): `off` disables it repo-wide (even if
+  `DEV_TEAM_GUARD` is set); `on` forces it active regardless of whether a run is in progress; `auto`
+  (the default) preserves today's behavior — active only while a run is in progress
+  (`.dev-team/autopilot.json` present), unless `DEV_TEAM_GUARD` forces it on for the session.
+- **`hooks/guard-ledgers.sh`** (the ledger guard): `off` turns off BOTH of its rules. Rule 1 — a
+  Write whose new content carries the dev-team marker, aimed at a path outside `.dev-team/` — stays
+  ON in `auto` mode regardless of whether a run is active; only `off` disables it. That is
+  deliberate: only content the plugin itself generated ever carries the marker, so Rule 1 can never
+  block a person editing their own file, and the mistake it guards against — a stale instruction
+  telling a scribe to write a ledger at the legacy root location — can happen in a one-off session
+  just as easily as inside a run. Rule 2 — a write to a top-level file with one of the seven ledger
+  names, whose content looks like plugin output — is active only while `.dev-team/loop.lock/`
+  exists, `guard: on` is set, or `DEV_TEAM_GUARD` is set. Rule 2 **never** activates merely because
+  `.dev-team/autopilot.json` exists, unlike `guard-dev-team.sh`'s own `auto` test above: some real
+  projects keep `autopilot.json` committed in git, which would make that test permanently true and
+  would have stopped the project owner ever editing their own top-level `HANDOFF.md` or
+  `FEATURES.md` again. `.dev-team/loop.lock/` exists only for the length of one autopilot cycle and
+  is never committed, so it is a genuine "a run is happening right now" signal where
+  `autopilot.json`'s mere presence is not. See `conventions.md`, "Where the plugin writes, and the
+  ownership rule" (point 9), for the full reasoning and what this hook cannot do.
+
+`guard: off` in the repo config wins over a session's `DEV_TEAM_GUARD`, for both hooks — a repo
+owner who has decided the guard should never run in this repo can rely on that even if a
+collaborator's shell happens to have `DEV_TEAM_GUARD` set.
 
 ## How skills and hooks load it — best-effort, FAIL-OPEN
 
@@ -142,8 +162,12 @@ whichever keys it couldn't make sense of.
 
 Use `/dev-team-config` (see `commands/dev-team-config.md`) to print the effective config (built-in
 defaults overlaid with anything the repo's `.dev-team/config.yml` sets) or to scaffold a starter
-file. Never generate or edit `.dev-team/config.yml` from inside a skill run without telling the
-user — it's a repo-wide, committed file, not run-scoped state.
+file. `init` also creates `.dev-team/.gitignore` (containing exactly `loop.lock/`) and
+`.dev-team/README.md` when either is absent — never overwriting one that already exists — the same
+first-write setup every skill performs before its first ledger write (`conventions.md`, "Where the
+plugin writes, and the ownership rule", point 7). Never generate or edit `.dev-team/config.yml`
+from inside a skill run without telling the user — it's a repo-wide, committed file, not run-scoped
+state.
 
 ## See also
 
