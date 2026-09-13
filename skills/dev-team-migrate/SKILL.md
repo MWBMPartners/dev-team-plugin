@@ -82,7 +82,7 @@ Same shape as the orchestrator, specialized for migration work:
   confirm behavior is preserved, confirms the stage is independently revertible, and — at the
   cutover stage — confirms no shim or dead old-path code remains. Verification stays on the
   Opus/frontier tier — never routed cheaper (model-routing.md, invariant 1).
-- **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Owns `MIGRATION.md` — this skill's
+- **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Owns `.dev-team/MIGRATION.md` — this skill's
   own external memory, following the same schema-versioning and "Current status stays overwritten"
   discipline as `PROJECT.md`/`SECURITY.md` (`dev-team-orchestrator/references/documentarian-protocol.md`,
   `references/conventions.md`'s "Schema versioning"): the **Migration Plan**, the **Stage Ledger**,
@@ -98,13 +98,13 @@ Same shape as the orchestrator, specialized for migration work:
 - **`execute`** — a Migration Plan already exists and is **approved** (from this session's `plan`
   step, or a prior run's `MIGRATION.md` that the Cold-resume check validates as still current — see
   below). Runs the characterization-net gate, then the staged cutover, stage by stage.
-- **Infer** when not given explicitly: no valid, approved `MIGRATION.md` in the repo → `plan`. A
+- **Infer** when not given explicitly: no valid, approved `.dev-team/MIGRATION.md` in the repo → `plan`. A
   valid approved plan exists and the user says "go ahead" / "execute it" / "start migrating" →
   `execute`. If genuinely ambiguous (a plan exists but looks stale, or the user's intent is unclear),
   ask rather than guessing which mode to run.
 - **Cold-resume** (this skill's variant of the suite's shared contract —
   `dev-team-orchestrator/references/conventions.md`, "Cold-resume"): at the start of *either* mode,
-  look for a current `MIGRATION.md` from a prior run in this repo. Validate it the same way
+  look for a current `.dev-team/MIGRATION.md` (found through the lookup order) from a prior run in this repo. Validate it the same way
   `dev-team-iterate` validates its Codebase Map — a git-drift check plus a small spot-check against
   the real repo. If it's current, **resume** from its Migration Plan and Stage Ledger instead of
   re-assessing from scratch. If it's missing, stale, or the tree is dirty in a way that invalidates

@@ -1,6 +1,6 @@
 ---
 name: dev-team-stripe
-description: Build or review Stripe integration pathways with a team of `opus-builder` subagents (Opus tier), with Stripe-specific correctness and security expertise. In BUILD mode it implements payment flows (Checkout, Payment Element, PaymentIntents, subscriptions/billing, Connect, webhooks) via the orchestrator workflow; in REVIEW mode it audits existing Stripe code for correctness and security (idempotency, webhook signature verification, API-key handling, PCI scope, authz/IDOR on Stripe objects, amount tampering, SCA/3DS) and fixes what it finds. Leverages the official Stripe Claude plugin (stripe@claude-plugins-official), the stripe-best-practices skill, and the Stripe MCP — all in TEST MODE by default. Use when the user wants to build, integrate, audit, harden, or verify anything involving Stripe / payments / subscriptions / Connect / webhooks. Sibling of dev-team-orchestrator. Takes precedence over dev-team-security / dev-team-review / dev-team-iterate when the work involves Stripe / payments. Do NOT use for non-Stripe work or one-off questions; a generic post-run QA pass over a prior dev-team run's recorded PROJECT.md/SECURITY.md claims (even one touching Stripe as one workstream) is dev-team-review's job.
+description: Build or review Stripe integration pathways with a team of `opus-builder` subagents (Opus tier), with Stripe-specific correctness and security expertise. In BUILD mode it implements payment flows (Checkout, Payment Element, PaymentIntents, subscriptions/billing, Connect, webhooks) via the orchestrator workflow; in REVIEW mode it audits existing Stripe code for correctness and security (idempotency, webhook signature verification, API-key handling, PCI scope, authz/IDOR on Stripe objects, amount tampering, SCA/3DS) and fixes what it finds. Leverages the official Stripe Claude plugin (stripe@claude-plugins-official), the stripe-best-practices skill, and the Stripe MCP — all in TEST MODE by default. Use when the user wants to build, integrate, audit, harden, or verify anything involving Stripe / payments / subscriptions / Connect / webhooks. Sibling of dev-team-orchestrator. Takes precedence over dev-team-security / dev-team-review / dev-team-iterate when the work involves Stripe / payments. Do NOT use for non-Stripe work or one-off questions; a generic post-run QA pass over a prior dev-team run's recorded .dev-team/PROJECT.md/.dev-team/SECURITY.md claims (even one touching Stripe as one workstream) is dev-team-review's job.
 ---
 
 # Dev Team Stripe
@@ -42,7 +42,7 @@ This skill is built to ride on Stripe's own tooling. Survey what's available and
   - **Android** (`stripe-android`, Kotlin/Java) → route the **`stripe-android-payments` skill** + the **Native Android** section of `references/stripe-checklist.md`. Covers PaymentSheet (Views & Compose)/FlowController/CustomerSheet/Google Pay, publishable-key-only (no `sk_`/`rk_` in the APK — R8 won't protect it), 3DS via `PaymentLauncher` (Custom Tabs — no manual deep-link wiring), and surviving process death.
 - **Stripe MCP** — agents can reach Stripe MCP tools via ToolSearch (docs search, API helpers). Use for grounding against current API behavior; do not let it perform live mutations.
 
-Record which tooling is in play in `PROJECT.md` (the documentarian) so it sticks across the team.
+Record which tooling is in play in `.dev-team/PROJECT.md` (the documentarian) so it sticks across the team.
 
 ## Picking the mode
 
@@ -81,7 +81,7 @@ Follow `references/build-and-review-protocol.md` (review half). It's a Stripe-sc
 
 ## What carries over from the dev-team family (unchanged)
 
-- Orchestrator: team sizing, parallelism, interface/contract-up-front, **you own dependency & API-version decisions**, brief discipline, checker triage (runs on `opus-builder` — verification stays on the Opus/frontier tier, never routed cheaper; model-routing.md invariant 1), debate for big surface decisions, the `sonnet-scribe` documentarian on `PROJECT.md`.
+- Orchestrator: team sizing, parallelism, interface/contract-up-front, **you own dependency & API-version decisions**, brief discipline, checker triage (runs on `opus-builder` — verification stays on the Opus/frontier tier, never routed cheaper; model-routing.md invariant 1), debate for big surface decisions, the `sonnet-scribe` documentarian on `.dev-team/PROJECT.md`.
 - Security (review mode): red-team + severity + adversarial validation + re-attack-to-confirm (`dev-team-security` references).
 - Review (review mode): independent verification, evidence-not-claims, re-verify after fix (`dev-team-review` references).
 - **Composing other skills** — route `stripe-best-practices` and any user UI/testing skill to the relevant agents and have the checker verify conformance.

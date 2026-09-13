@@ -46,8 +46,9 @@ is reported, not attempted. There is no mode that auto-resolves everything — s
   invariant as every other dev-team skill (`model-routing.md`, invariant 1).
 - **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Records a short run summary at
   the end of the pass: what was watched, what was fixed, what was proposed, what was blocked.
-  If the repo already keeps a `PROJECT.md`, append a note to its Current status; otherwise just
-  report the summary directly. Ci-medic introduces no new required artifact.
+  If `.dev-team/PROJECT.md` exists (found through the lookup order), append a note to its
+  Current status; otherwise just report the summary directly. Ci-medic introduces no new
+  required artifact.
 
 ## Classification
 

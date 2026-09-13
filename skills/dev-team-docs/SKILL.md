@@ -66,8 +66,8 @@ Model routing: `skills/dev-team-orchestrator/references/model-routing.md`.
   docs site, or deciding how a monorepo's packages share vs. duplicate reference docs. Use
   `debate-protocol.md` if the choice is contested. Most runs never need this role.
 - **Documentarian** — the same `sonnet-scribe` agent, wearing its usual hat
-  (`documentarian-protocol.md`): if `PROJECT.md` exists in this repo (from any prior
-  `dev-team-*` run), it records what documentation now exists / what an audit found in
+  (`documentarian-protocol.md`): if `.dev-team/PROJECT.md` exists (found through the lookup
+  order, from any prior `dev-team-*` run), it records what documentation now exists / what an audit found in
   **Current status** and, for a real judgment call, the decision log. `dev-team-docs` writes
   documentation files, not a new ledger — same posture as `dev-team-ship`.
 
@@ -84,12 +84,17 @@ Model routing: `skills/dev-team-orchestrator/references/model-routing.md`.
   area; it exists and the code has moved since → `maintain`; the user only wants to know
   where things stand → `audit`. If genuinely mixed (some areas missing, some drifted), run
   `generate` for the missing areas and `maintain` for the existing ones in the same pass.
+- **`.dev-team/` is never in scope.** That folder is the dev-team plugin's own working
+  folder — its ledgers, run state, and config — not project documentation. Never treat a file
+  inside `.dev-team/` as something this skill generates, maintains, or audits, even if a
+  requested scope would otherwise seem to cover it.
 
 ## Cold-resume
 
 Before fresh work, check for a prior `dev-team-docs` pass to resume from instead of
 re-scouting cold (the suite's general Cold-resume contract, `conventions.md`) — this skill
-owns no dedicated ledger file, so the check is: does `PROJECT.md` (if present) carry a
+owns no dedicated ledger file, so the check is: does `.dev-team/PROJECT.md` (if it exists,
+found through the lookup order) carry a
 Current-status note or decision-log entry from a prior docs pass, and what commit was it as
 of? If so, `git diff --stat <that-commit>..HEAD` over the scoped doc-area's source tells you
 whether to treat the prior draft as still-accurate (skip straight to a light re-verify) or
@@ -135,8 +140,8 @@ Read-only — mirrors `dev-team-review`'s posture, scoped to docs:
 3. **No draft, no fix, no commit.** Report the drift findings to the user; suggest a follow-up
    `mode=maintain` run to fix them.
 4. **Document**: the `sonnet-scribe` documentarian records the audit result (counts by
-   severity, headline findings) in `PROJECT.md`'s Current status if that file exists — no new
-   ledger file is created.
+   severity, headline findings) in `.dev-team/PROJECT.md`'s Current status if it exists
+   (found through the lookup order) — no new ledger file is created.
 5. Optionally, `issues=sync` (or `auto`) exports the drift findings to the repo's issue tracker — GitHub or GitLab, auto-detected from the git remote (see Arguments).
 
 ## Definition of done
@@ -202,7 +207,8 @@ Optional run arguments (defaults in brackets):
   as `checker-protocol.md`; the doc-specific "what to check" is
   `accuracy-verification-protocol.md` instead.
 - **Documentarian** — `documentarian-protocol.md`; the `sonnet-scribe` agent records state in
-  `PROJECT.md` when it exists — `dev-team-docs` introduces no new ledger.
+  `.dev-team/PROJECT.md` when it exists (found through the lookup order) — `dev-team-docs`
+  introduces no new ledger.
 - **Debate mode** — `debate-protocol.md` for a contested doc-architecture decision.
 - **Failed/stuck agents** — diagnose, re-brief, two strikes then re-scope.
 - **Composing other skills** — if the user has a style/writing skill, route drafting through

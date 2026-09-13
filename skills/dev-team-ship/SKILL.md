@@ -74,7 +74,7 @@ Same shape as the orchestrator, specialized for delivery infrastructure:
   stays on the Opus/frontier tier — never routed cheaper (model-routing.md, invariant 1).
 - **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Records what pipeline now
   exists — the workflows, the required-check names, the scanning setup, the release flow
-  — in `PROJECT.md` (Current status + a decision-log entry for any real tradeoff). Ship
+  — in `.dev-team/PROJECT.md` (Current status + a decision-log entry for any real tradeoff). Ship
   writes CI/config files, not a new ledger.
 
 ## Picking the mode

@@ -40,7 +40,7 @@ This is a **default plan, adapted by state — not a rigid march.** The conducto
 Every iteration follows the runtime in `references/loop-runtime.md`. The shape:
 
 ```
-1. REHYDRATE   read .dev-team/autopilot.json cold (+ PROJECT.md / FEATURES.md / SECURITY.md slices). Trust disk, not memory.
+1. REHYDRATE   read .dev-team/autopilot.json cold (+ .dev-team/PROJECT.md / .dev-team/FEATURES.md / .dev-team/SECURITY.md slices). Trust disk, not memory.
 2. GUARD       terminal? cap hit (convergence backstop)? blocked & unresolved? lock held by a live iteration? only-gated-work-left?
                → any of these: report and STOP the loop (omit the wakeup). Otherwise continue.
 3. LOCK        claim the lease (iteration id + timestamp from `date`).
@@ -48,7 +48,7 @@ Every iteration follows the runtime in `references/loop-runtime.md`. The shape:
 5. RUN 1 CYCLE play lead for that mode — its contract → delegate wave → checker/validator → checkpoint → commit.
 6. GATE CHECK  hybrid policy: feature / risky-dep / architectural change → queue to gate-ledger + surface, don't build;
                hard blocker → set BLOCKED. Safe work just proceeds.
-7. RECORD      documentarian updates PROJECT.md narrative + trajectory; you update autopilot.json (cursors, next_action,
+7. RECORD      documentarian updates .dev-team/PROJECT.md narrative + trajectory; you update autopilot.json (cursors, next_action,
                commit, cleared lock); re-evaluate the done checklist → maybe set terminal.
 8. YIELD       not terminal/blocked/capped → ScheduleWakeup(same /loop prompt, short delay) to run the next cycle
                (ScheduleWakeup is /loop's dynamic-mode scheduling tool — available because the loop is fired as a
@@ -82,7 +82,7 @@ This is the answer to "how does a loop that runs while I sleep handle things tha
 
 ## Machine-authoritative state
 
-The loop's source of truth is `.dev-team/autopilot.json` — a parseable state object you read *first* every iteration and rewrite at the end. It holds the mission, the definition of done, the phase plan + cursor, the current `next_action`, the work-queue references, the gate-ledger, the blocked flag, the cycle count + cap, the lock/lease, a `budget` block (spawn counts by tier — a heuristic trend, never a spend figure; it can auto-tighten the build tier when frontier spend runs heavy, but never verification, and the tightening is always surfaced in the report line; see `references/loop-runtime.md`), the VERIFY progress + the commit it was verified at, the run branch, and the last commit. The schema and the read/write rules are in `references/loop-runtime.md`. `PROJECT.md` (the `sonnet-scribe` documentarian, Sonnet tier) stays the **human-readable narrative + trajectory**; `autopilot.json` stays the **machine state** two cold starts can agree on. Keep them consistent; never let memory be the authority.
+The loop's source of truth is `.dev-team/autopilot.json` — a parseable state object you read *first* every iteration and rewrite at the end. It holds the mission, the definition of done, the phase plan + cursor, the current `next_action`, the work-queue references, the gate-ledger, the blocked flag, the cycle count + cap, the lock/lease, a `budget` block (spawn counts by tier — a heuristic trend, never a spend figure; it can auto-tighten the build tier when frontier spend runs heavy, but never verification, and the tightening is always surfaced in the report line; see `references/loop-runtime.md`), the VERIFY progress + the commit it was verified at, the run branch, and the last commit. The schema and the read/write rules are in `references/loop-runtime.md`. `.dev-team/PROJECT.md` (the `sonnet-scribe` documentarian, Sonnet tier) stays the **human-readable narrative + trajectory**; `autopilot.json` stays the **machine state** two cold starts can agree on. Keep them consistent; never let memory be the authority.
 
 ## Anti-runaway (non-negotiable)
 
@@ -115,9 +115,9 @@ Optional run arguments (defaults in brackets):
   Both are dedup-safe and **confirm-first on the first sync per repo**; security findings still require
   the separate sync-security opt-in (see
   `skills/dev-team-orchestrator/references/issue-sync-protocol.md`). [off]
-- `auto-handoff=on|off` — regenerate the assistant-agnostic `HANDOFF.md` resume card after every
-  completed task/workstream (owned by `sonnet-scribe`; stable repo-root path — any LLM coding tool can
-  read it cold; committed with the work, never auto-pushed). Per-session off-switch env
+- `auto-handoff=on|off` — regenerate the assistant-agnostic `.dev-team/HANDOFF.md` resume card after every
+  completed task/workstream (owned by `sonnet-scribe`; the fixed path any LLM coding tool can
+  read it cold from; committed with the work, never auto-pushed). Per-session off-switch env
   `DEV_TEAM_NO_AUTO_HANDOFF`; repo config `features.auto-handoff`. [on]
 - `auto-commit=on|off` — commit each completed-and-checked task/workstream as its own LOCAL commit on
   the run branch (never push, never PR) — additional fine-grained rollback points between the per-cycle
@@ -131,7 +131,7 @@ Optional run arguments (defaults in brackets):
 - **Failed/stuck agents:** diagnose, re-brief, two strikes then re-scope or escalate (and two strikes is a hard-pause trigger).
 - **Debate mode** for consequential, contested decisions surfaced mid-loop.
 - **Composing other skills** — route the user's UI/testing/style skills to the relevant agents and have the checker verify conformance (unchanged).
-- **Documentarian** (`sonnet-scribe`, Sonnet tier) owns `PROJECT.md` and the assistant-agnostic `HANDOFF.md` resume card (regenerated after every completed task/workstream when `features.auto-handoff` is on — a stable repo-root file any LLM tool can cold-resume from, committed with the work); the conductor additionally owns `autopilot.json`.
+- **Documentarian** (`sonnet-scribe`, Sonnet tier) owns `.dev-team/PROJECT.md` and the assistant-agnostic `.dev-team/HANDOFF.md` resume card (regenerated after every completed task/workstream when `features.auto-handoff` is on — a file at the fixed path any LLM tool can cold-resume from, committed with the work); the conductor additionally owns `autopilot.json`.
 
 ## References (read at the matching step)
 
@@ -141,7 +141,7 @@ Optional run arguments (defaults in brackets):
 
 Reused from siblings: `dev-team-orchestrator/references/*` (briefs, checker, debate, documentarian), and the front-end protocols of `dev-team-iterate`, `dev-team-security`, `dev-team-review`, and `dev-team-featurefind` — read the relevant one when you enter that mode.
 
-The suite's **shared contracts** — artifact ownership & schemas, ID prefixes, the branch model, the flattening rule, gates, and safety — live in `dev-team-orchestrator/references/conventions.md`; read it once. Several loop-level facts (the canonical PROJECT.md headings, ID prefixes, the single run branch) are restated there as the single source of truth.
+The suite's **shared contracts** — artifact ownership & schemas, ID prefixes, the branch model, the flattening rule, gates, and safety — live in `dev-team-orchestrator/references/conventions.md`; read it once. Several loop-level facts (the canonical `.dev-team/PROJECT.md` headings, ID prefixes, the single run branch) are restated there as the single source of truth.
 
 ## Anti-patterns (in addition to the orchestrator's)
 
