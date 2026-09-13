@@ -7,6 +7,15 @@
 # $REPO_ROOT, so tests never leave stray files behind in this actual repo. The tests that DO
 # touch $REPO_ROOT (audit-model-ids.sh's and audit-ledger-paths.sh's injected-failure cases)
 # always clean up in teardown, even if an assertion fails.
+#
+# The guard-ledgers stderr-silence tests below use "run --separate-stderr", a bats-core flag added
+# in 1.5.0 (it splits stdout and stderr into $output and $stderr instead of merging them, which
+# those tests need — a merged capture cannot tell "nothing on stderr" apart from "the decision line
+# happened to land on stdout instead"). This line makes that requirement a clear, up-front failure
+# ("bats version X.Y.Z does not fulfill the minimum required version 1.5.0 by this test file") on
+# an old bats install, instead of the quieter BW02 warning bats-core would otherwise only print
+# after already running everything.
+bats_require_minimum_version 1.5.0
 
 setup() {
   REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
@@ -225,7 +234,7 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
   [ "$status" -eq 0 ]
 }
 
-@test "guard-ledgers: a top-level path with a ledger name elsewhere in the tree (docs/FEATURES.md) is still denied" {
+@test "guard-ledgers: a ledger-named file elsewhere in the tree (docs/FEATURES.md), outside .dev-team/, is still denied" {
   run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":"docs/FEATURES.md","content":"line1\n<!-- dev-team: ledger=features schema=1.0 -->\nline3"}}'
   [ "$status" -eq 2 ]
   [[ "$output" == *"dev-team guard"* ]]
@@ -342,10 +351,85 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
   [ "$status" -eq 0 ]
 }
 
-@test "guard-ledgers: \"docs/../FEATURES.md\" resolves to the top level and is denied" {
-  run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":"docs/../FEATURES.md","content":"line1\n<!-- dev-team: ledger=features schema=1.0 -->\nline3"}}'
+# Fault found by a stand-in review of the round above: "docs/../FEATURES.md" (the test this
+# replaces) was already refused by the PRE-fix hook, because its base name is FEATURES.md and it
+# sits outside .dev-team/ whether or not the "docs/.." part is ever resolved away — a broken
+# resolve_lexical would not have failed that test. The same was true of the companion ALLOW test
+# above (".dev-team/./FEATURES.md"): the raw text already starts with ".dev-team/", so it passed on
+# the pre-fix hook too. Between the two, only ".dev-team/../SECURITY.md" (further above) actually
+# depended on resolution — leaving the ALLOW direction of resolve_lexical completely unproven. This
+# case only passes if "docs/.." is genuinely walked back out and ".dev-team/FEATURES.md" is
+# genuinely walked back in: confirmed by running this exact payload through the hook at commit
+# 0a2f286~1 (the version just before path resolution was added), which refuses it with exit 2 —
+# see the builder's report for that command and its output.
+@test "guard-ledgers: \"docs/../.dev-team/FEATURES.md\" resolves INTO .dev-team/ and is allowed" {
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":"docs/../.dev-team/FEATURES.md","content":"line1\n<!-- dev-team: ledger=features schema=1.0 -->\nline3"}}'
+  [ "$status" -eq 0 ]
+}
+
+# Fault found by a stand-in review of the round above: narrowing Rule 1 to the seven ledger names
+# went one name too narrow. This plugin also writes its own fixed, marker-bearing
+# .dev-team/README.md (conventions.md, "Where the plugin writes", point 7), but "readme.md" was
+# missing from Rule 1's name list — so that same marker-bearing text, written to a project's
+# top-level README.md by mistake, passed straight through and would have overwritten the project's
+# real README. README.md is now in Rule 1's list too, but deliberately NOT in Rule 2's separate
+# list (the third case below proves that).
+@test "guard-ledgers: the plugin's readme marker on a top-level README.md is denied" {
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":"README.md","content":"# x\n<!-- dev-team: ledger=readme schema=1.0 -->\nline3"}}'
   [ "$status" -eq 2 ]
   [[ "$output" == *"dev-team guard"* ]]
+}
+
+@test "guard-ledgers: the same readme marker content is allowed at the .dev-team/ path" {
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":".dev-team/README.md","content":"# x\n<!-- dev-team: ledger=readme schema=1.0 -->\nline3"}}'
+  [ "$status" -eq 0 ]
+}
+
+@test "guard-ledgers: README.md is NOT on Rule 2's list, so mentioning F-001 mid-cycle is still allowed" {
+  mkdir -p "$SCRATCH/.dev-team/loop.lock"
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Edit","tool_input":{"file_path":"README.md","new_string":"see F-001"}}'
+  [ "$status" -eq 0 ]
+}
+
+# Fault found by a stand-in review of the round above: under macOS's stock /bin/bash (3.2),
+# resolve_lexical's final join line broke for a path that resolves to NOTHING at all — every
+# segment being ".", ".." or empty, as with file_path "." or "..". `set -u` makes bash 3.2 treat
+# expanding the (now empty) $parts array with "${parts[*]}" as an unbound variable — a fault bash
+# 4.4+ does not have. The write was still ALLOWED either way (an empty $resolved matches no rule),
+# but the hook printed "line 188: parts[*]: unbound variable" to stderr, which looks exactly like
+# the hook itself being broken. These two check both the exit code and that stderr is now silent —
+# run with "--separate-stderr" so $output (stdout) and $stderr are captured apart from each other,
+# because a combined capture could not tell "silent" from "printed a decision on one stream and
+# nothing on the other".
+@test "guard-ledgers: file_path \"..\" resolves to nothing, is allowed, and prints nothing to stderr" {
+  run --separate-stderr run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":"..","content":"x\n<!-- dev-team: ledger=security schema=1.0 -->\n"}}'
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+}
+
+@test "guard-ledgers: file_path \"SECURITY.md/..\" resolves to nothing, is allowed, and prints nothing to stderr" {
+  run --separate-stderr run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":"SECURITY.md/..","content":"x\n<!-- dev-team: ledger=security schema=1.0 -->\n"}}'
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+}
+
+# Fault found by a stand-in review of the round above: an absolute path that is still absolute
+# after the "<cwd>/" strip — i.e. one that names somewhere outside the project entirely, such as
+# "/.dev-team/SECURITY.md" with cwd set to some unrelated folder — used to have its leading "/"
+# read as just another empty split piece and dropped, so it resolved to the plain text
+# ".dev-team/SECURITY.md" and was wrongly judged to be inside THIS project's own .dev-team/. The
+# path is now marked as having left the project (same as a runaway ".."), so Rule 1 judges it by
+# file name alone and denies it.
+@test "guard-ledgers: an absolute path outside cwd starting with /.dev-team/ is denied by file name" {
+  run run_ledger_guard "$SCRATCH" '{"cwd":"'"$SCRATCH"'","tool_name":"Write","tool_input":{"file_path":"/.dev-team/SECURITY.md","content":"# x\n<!-- dev-team: ledger=security schema=1.0 -->\n"}}'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"dev-team guard"* ]]
+}
+
+@test "guard-ledgers: an absolute path genuinely inside cwd's .dev-team/ is still allowed" {
+  scratch_resolved="$(cd "$SCRATCH" && pwd)"
+  run run_ledger_guard "$SCRATCH" '{"cwd":"'"$scratch_resolved"'","tool_name":"Write","tool_input":{"file_path":"'"$scratch_resolved"'/.dev-team/FEATURES.md","content":"# x\n<!-- dev-team: ledger=features schema=1.0 -->\n"}}'
+  [ "$status" -eq 0 ]
 }
 
 # ---------------------------------------------------------------------------

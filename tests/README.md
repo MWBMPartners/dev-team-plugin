@@ -89,20 +89,30 @@ and the test matrix is split the same way:
 
 - **Rule 1 (marker content, ledger file name, written outside `.dev-team/`) — on all the time
   unless `guard: off`.** Fires only when all three hold: the content carries the marker on one of
-  its first three lines; the target's file NAME (case ignored) is one of the seven ledger names;
-  the resolved path lands outside `.dev-team/`. Cases cover: a `Write` whose content carries the
-  dev-team marker on line 2 aimed at a top-level path with a ledger name is denied; the identical
-  content aimed at a `.dev-team/` path (relative or absolute) is allowed; a marker further down the
-  file (past the first three lines) does not trip the check; a plain file with no marker is never
-  blocked, whatever the path; a ledger-named file further down the tree (`docs/FEATURES.md`) is
-  still denied; **this plugin's own test fixture, `tests/fixtures/verdict.sample.json`, is never
-  blocked even though its real content starts with the marker on line 2** — its file name is
-  "verdict.sample.json", not "verdict.json", so it fails the name test and Rule 1 never fires (see
-  the fault note in the bats file); marker content aimed at any other non-ledger file name
-  (`notes/plan.md`) is likewise allowed; `guard: off` in `.dev-team/config.yml` allows a ledger-
-  named file even with a genuinely active run (`.dev-team/loop.lock/` actually present — see the
-  fault note below); both the spaced and compact-JSON forms of the `verdict.json` marker
-  (`"dev-team": "ledger=..."` and `"dev-team":"ledger=..."` with no spaces at all) are recognised.
+  its first three lines; the target's file NAME (case ignored) is one of the seven ledger names
+  plus `README.md`; the resolved path lands outside `.dev-team/`. Cases cover: a `Write` whose
+  content carries the dev-team marker on line 2 aimed at a top-level path with a ledger name is
+  denied; the identical content aimed at a `.dev-team/` path (relative or absolute) is allowed; a
+  marker further down the file (past the first three lines) does not trip the check; a plain file
+  with no marker is never blocked, whatever the path; a ledger-named file elsewhere in the tree,
+  outside `.dev-team/` (`docs/FEATURES.md`), is still denied; **this plugin's own test fixture,
+  `tests/fixtures/verdict.sample.json`, is never blocked even though its real content starts with
+  the marker on line 2** — its file name is "verdict.sample.json", not "verdict.json", so it fails
+  the name test and Rule 1 never fires (see the fault note in the bats file); marker content aimed
+  at any other non-ledger file name (`notes/plan.md`) is likewise allowed; `guard: off` in
+  `.dev-team/config.yml` allows a ledger-named file even with a genuinely active run
+  (`.dev-team/loop.lock/` actually present — see the fault note below); both the spaced and
+  compact-JSON forms of the `verdict.json` marker (`"dev-team": "ledger=..."` and
+  `"dev-team":"ledger=..."` with no spaces at all) are recognised. **`README.md` cases (fault found
+  by a stand-in review):** the plugin's own fixed `.dev-team/README.md` carries the marker too
+  (conventions.md, "Where the plugin writes", point 7), and `README.md` was missing from Rule 1's
+  name list — so that marker-bearing text, written to a project's top-level `README.md` by mistake,
+  used to pass straight through and would have overwritten the project's real README. Three cases
+  check this: the readme marker on a top-level `README.md` is denied; the identical content at
+  `.dev-team/README.md` is allowed; and, to prove `README.md` was deliberately left OFF Rule 2's
+  separate name list (Rule 2 also fires on a bare record id with no marker, and an ordinary project
+  README mentioning something like "F-001" in passing must never be blocked for that), editing
+  `README.md` to add "see F-001" is still allowed even with `.dev-team/loop.lock/` present.
 - **Rule 2 (a write to a top-level ledger name during an active run) — only while
   `.dev-team/loop.lock/` exists, `guard: on` is set, or `DEV_TEAM_GUARD` is set.** Cases cover: a
   **committed** `.dev-team/autopilot.json` present with no lock never triggers it, on its own,
@@ -125,14 +135,53 @@ and the test matrix is split the same way:
   `.dev-team/loop.lock/` present, an `Edit` adding `F-001` to `././SECURITY.md` used to be allowed,
   because only the first `./` was ever stripped. The hook now resolves the path lexically — splits
   on `/`, drops empty and `.` pieces, and for each `..` removes the piece before it — before either
-  rule looks at it. Cases cover both rules: `.dev-team/../SECURITY.md` (Rule 1, marker `Write`) and
-  `docs/../FEATURES.md` (Rule 1, marker `Write`) both resolve to the top level and are denied;
-  `.dev-team/./FEATURES.md` (Rule 1, marker `Write`) still resolves inside `.dev-team/` and is
-  allowed; `././SECURITY.md` and `a/b/../../PROJECT.md` (Rule 2, `Edit` with a record id and
-  `loop.lock/` present) both resolve to a bare top-level ledger name and are denied. A case with an
-  absolute `file_path` under the test's own scratch directory and a matching `cwd` field confirms
-  the hook resolves paths against the session's own working folder from the hook's JSON input, not
-  the test runner's process directory.
+  rule looks at it. Cases cover both rules: `.dev-team/../SECURITY.md` (Rule 1, marker `Write`)
+  resolves to the top level and is denied; `.dev-team/./FEATURES.md` (Rule 1, marker `Write`) still
+  resolves inside `.dev-team/` and is allowed; `././SECURITY.md` and `a/b/../../PROJECT.md` (Rule 2,
+  `Edit` with a record id and `loop.lock/` present) both resolve to a bare top-level ledger name and
+  are denied. A case with an absolute `file_path` under the test's own scratch directory and a
+  matching `cwd` field confirms the hook resolves paths against the session's own working folder
+  from the hook's JSON input, not the test runner's process directory.
+
+  **Fault found by a stand-in review of the round above, on the resolver's ALLOW direction:** two of
+  the cases that were meant to prove resolution works did not actually depend on it. The old
+  `docs/../FEATURES.md` case (now simplified to plain `docs/FEATURES.md`, since the resolved `..`
+  makes no difference to it — that file's base name is `FEATURES.md` either way, sitting outside
+  `.dev-team/` whether or not `docs/..` is ever walked back out) and `.dev-team/./FEATURES.md`
+  (whose raw text already starts with `.dev-team/` before any resolution happens) both passed on the
+  hook as it stood **before** path resolution was added (commit `0a2f286~1`), so neither one could
+  have caught a broken resolver. The old `docs/../FEATURES.md` test is replaced with a new one:
+  `docs/../.dev-team/FEATURES.md` (Rule 1, marker `Write`) resolves INTO `.dev-team/` and is
+  allowed — a case that only passes when `docs/..` is genuinely walked back out and
+  `.dev-team/FEATURES.md` genuinely walked back in. Confirmed against the pre-resolution hook
+  (`0a2f286~1`), which refuses this same payload with exit 2 — see the builder's report for issue
+  #41, N6, for that command and its output.
+
+  **Fault found by the same review, under macOS's stock `/bin/bash` (3.2):** resolve_lexical's last
+  line joined the resolved path pieces back together with `echo "${parts[*]}"`. For any `file_path`
+  that resolves to NOTHING — every segment being `.`, `..`, or empty, as with `.`, `..`, `/`, or
+  `SECURITY.md/..` — the array of pieces ends up empty, and bash 3.2's `set -u` treats expanding an
+  empty array with `${parts[*]}` as an unbound variable (bash 4.4+ does not have this problem). The
+  write was still allowed either way — an empty `$resolved` matches no rule below — but the hook
+  printed `line 188: parts[*]: unbound variable` to stderr, which looks exactly like the hook itself
+  being broken. Two cases (`file_path` `..` and `SECURITY.md/..`, both `Write`s) check the exit code
+  AND that stderr is silent, using bats-core's `run --separate-stderr` (requires bats-core ≥ 1.5.0,
+  declared at the top of the file with `bats_require_minimum_version 1.5.0`) so stdout and stderr
+  are captured apart rather than merged into one string. The join now falls back to an empty string
+  when the array is empty (`"${parts[*]:-}"`, which bash 3.2 accepts) and uses `printf` instead of
+  `echo`, so a path whose only real segment is text like `-n` or `-e` is never read as an echo
+  option.
+
+  **Fault found by the same review, on an absolute path outside the project:** a `file_path` that
+  is still absolute after the `<cwd>/`(or `$PWD/`) strip — meaning it names somewhere outside the
+  project's own working folder entirely, such as `/.dev-team/SECURITY.md` with `cwd` set to some
+  unrelated folder — used to have its leading `/` read as just another empty split piece and
+  dropped, resolving to the plain text `.dev-team/SECURITY.md` and wrongly judged to be inside THIS
+  project's own `.dev-team/`. The path is now marked as having left the project (same treatment as
+  a runaway `..`), so Rule 1 judges it by file name alone and denies it. Two cases: an absolute path
+  outside `cwd` starting with `/.dev-team/` (Rule 1, marker `Write`) is denied by file name; the
+  companion case, an absolute path genuinely inside `cwd`'s own `.dev-team/`, is still allowed —
+  proving the fix does not also start refusing legitimate absolute paths.
 
 ### `schemas/verdict.schema.json` — schema validation tests
 

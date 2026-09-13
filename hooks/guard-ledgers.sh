@@ -15,8 +15,11 @@
 #   Rule 1 (Write only; on all the time unless `guard: off`) — a WRITE is refused when ALL three of
 #   these hold: (a) the new content carries the dev-team marker (`<!-- dev-team: ledger=` or
 #   `"dev-team": "ledger=`) on one of its first three lines; (b) the target's FILE NAME, with case
-#   ignored, is one of the seven ledger names (PROJECT.md, FEATURES.md, SECURITY.md,
-#   VERIFICATION.md, MIGRATION.md, HANDOFF.md, verdict.json); (c) the path, once resolved (see
+#   ignored, is one of the seven ledger names plus README.md (PROJECT.md, FEATURES.md, SECURITY.md,
+#   VERIFICATION.md, MIGRATION.md, HANDOFF.md, verdict.json, README.md — this plugin writes a fixed,
+#   marker-bearing README.md of its own into .dev-team/, so Rule 1 has to recognise that name too,
+#   the same way it already recognises the other seven; see conventions.md, "Where the plugin
+#   writes", point 7); (c) the path, once resolved (see
 #   "Path handling" below), is outside .dev-team/. So yes, this CAN block a person — but only in
 #   one narrow shape: a file that is both named exactly like one of the plugin's ledgers AND
 #   already starts with the plugin's own marker text. No project's own file looks like that unless
@@ -49,7 +52,7 @@
 #   would have stopped the project owner editing their own top-level HANDOFF.md or FEATURES.md
 #   forever. `guard: off` in .dev-team/config.yml turns BOTH rules off, exactly like the Bash guard.
 #
-# Four faults found by later readings of this file, all now fixed:
+# Seven faults found by later readings of this file, all now fixed:
 #   - The JSON half of the marker match used to require exactly one space after each colon, so
 #     compact JSON — `{"dev-team":"ledger=verdict schema=1.0"}`, with no spaces at all — was not
 #     recognised as the marker even though it is exactly the same valid content. It now accepts
@@ -78,6 +81,40 @@
 #     strip. Both rules now resolve the path lexically first (see "Path handling" below), so a
 #     write that only LOOKS like it targets .dev-team/, or only looks like a distinct top-level
 #     ledger name, is judged by where it actually lands.
+#   - Narrowing Rule 1 to "one of the seven ledger names" (the fault just above) went one name too
+#     narrow: this plugin also writes its own .dev-team/README.md, a fixed file that carries the
+#     marker like any other ledger (conventions.md point 7). Because "readme.md" was missing from
+#     Rule 1's name list, a Write of that same marker-bearing text to a project's top-level
+#     README.md passed straight through and would have overwritten the project's real README with
+#     the plugin's folder blurb. README.md is now in Rule 1's name list too. It is deliberately NOT
+#     added to Rule 2's name list: Rule 2 also checks for a bare record id such as "F-001" with no
+#     marker required, and a great many ordinary project READMEs mention an issue or finding number
+#     in passing — adding README.md there would make Rule 2 block a person editing their own README
+#     for a reason that has nothing to do with this plugin. Rule 1 stays safe for a project's own
+#     README because Rule 1 also requires the marker itself on one of the first three lines, and a
+#     project's own README never carries that unless someone has copied plugin ledger content into
+#     it by hand — exactly the mistake Rule 1 exists to catch.
+#   - Under macOS's stock /bin/bash (3.2), resolve_lexical's last line — joining the resolved path
+#     pieces back together — broke for any input that resolves to NOTHING, such as file_path ".",
+#     "..", "/", or "SECURITY.md/..": with the array of pieces empty, `set -u` treats
+#     "${parts[*]}" as an unbound variable in bash 3.2 (bash 4.4+ added support for expanding an
+#     empty array under `set -u`; 3.2 predates that). The script's own subshell died, so $resolved
+#     came back empty and the write was still allowed — fail-open, so nothing was wrongly blocked —
+#     but the hook printed "line 188: parts[*]: unbound variable" to stderr, which looks exactly
+#     like the hook itself being broken to anyone who sees it. The join now falls back to an empty
+#     string when the array is empty (`"${parts[*]:-}"`), which bash 3.2 accepts, and uses `printf`
+#     instead of `echo` for the join, so a path whose only real segment is something like "-n" or
+#     "-e" is never swallowed as an echo option instead of being written out as text.
+#   - An absolute path outside the project — one that does NOT start with `<cwd>/` (or `$PWD/`), so
+#     the leading-prefix strip below leaves it untouched and still starting with "/" — used to be
+#     resolved as if it were relative. resolve_lexical reads a leading "/" as just another empty
+#     split piece and drops it the same way it drops a doubled slash, so "/.dev-team/SECURITY.md"
+#     resolved to the plain text ".dev-team/SECURITY.md" and was wrongly judged to be inside THIS
+#     project's own .dev-team/ folder, even though it names a folder at the filesystem root that has
+#     nothing to do with the project. The path is now marked as having left the project (the same
+#     $escaped flag a runaway ".." sets) whenever it is still absolute after the cwd/PWD strip, so
+#     Rule 1 judges it by file name alone (as it does for any other escaped path) and Rule 2, which
+#     only ever protects this project's own top-level files, skips it entirely.
 #
 # Path handling: Claude Code sends the session's working folder as the top-level `cwd` field on
 # every hook call. When `tool_input.file_path` is absolute, this script strips a leading `<cwd>/`
@@ -90,7 +127,10 @@
 # the project: it counts as outside .dev-team/ for Rule 1, and it is not matched against any of
 # Rule 2's top-level names — but Rule 1 still checks such a path by its file name, since a marker-
 # bearing ledger-named file written anywhere outside the project is exactly as wrong as one written
-# inside it at the wrong spot. .dev-team/config.yml and .dev-team/loop.lock/ are read relative to
+# inside it at the wrong spot. The same "has left the project" treatment now also applies to a path
+# that is still absolute (still starts with "/") after the cwd/PWD prefix strip below — see the
+# fault note above about "/.dev-team/SECURITY.md" for why that case needs the same flag. .dev-
+# team/config.yml and .dev-team/loop.lock/ are read relative to
 # `cwd` when it is present, unresolved — those two paths are always written by this plugin itself
 # with no user-supplied segments, so there is nothing for them to walk past. Confirmed against
 # Claude Code's official hooks documentation
@@ -185,9 +225,36 @@ resolve_lexical() {
       *) parts+=("$seg") ;;
     esac
   done
-  resolved="$(IFS='/'; echo "${parts[*]}")"
+  # "${parts[*]:-}" rather than "${parts[*]}": under `set -u`, bash 3.2 (macOS's stock /bin/bash)
+  # treats expanding an EMPTY array with "${parts[*]}" as an unbound variable, which is a fault
+  # this hook used to trip for any path that resolves to nothing at all — ".", "..", "/",
+  # "SECURITY.md/.." — printing "line 188: parts[*]: unbound variable" to stderr and dying out of
+  # this subshell before $resolved was ever set (the write was still allowed either way, since an
+  # empty $resolved falls through every rule below as "not a match" — this was a noisy fault, not
+  # an unsafe one, but a noisy one that looks exactly like the hook being broken). The ":-" default
+  # gives bash 3.2 a plain empty string instead of erroring, and bash 4.4+ (which added its own
+  # support for expanding an empty array under `set -u`) is unaffected by the change. `printf '%s'`
+  # instead of `echo` also stops a path whose only real segment is text like "-n" or "-e" being
+  # read as an echo option instead of being written out as the path text it actually is.
+  resolved="$(IFS='/'; printf '%s' "${parts[*]:-}")"
 }
 resolve_lexical "$norm_path"
+
+# An absolute path that is STILL absolute after the "<cwd>/" (or "$PWD/") strip above named a
+# location outside the project entirely — the strip only removes that prefix when file_path
+# actually starts with it, so anything left starting with "/" was never under this project's
+# working folder to begin with. Before this fix, resolve_lexical would read that leading "/" as
+# just another empty split piece (the same as a doubled slash) and quietly drop it, so
+# "/.dev-team/SECURITY.md" resolved to the plain text ".dev-team/SECURITY.md" and was wrongly
+# treated as living inside THIS project's own .dev-team/ folder — a folder at the filesystem root
+# has nothing to do with the project just because its name matches. Forcing $escaped here (after
+# resolve_lexical has already run, so $resolved is still set for Rule 1's file-name check) gives
+# this case exactly the same "has left the project" treatment a runaway ".." already gets: Rule 1
+# still judges the file by name alone, and Rule 2 — which only ever protects this project's own
+# top-level files — skips it entirely.
+case "$norm_path" in
+  /*) escaped=1 ;;
+esac
 
 deny() {
   echo "dev-team guard: $1" >&2
@@ -244,17 +311,23 @@ if [ "$escaped" -eq 0 ]; then
 fi
 
 # --- Rule 1: a Write whose content carries the marker AND whose file name is one of the seven
-#     ledger names AND whose resolved path lands outside .dev-team/. All three together — not the
-#     marker alone — because a fixture or sample file can legitimately quote the marker without
-#     being a ledger, and this plugin ships exactly one such file (tests/fixtures/verdict.sample.
-#     json), which must never be refused. See the header comment for the fault this fixes. --------
+#     ledger names plus README.md AND whose resolved path lands outside .dev-team/. All three
+#     together — not the marker alone — because a fixture or sample file can legitimately quote the
+#     marker without being a ledger, and this plugin ships exactly one such file (tests/fixtures/
+#     verdict.sample.json), which must never be refused. README.md is on this list because this
+#     plugin also writes its own fixed, marker-bearing .dev-team/README.md (conventions.md, "Where
+#     the plugin writes", point 7) — leaving it off let that same text overwrite a project's real
+#     top-level README.md. It is NOT on Rule 2's separate name list below: Rule 2 also fires on a
+#     bare record id with no marker required, and an ordinary project README mentioning something
+#     like "F-001" in passing must never be blocked for that. See the header comment for both
+#     faults this rule now fixes. ------------------------------------------------------------------
 if [ "$checked" -eq 1 ] && [ "$tool_name" = "Write" ]; then
   first_three="$(printf '%s\n' "$content" | head -n 3)"
   if printf '%s' "$first_three" | grep -Eq "$marker_pattern"; then
     base_name="${resolved##*/}"
     base_lc="$(printf '%s' "$base_name" | tr '[:upper:]' '[:lower:]')"
     case "$base_lc" in
-      project.md|features.md|security.md|verification.md|migration.md|handoff.md|verdict.json)
+      project.md|features.md|security.md|verification.md|migration.md|handoff.md|verdict.json|readme.md)
         if [ "$in_devteam" -eq 0 ]; then
           deny "this content carries the dev-team marker and \"$base_name\" is one of this plugin's ledger names, but the path \"$norm_path\" resolves outside .dev-team/. Write it under .dev-team/ instead — or, if this really is your own project's file, set \"guard: off\" in .dev-team/config.yml."
         fi
