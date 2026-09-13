@@ -151,6 +151,19 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
     goes to the scratchpad files `codex-review-1a-builtin-high.out` and
     `codex-review-1b-focused-high.md` (with `.log`). Always pass that setting for Codex reviews on this
     machine, and check the banner shows `reasoning effort: high`.
+- **HAND-OVER (13 September, 18:43 BST): Codex is out of usage credit.** Both high-effort runs stopped
+  with "You've hit your usage limit … try again at 9:30 PM". Neither produced a review. **No Codex
+  review of this branch has happened.**
+  - **Fallback, per the standing hand-over rule:** a read-only workflow (`fallback-review-ledger-clashes`).
+    Five fresh Fable reviewers, one per risk area, none of them builders and none with any memory of
+    building this. An Opus refuter per area then tries to disprove every finding, and only confirmed
+    findings get fixed. The areas are: instructions, the hook, the move command, the checks/CI/schema,
+    and README/CHANGELOG claims.
+  - **This is NOT the independent cross-system review the owner's rule asks for.** Treat the branch as
+    **not fully reviewed** until Codex has done a full catch-up review. Say so in every commit
+    message and report until then.
+  - **Go back to Codex after 21:30 BST.** Run a FULL review of the whole branch against `main`, not
+    just the latest fixes: both forms, at high effort. A wake-up is booked for just after 21:30.
 - **Known fixes the lead found**, deliberately NOT given to Codex so its review stays independent.
   Fix them in the same round as Codex's findings:
   1. CHANGELOG 1.5.0 says names are compared ignoring case "in the lookup order" too. Only Rule 2 of
