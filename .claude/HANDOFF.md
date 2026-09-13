@@ -163,7 +163,11 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
     **not fully reviewed** until Codex has done a full catch-up review. Say so in every commit
     message and report until then.
   - **Go back to Codex after 21:30 BST.** Run a FULL review of the whole branch against `main`, not
-    just the latest fixes: both forms, at high effort. A wake-up is booked for just after 21:30.
+    just the latest fixes: both forms, at high effort. A wake-up is booked for 21:37 BST (scheduled
+    job `cab4a9d3`, one-off).
+  - **That booking exists only inside the Claude session that made it.** If the session was closed
+    or restarted before 21:37, nothing will fire. A resuming session must start the Codex catch-up
+    review itself, trying Codex first before anything else.
 - **Known fixes the lead found**, deliberately NOT given to Codex so its review stays independent.
   Fix them in the same round as Codex's findings:
   1. CHANGELOG 1.5.0 says names are compared ignoring case "in the lookup order" too. Only Rule 2 of
