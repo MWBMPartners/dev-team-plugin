@@ -125,15 +125,20 @@ now governs two separate hooks that each judge "is a run active" a different way
   (`.dev-team/autopilot.json` present), unless `DEV_TEAM_GUARD` forces it on for the session.
 - **`hooks/guard-ledgers.sh`** (the ledger guard): `off` turns off BOTH of its rules. Rule 1 — a
   Write whose new content carries the dev-team marker in its first three lines, whose file name
-  (ignoring capitals) is one of the seven ledger names, and whose path, once any "." and ".." parts
-  are worked out, is outside `.dev-team/` — stays ON in `auto` mode regardless of whether a run is
-  active; only `off` disables it. That is deliberate: the mistake it guards against — a stale
-  instruction telling a scribe to write a ledger at the legacy root location — can happen in a
-  one-off session just as easily as inside a run. Working out "." and ".." matters because
-  `.dev-team/../SECURITY.md` starts with `.dev-team/` but names the top-level file. Rule 1 can only
-  block a ledger-named file outside `.dev-team/` whose content carries the dev-team marker — for
-  example a person pasting a copy of a ledger into `docs/FEATURES.md`; to proceed, write the file
-  under `.dev-team/` instead, or set `guard: off`. (An earlier wording said Rule 1 could never block
+  (ignoring capitals) is one of the seven ledger names plus `README.md`, and whose path, once any
+  "." and ".." parts are worked out, is outside `.dev-team/` — stays ON in `auto` mode regardless of
+  whether a run is active; only `off` disables it. `README.md` is on Rule 1's list (Rule 2's list is
+  unchanged — the seven ledger names only) because the plugin also writes a marked
+  `.dev-team/README.md`; without `README.md` in the list, a mistaken write of that fixed text could
+  overwrite a project's own top-level `README.md`. That is deliberate: the mistake it guards
+  against — a stale instruction telling a scribe to write a ledger (or the folder README) at the
+  legacy root location — can happen in a one-off session just as easily as inside a run. Working out
+  "." and ".." matters because `.dev-team/../SECURITY.md` starts with `.dev-team/` but names the
+  top-level file; an absolute path that does not resolve to somewhere inside the project is likewise
+  treated as outside `.dev-team/`. Rule 1 can only block a ledger-named file (or `README.md`) outside
+  `.dev-team/` whose content carries the dev-team marker — for example a person pasting a copy of a
+  ledger into `docs/FEATURES.md`; to proceed, write the file under `.dev-team/` instead, or set
+  `guard: off`. (An earlier wording said Rule 1 could never block
   a person; that overstated it.) Rule 2 — a write to a top-level file with one of the seven ledger
   names, whose content looks like plugin output — is active only while `.dev-team/loop.lock/`
   exists, `guard: on` is set, or `DEV_TEAM_GUARD` is set. Rule 2 **never** activates merely because

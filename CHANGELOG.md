@@ -109,12 +109,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   fail-open — never the guarantee, only a second line of defense:
   - **Rule 1** is on all the time unless `guard: off`: it refuses a `Write` only when **all three**
     hold — the new content carries the dev-team marker on one of its first three lines, the
-    target's file name (ignoring capitals) is one of the seven ledger names, and the path, once
-    any `.`/`..` parts in it are worked out (`.dev-team/../SECURITY.md` starts with `.dev-team/`
-    as plain text but names the top-level file), lands outside `.dev-team/`. That's one narrow
-    shape it can block — for example a person pasting a copy of a ledger into `docs/FEATURES.md` —
-    not a blanket guarantee that it can never touch a person's own file; to proceed, write the file
-    under `.dev-team/` instead, or set `guard: off`.
+    target's file name (ignoring capitals) is one of the seven ledger names **plus `README.md`**,
+    and the path, once any `.`/`..` parts in it are worked out (`.dev-team/../SECURITY.md` starts
+    with `.dev-team/` as plain text but names the top-level file), lands outside `.dev-team/` — an
+    absolute path that does not resolve to somewhere inside the project is likewise treated as
+    outside `.dev-team/`. `README.md` is on Rule 1's list because the plugin also writes a marked
+    `.dev-team/README.md` (see "Where the plugin writes, and the ownership rule", point 7); without
+    it in the list, a mistaken write of that fixed text — for example a stale or mistyped
+    instruction that drops the `.dev-team/` prefix — could overwrite a project's own top-level
+    `README.md` unchecked. Rule 2's name list is unchanged: the seven ledger names only, never
+    `README.md`, because a project's own `README.md` mentioning a record-id-shaped string (like
+    `F-001`) far more often reflects an ordinary project document than a plugin write. That's one
+    narrow shape Rule 1 can block — for example a person pasting a copy of a ledger into
+    `docs/FEATURES.md`, or the folder README landing at the wrong path — not a blanket guarantee
+    that it can never touch a person's own file; to proceed, write the file under `.dev-team/`
+    instead, or set `guard: off`.
   - **Rule 2** only activates while `.dev-team/loop.lock/` exists (an autopilot cycle is running
     right now), `guard: on` is set in `.dev-team/config.yml`, or `DEV_TEAM_GUARD` is set — and even
     then it only refuses a write to one of the seven ledger names at the top level (or `SECURITY.md`
