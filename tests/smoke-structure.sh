@@ -108,6 +108,15 @@ else
   done
 fi
 
+# 7) scripts/audit-ledger-paths.sh exists and is executable — this is the repo's own self-check
+#    for stale ledger paths (issue #41), run in CI as its own audit step; if the file itself went
+#    missing or lost its execute bit, that CI step would silently stop checking anything.
+if [ ! -f "scripts/audit-ledger-paths.sh" ]; then
+  note "missing scripts/audit-ledger-paths.sh"
+elif [ ! -x "scripts/audit-ledger-paths.sh" ]; then
+  note "scripts/audit-ledger-paths.sh is not executable"
+fi
+
 # 8) Every schemas/*.schema.json is valid JSON and has $schema, title and description — a schema
 #    file with a mistake in it is worse than no schema at all, because a validator would run
 #    against it with no warning and either crash or (worse) rubber-stamp everything. This is a

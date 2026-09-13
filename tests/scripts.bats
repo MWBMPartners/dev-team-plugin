@@ -4,9 +4,9 @@
 #
 # Every test that needs an isolated ".dev-team/config.yml" or a directory with no
 # ".dev-team/autopilot.json" runs from a fresh per-test scratch dir ($SCRATCH), never from
-# $REPO_ROOT, so tests never leave stray files behind in this actual repo. The two tests that
-# DO touch $REPO_ROOT (audit-model-ids.sh's injected-failure cases) always clean up in teardown,
-# even if an assertion fails.
+# $REPO_ROOT, so tests never leave stray files behind in this actual repo. The tests that DO
+# touch $REPO_ROOT (audit-model-ids.sh's and audit-ledger-paths.sh's injected-failure cases)
+# always clean up in teardown, even if an assertion fails.
 
 setup() {
   REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
@@ -15,10 +15,11 @@ setup() {
 
 teardown() {
   [ -n "${SCRATCH:-}" ] && rm -rf "$SCRATCH"
-  # Belt-and-braces: guarantee these two known scratch artifacts never survive a failed
-  # assertion in the audit-model-ids.sh tests below (see note there).
+  # Belt-and-braces: guarantee these known scratch artifacts never survive a failed assertion in
+  # the audit-model-ids.sh / audit-ledger-paths.sh injected-failure tests below.
   rm -f "$REPO_ROOT/tests/.tmp-audit-dated-id.md"
   rm -rf "$REPO_ROOT/.claude/agents"
+  rm -f "$REPO_ROOT/skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
 }
 
 # Run guard-dev-team.sh with $2 piped to stdin, cwd'd into $1 (guard reads
@@ -65,6 +66,39 @@ run_ledger_guard() {
   rm -rf "$REPO_ROOT/.claude/agents"
   [ "$status" -eq 1 ]
   [[ "$output" == *".claude/agents/ exists"* ]]
+}
+
+# ---------------------------------------------------------------------------
+# scripts/audit-ledger-paths.sh
+# ---------------------------------------------------------------------------
+# Same belt-and-braces cleanup discipline as the audit-model-ids.sh cases above: the injected
+# file is removed immediately after the assertions, and again in teardown() in case an assertion
+# fails first and the immediate "rm" line is never reached.
+
+@test "audit-ledger-paths: passes on the clean repo" {
+  run bash "$REPO_ROOT/scripts/audit-ledger-paths.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"LEDGER-PATHS OK"* ]]
+}
+
+@test "audit-ledger-paths: fails on a ledger named at the repo root without the .dev-team/ prefix" {
+  # The script cd's to its own script's parent dir, so it always audits THIS repo regardless of
+  # caller cwd — the injected file must live inside the real tree, under skills/ (in scope).
+  printf '%s\n' 'The documentarian writes `PROJECT.md` at the repo root.' \
+    > "$REPO_ROOT/skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
+  run bash "$REPO_ROOT/scripts/audit-ledger-paths.sh"
+  rm -f "$REPO_ROOT/skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"LEDGER-PATHS FAIL"* ]]
+}
+
+@test "audit-ledger-paths: fails on a ledger anchor with no .dev-team/ prefix" {
+  printf '%s\n' 'See `SECURITY.md#Findings` for the full register.' \
+    > "$REPO_ROOT/skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
+  run bash "$REPO_ROOT/scripts/audit-ledger-paths.sh"
+  rm -f "$REPO_ROOT/skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"LEDGER-PATHS FAIL"* ]]
 }
 
 # ---------------------------------------------------------------------------

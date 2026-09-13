@@ -6,6 +6,112 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.5.0] - <unreleased>
+
+### Changed
+
+- **Every file the plugin writes for itself now lives in `.dev-team/`.** `PROJECT.md`,
+  `FEATURES.md`, `SECURITY.md`, `VERIFICATION.md` + `verdict.json`, `MIGRATION.md`, and now
+  `HANDOFF.md` too, are all written to `.dev-team/<name>` instead of the top level of the project.
+  The file names themselves are unchanged — the folder is what keeps them apart from a project's
+  own files. Why: real projects keep their own files with these exact names — a product's own
+  feature list called `FEATURES.md`, GitHub's public security policy (`SECURITY.md`, which GitHub
+  reads from `.github/`, the top level, or `docs/` — never from `.dev-team/`), a hand-written
+  `HANDOFF.md` — and before this release the plugin overwrote or appended to them without checking
+  whose file it actually was. One real project had the plugin's security findings appended onto the
+  end of its own public security policy. Rejected: renaming the files (fixes today's clash, not the
+  next one with a name nobody has thought of yet); keeping them at the top level with a prefix on
+  the name (still clutters the project, and a prefixed name can clash too); making the location a
+  setting (a user only discovers the setting exists after the damage is already done). Full rule:
+  `conventions.md`, "Where the plugin writes, and the ownership rule".
+- **The ownership rule.** Every markdown ledger now carries a marker comment on line 2
+  (`<!-- dev-team: ledger=<kind> schema=1.0 -->`), and `verdict.json` carries the same idea as a
+  JSON field (`"dev-team": "ledger=verdict schema=1.0"`). Before writing anywhere in the ledger
+  table, a skill reads the target file first: file absent → create it with the marker; marker
+  present → it's the plugin's own, write it; **no marker → write nothing**, and ask a person which
+  it is, rather than guess — guessing either way can damage a file the plugin does not own. An
+  unattended autopilot cycle that hits this case goes `BLOCKED` (reason `ledger-ownership`) instead
+  of guessing on its own. The security skill also now flatly refuses to write `SECURITY.md` at the
+  top level, in `.github/`, or in `docs/` — the three places GitHub looks for a project's real
+  security policy — even if asked to.
+- **Files written before this release keep working.** A reader looks for `.dev-team/<name>` first
+  and, only if that's absent, falls back to the old top-level `<name>`. A top-level file that
+  already carries the marker is moved into `.dev-team/` and committed on its own, automatically; one
+  with no marker triggers the same ownership question above. Values inside `.dev-team/autopilot.json`
+  written before this release (`queue`, `spec_ref`, `trajectory_ref`) that name a ledger without the
+  `.dev-team/` folder in front are still accepted and are rewritten to the new form at the next
+  RECORD step.
+- Names are compared **ignoring case** everywhere this change touches path-checking logic (in
+  `hooks/guard-ledgers.sh` and in the lookup order), because a filesystem that ignores case (macOS,
+  by default) treats `security.md` and `SECURITY.md` as the exact same file on disk — matching
+  capitals only would have let a write spelled in lower case walk straight past a check meant to
+  protect that file.
+- The `verdict.json` marker is recognised whether it's written with normal spacing
+  (`"dev-team": "ledger=verdict schema=1.0"`) or as **compact JSON with no spaces at all**
+  (`{"dev-team":"ledger=verdict schema=1.0"}`) — both are exactly the same content, and a stricter
+  match would have missed the second, equally valid, form.
+- The example `verdict.json` shown in the review skill's own protocol doc
+  (`verdict-and-report-protocol.md`) is now valid JSON that actually passes
+  `schemas/verdict.schema.json` — it previously wasn't valid JSON as written, so nobody could have
+  copied it as a working starting point.
+- The `HANDOFF.md` resume card's own Artifacts line now lists `MIGRATION.md` and `verdict.json`
+  alongside the other ledgers, so a session resuming cold from the card can see at a glance whether
+  those two exist for this project.
+
+### Added
+
+- `/dev-team-move-ledgers` (dry-run by default; `--apply` to act): sorts every legacy top-level
+  ledger file into "ours — will move" (has the marker), "looks like ours — ask" (no marker, but has
+  the shape of one), "not ours — leave alone", or "mixed — needs a person" (a project's own document
+  with dev-team records appended into it — the command refuses to cut that apart itself, because
+  getting that boundary wrong either publishes findings as if they were policy or deletes part of
+  the policy, and a person needs to make that call). Files agreed to move are moved and stamped
+  with the current marker form in one commit, which is never pushed automatically.
+- `hooks/guard-ledgers.sh` (a new PreToolUse hook on `Write`, `Edit`, and `MultiEdit`), a second,
+  independent layer behind the written rule above. Two separate checks, both best-effort and
+  fail-open — never the guarantee, only a second line of defense:
+  - **Rule 1** is on all the time unless `guard: off`: it refuses a `Write` whose new content
+    carries the dev-team marker on one of its first three lines when the target path is outside
+    `.dev-team/`. Only content the plugin itself generated ever carries that marker, so this can
+    never block a person editing their own file — only a scribe about to write a ledger to the
+    wrong place.
+  - **Rule 2** only activates while `.dev-team/loop.lock/` exists (an autopilot cycle is running
+    right now), `guard: on` is set in `.dev-team/config.yml`, or `DEV_TEAM_GUARD` is set — and even
+    then it only refuses a write to one of the seven ledger names at the top level (or `SECURITY.md`
+    in `.github/`/`docs/`) when the incoming text itself carries the marker or a dev-team record id
+    such as `F-001` or `FG-012`. It deliberately does **not** treat a committed
+    `.dev-team/autopilot.json` as proof that a run is active: some real projects keep that file
+    committed in git, so if presence-of-the-file were the signal, this rule would have been
+    permanently on in those projects and would have stopped their owners editing their own
+    top-level `HANDOFF.md` or `FEATURES.md` forever. `loop.lock/` is a real "right now" signal
+    instead — it's created for the length of one cycle and removed at the end, and it's never
+    committed to git.
+  - What it still can't do: it never sees a write made through `cat >>` or similar in Bash, and it's
+    a best-effort pattern match, not a guarantee — a determined rewrite that avoids the marker and
+    every id pattern won't be caught. The real protection stays the written rule plus a person
+    reading what they're about to commit.
+- `.dev-team/.gitignore` (containing exactly `loop.lock/`) and `.dev-team/README.md` are created
+  once, the first time anything is written into the folder, and never overwritten after that; a
+  warning is added to the run report if the project's own `.gitignore` would swallow the folder.
+- `schemas/verdict.schema.json`, a JSON Schema describing `verdict.json`'s exact shape, with a
+  sample fixture and two `tests/scripts.bats` cases validating against it via `check-jsonschema`
+  (skipped, not failed, when that tool isn't installed locally — CI always has it).
+
+### Known gaps (follow-ups, not fixed in this release)
+
+- **Security findings committed under `.dev-team/SECURITY.md` are still in the repository.** Moving
+  them off the top level doesn't make them private — a public repository still publishes its
+  findings and any proof-of-concept detail written alongside them. That's a separate decision, not
+  a bug in this change. Tracked as issue #42.
+- **`.dev-team/autopilot.json` has no schema file of its own**, unlike `verdict.json`. Its
+  documented example contains `//` comments, so as written it can't even be validated against a
+  schema yet. Tracked as issue #43.
+- **The existing Bash guard (`hooks/guard-dev-team.sh`) still treats a committed `autopilot.json`
+  as proof a run is in progress** — the same weakness this release fixed in the new ledger guard,
+  left as-is here because that hook's own three rules (blocking a push to `main`, a force-push, and
+  a live Stripe key) are mostly harmless even when it's on more often than it needs to be. Tracked
+  as issue #44.
+
 ## [1.4.0] - <unreleased>
 
 ### Added

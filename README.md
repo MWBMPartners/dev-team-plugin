@@ -1,10 +1,10 @@
 # dev-team
 
-**Version 1.4.0.**
+**Version 1.5.0.**
 
 A Claude Code plugin that lets you run software work as a **team lead / product owner** instead of coding alone: you delegate every piece of implementation to a tiered team of Claude subagents (a frontier reasoner, an Opus builder/verifier, a Sonnet documentarian, a Haiku mechanic) through a stage-by-stage *delegate → check → checkpoint* loop. **Eleven skills** cover the whole lifecycle — building, iterating, migrating, security, verification, competitive feature discovery, Stripe, shipping/CI, PR CI-medic, and documentation — plus an autopilot conductor that drives them all to production autonomously. An optional **taste-first** profile can put the highest-taste model in the orchestrator seat and offload token-hungry bulk work to GPT-5.5/Codex.
 
-Cross-cutting since 1.2.0 (see [Configuration & feature toggles](#configuration--feature-toggles) and [Cross-cutting behaviors](#cross-cutting-behaviors)): an optional, repo-scoped `.dev-team/config.yml` sets the suite's run defaults and feature toggles for every session and collaborator; every building skill supports a `dry-run` plan-preview and a generalized cold-resume; and runs surface an end-of-run [telemetry report](#run-reports--cost) (a rough, explicitly-not-a-bill cost estimate) plus autopilot gate/blocked/done notifications. New in 1.3.0: every completed task/workstream can auto-regenerate an **assistant-agnostic** `HANDOFF.md` (readable by Claude, Codex, or any LLM tool) and land its own **fine-grained local commit**, and issue sync gains a per-task `auto` cadence plus **GitLab** support — see [Cross-cutting behaviors](#cross-cutting-behaviors) and [Issue sync](#issue-sync-optional). New in 1.4.0: a **single-PR policy** (`git.single-pr`, default on) that keeps *one open PR per line of work* — reusing an existing PR instead of opening duplicates that could race to merge (see [Configuration & feature toggles](#configuration--feature-toggles)).
+Cross-cutting since 1.2.0 (see [Configuration & feature toggles](#configuration--feature-toggles) and [Cross-cutting behaviors](#cross-cutting-behaviors)): an optional, repo-scoped `.dev-team/config.yml` sets the suite's run defaults and feature toggles for every session and collaborator; every building skill supports a `dry-run` plan-preview and a generalized cold-resume; and runs surface an end-of-run [telemetry report](#run-reports--cost) (a rough, explicitly-not-a-bill cost estimate) plus autopilot gate/blocked/done notifications. New in 1.3.0: every completed task/workstream can auto-regenerate an **assistant-agnostic** `HANDOFF.md` (readable by Claude, Codex, or any LLM tool) and land its own **fine-grained local commit**, and issue sync gains a per-task `auto` cadence plus **GitLab** support — see [Cross-cutting behaviors](#cross-cutting-behaviors) and [Issue sync](#issue-sync-optional). New in 1.4.0: a **single-PR policy** (`git.single-pr`, default on) that keeps *one open PR per line of work* — reusing an existing PR instead of opening duplicates that could race to merge (see [Configuration & feature toggles](#configuration--feature-toggles)). New in 1.5.0: every file the plugin writes for itself — `PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `VERIFICATION.md` + `verdict.json`, `MIGRATION.md`, and now `HANDOFF.md` too — lives in the project's `.dev-team/` folder instead of the top level, so it can never be mistaken for (or overwrite) a project's own same-named file; a **marker line** on every ledger is how the plugin tells its own files apart from a project's, and a file it cannot prove is its own is never written to without asking first — see [Where the plugin writes, and the ownership rule](#cross-cutting-behaviors) and [Upgrading from 1.4 or earlier](#upgrading-from-14-or-earlier).
 
 ---
 
@@ -119,7 +119,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 
 **Modes.** None — no `mode=` subcommands. It runs one loop: UNDERSTAND → SCOPE INTO STAGES → [per stage: PLAN → DELEGATE → CHECK → CHECKPOINT → DECIDE] → VERIFY → done. It offers an optional *taste-first* orchestration profile (see [orchestration-profiles.md][orchestration-profiles]) and three lead-chosen check-in policies (Autonomous / Milestone check-ins / Decision check-ins) — judgment calls, not invocation flags. **Cold-resumes** from a prior run's `PROJECT.md` (Current status + decision log) when it's still current, instead of restarting from scratch — see [Cross-cutting behaviors](#cross-cutting-behaviors).
 
-**Artifacts.** [`PROJECT.md`](#artifacts-glossary) (external memory / source of truth), plus a git commit at each passing stage checkpoint (message naming the stage) as a rollback point.
+**Artifacts.** [`.dev-team/PROJECT.md`](#artifacts-glossary) (external memory / source of truth), plus a git commit at each passing stage checkpoint (message naming the stage) as a rollback point.
 
 ### dev-team-iterate
 
@@ -140,7 +140,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 
 **Cold-resume.** Phase 0 looks for a `PROJECT.md` with a Codebase Map + run record from a prior run; if it validates as current, it reuses it as context and delta-scouts only what changed, instead of re-gathering the whole codebase — see [Cross-cutting behaviors](#cross-cutting-behaviors).
 
-**Artifacts.** [`PROJECT.md`](#artifacts-glossary), extended with the Codebase Map, a run record (map-commit + date, for the resume check), the scored backlog, the Proposed-Features ledger, and the trajectory ledger (metrics over time).
+**Artifacts.** [`.dev-team/PROJECT.md`](#artifacts-glossary), extended with the Codebase Map, a run record (map-commit + date, for the resume check), the scored backlog, the Proposed-Features ledger, and the trajectory ledger (metrics over time).
 
 ### dev-team-security
 
@@ -163,7 +163,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 
 **Modes.** No `mode=` argument; the mode-like toggles are `fix=auto\|propose-only` and the `report-only` flag. **Cold-resumes** from a current `SECURITY.md` (coverage ledger + findings register) when one exists, picking up only what's still untested/unresolved rather than re-running the full sweep — see [Cross-cutting behaviors](#cross-cutting-behaviors).
 
-**Artifacts.** [`SECURITY.md`](#artifacts-glossary) (threat model, attack-surface map, coverage ledger, findings register with CWE / CVSS v3.1 / status / fix / verification evidence); a `security-audit/<date>` branch with one commit per fixed-and-verified finding, handed to the user for review (never auto-merged); isolated non-destructive PoC/repro artifacts in a sandbox dir; a new security regression test per fixed finding.
+**Artifacts.** [`.dev-team/SECURITY.md`](#artifacts-glossary) (threat model, attack-surface map, coverage ledger, findings register with CWE / CVSS v3.1 / status / fix / verification evidence); a `security-audit/<date>` branch with one commit per fixed-and-verified finding, handed to the user for review (never auto-merged); isolated non-destructive PoC/repro artifacts in a sandbox dir; a new security regression test per fixed finding.
 
 ### dev-team-review
 
@@ -184,7 +184,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 
 **Modes.** No user-facing mode switch, but two contexts: (1) **standalone** — full pipeline including the default-on fix phase; (2) invoked by [dev-team-autopilot](#dev-team-autopilot) as its VERIFY mode — effectively forced `remediate=report`: produces verdicts + `VERIFICATION.md` + `verdict.json` only, never enters the fix phase, creates no branch, and hands FAILED/DRIFTED/HOLLOW verdicts back to the conductor. No `dry-run` argument — this skill is already read-only up to the fix phase. **Cold-resumes** from an interrupted prior `VERIFICATION.md` pass (re-verifies only the outstanding claim-groups) — see [Cross-cutting behaviors](#cross-cutting-behaviors).
 
-**Artifacts.** [`VERIFICATION.md`](#artifacts-glossary) (per-claim verdicts + evidence + severity + confidence, integration result, regression delta, overall verdict, prioritized gap list); `verdict.json` (machine-readable, for CI gating); a status-line update on `PROJECT.md` (not owned/rewritten); a `review-fix/<branch>` only if the fix phase runs (never merged to main).
+**Artifacts.** [`.dev-team/VERIFICATION.md`](#artifacts-glossary) (per-claim verdicts + evidence + severity + confidence, integration result, regression delta, overall verdict, prioritized gap list); `.dev-team/verdict.json` (machine-readable, for CI gating); a status-line update on `.dev-team/PROJECT.md` (not owned/rewritten); a `review-fix/<branch>` only if the fix phase runs (never merged to main).
 
 ### dev-team-featurefind
 
@@ -205,7 +205,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 
 **Modes.** No named run modes. Two contexts: (1) **standalone** — a one-time Scope Gate confirms the inferred aim, comparable set, and scope boundary with the user before researching; (2) invoked by [dev-team-autopilot](#dev-team-autopilot) as its discovery mode — the Scope Gate is skipped, findings written straight to `FEATURES.md`/`PROJECT.md`, and the conductor owns the approval gate.
 
-**Artifacts.** [`FEATURES.md`](#artifacts-glossary) (confirmed aim, comparable set with sources, scored gap register — in-scope gaps ranked by importance plus an out-of-scope section with reasons). When `PROJECT.md` is present, the documentarian syncs the top in-scope gaps into its Proposed-Features ledger.
+**Artifacts.** [`.dev-team/FEATURES.md`](#artifacts-glossary) (confirmed aim, comparable set with sources, scored gap register — in-scope gaps ranked by importance plus an out-of-scope section with reasons). When `.dev-team/PROJECT.md` is present, the documentarian syncs the top in-scope gaps into its Proposed-Features ledger.
 
 ### dev-team-stripe
 
@@ -226,7 +226,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 
 **Modes.** `mode=build\|review`. **BUILD** implements payment flows (Checkout, Payment Element, PaymentIntents, subscriptions/billing, Connect, webhooks) via the orchestrator loop, with a mandatory REVIEW pass before it's considered done. **REVIEW** is a Stripe-scoped correctness + security audit (a blend of security + review discipline) that maps pathways, runs deterministic scanners, audits against the correctness and security checklists, red-teams with test-mode PoCs, fixes, and re-verifies. Reuses the orchestrator's machinery wholesale, including **cold-resume** from a prior run's `PROJECT.md` — see [Cross-cutting behaviors](#cross-cutting-behaviors).
 
-**Artifacts.** [`PROJECT.md`](#artifacts-glossary) (stack/decisions, Stripe pathway inventory, per-checklist-item coverage ledger, findings register with CWE); `SECURITY.md#Findings` (mirrored REVIEW findings, only if a later security resume is expected); git commits on the work branch (one per verified fix; payment changes never auto-merged); a final report (findings register, fixed vs proposed, residual risk, any live key flagged for rotation, and stated limitations).
+**Artifacts.** [`.dev-team/PROJECT.md`](#artifacts-glossary) (stack/decisions, Stripe pathway inventory, per-checklist-item coverage ledger, findings register with CWE); `.dev-team/SECURITY.md#Findings` (mirrored REVIEW findings, only if a later security resume is expected); git commits on the work branch (one per verified fix; payment changes never auto-merged); a final report (findings register, fixed vs proposed, residual risk, any live key flagged for rotation, and stated limitations).
 
 ### dev-team-ship
 
@@ -246,7 +246,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 
 **Modes.** **setup** (build the pipeline from scratch) | **audit** (check an existing pipeline against the four hard-won CI/CD rules and fix what's broken without silently loosening protection). `mode=auto` infers which to run; if genuinely mixed, it runs setup for the missing lanes and audit for the existing ones.
 
-**Artifacts.** `PROJECT.md` (records the pipeline that now exists — Current status + a decision-log entry for any real tradeoff); `.github/workflows/*` CI workflow(s) with deliberate, stable job `name:` fields; a gitleaks CLI secret-scanning step (never `gitleaks/gitleaks-action@v2`); branch protection rules and/or rulesets with required-check names matching the job `name:` fields byte-for-byte; a release/versioning flow (automated tag-on-version-bump with a `GITHUB_TOKEN` anti-recursion bridge, or a documented manual runbook); a `ship/<date>` branch handed back for review (never pushed straight to main); exact GitHub web-UI steps for any secret the pipeline needs (never set by the skill itself).
+**Artifacts.** `.dev-team/PROJECT.md` (records the pipeline that now exists — Current status + a decision-log entry for any real tradeoff); `.github/workflows/*` CI workflow(s) with deliberate, stable job `name:` fields; a gitleaks CLI secret-scanning step (never `gitleaks/gitleaks-action@v2`); branch protection rules and/or rulesets with required-check names matching the job `name:` fields byte-for-byte; a release/versioning flow (automated tag-on-version-bump with a `GITHUB_TOKEN` anti-recursion bridge, or a documented manual runbook); a `ship/<date>` branch handed back for review (never pushed straight to main); exact GitHub web-UI steps for any secret the pipeline needs (never set by the skill itself).
 
 ### dev-team-autopilot
 
@@ -271,7 +271,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 
 **Modes / phases.** Six phases sequence the mission — DISCOVER → STABILIZE → SECURE → COMPLETE → POLISH → VERIFY — each driven by one sibling-skill "mode" run for exactly one cycle: discovery ([featurefind](#dev-team-featurefind)), iterate ([iterate](#dev-team-iterate)), security Phase 0 + purple-team ([security](#dev-team-security)), feature build ([orchestrator](#dev-team-orchestrator), approved specs only), verify ([review](#dev-team-review), report-only). Separately, `gates=hybrid\|pause-all\|autonomy-envelope` is a mode switch controlling how much feature work auto-builds vs. is queued for approval.
 
-**Artifacts.** [`.dev-team/autopilot.json`](#artifacts-glossary) (machine-authoritative run state, plus `.dev-team/loop.lock`), and all the suite's ledgers: `PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `VERIFICATION.md`, `verdict.json`.
+**Artifacts.** [`.dev-team/autopilot.json`](#artifacts-glossary) (machine-authoritative run state, plus `.dev-team/loop.lock`), and all the suite's ledgers: `.dev-team/PROJECT.md`, `.dev-team/FEATURES.md`, `.dev-team/SECURITY.md`, `.dev-team/VERIFICATION.md`, `.dev-team/verdict.json`.
 
 ### dev-team-ci-medic
 
@@ -290,7 +290,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 
 **Modes.** Two postures via the autofix gate (`safe` default, `off` triage-only). Four failure classes (SAFE-AUTO, FLAKY, REAL, BLOCKED) drive per-check handling. Three invocation modes: interactive, [`/dev-team-watch-prs`](#commands) single pass, `/loop <interval> /dev-team-watch-prs` repeated pass, or a scheduled cloud routine via `/schedule`.
 
-**Artifacts.** No new required artifact — it reuses orchestrator machinery. If the repo already keeps a `PROJECT.md`, the documentarian appends a short run summary to its Current status; otherwise the summary is just reported. Fix commits are pushed to the PR's own head branch (never main), with messages of the form `ci-medic: fix <check> — <what changed>` carrying the checker's passing-output evidence.
+**Artifacts.** No new required artifact — it reuses orchestrator machinery. If the repo already keeps a `.dev-team/PROJECT.md`, the documentarian appends a short run summary to its Current status; otherwise the summary is just reported. Fix commits are pushed to the PR's own head branch (never main), with messages of the form `ci-medic: fix <check> — <what changed>` carrying the checker's passing-output evidence.
 
 ### dev-team-docs
 
@@ -311,7 +311,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 
 **Modes.** **generate** (no docs exist yet for the scope — write from scratch) | **maintain** (docs exist but the code moved — delta-scout what changed, draft only what drifted, but the checker re-verifies the *whole* doc-area) | **audit** (read-only: find and report doc drift/staleness by severity, no draft/fix/commit — a good cheap first look before committing to `maintain`). **Cold-resumes**: since this skill owns no dedicated ledger, it checks `PROJECT.md`'s Current status/decision log (if present) for a prior docs-pass record and `git diff`s since that commit to decide resume-vs-rescout — see [Cross-cutting behaviors](#cross-cutting-behaviors).
 
-**Artifacts.** No new ledger file — writes the actual documentation files in scope (README, CHANGELOG, docstrings, guides, architecture docs, etc.), one commit per doc-area on a `docs/<date>` branch (never merged to `main` by the skill itself); `audit` mode makes no commits at all. If `PROJECT.md` exists, the documentarian records the result (counts by severity, headline findings) in its Current status.
+**Artifacts.** No new ledger file — writes the actual documentation files in scope (README, CHANGELOG, docstrings, guides, architecture docs, etc.), one commit per doc-area on a `docs/<date>` branch (never merged to `main` by the skill itself); `audit` mode makes no commits at all. If `.dev-team/PROJECT.md` exists, the documentarian records the result (counts by severity, headline findings) in its Current status.
 
 ### dev-team-migrate
 
@@ -334,7 +334,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 
 **Modes.** **plan** (scout the migration surface, map dependency order, choose a strategy, define the staged cutover plan with risk sizing, and **stop** for the Migration Plan Gate — the user's explicit approval; a hard, one-time gate, distinct from `dry-run`) | **execute** (requires an approved plan; runs the characterization-net gate as Stage 0, then migrates stage-by-stage — verify against both the stage's own criteria *and* the full characterization net, commit, update the Stage Ledger — with compatibility shims tracked to the later stage that removes them, ending in a mandatory final cutover + cleanup stage). **Cold-resumes** from a prior run's `MIGRATION.md` (Migration Plan + Stage Ledger) when it validates as still current, the same way `dev-team-iterate` validates its Codebase Map — see [Cross-cutting behaviors](#cross-cutting-behaviors).
 
-**Artifacts.** `MIGRATION.md` (this skill's own external memory: the Migration Plan, the Stage Ledger, and the compatibility-shims-in-play table — see `references/migration-plan-protocol.md`); one commit per stage, including Stage 0 (the characterization net), on a `migrate/<date>` branch, handed back to the user for review and never auto-merged.
+**Artifacts.** `.dev-team/MIGRATION.md` (this skill's own external memory: the Migration Plan, the Stage Ledger, and the compatibility-shims-in-play table — see `references/migration-plan-protocol.md`); one commit per stage, including Stage 0 (the characterization net), on a `migrate/<date>` branch, handed back to the user for review and never auto-merged.
 
 ---
 
@@ -351,7 +351,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 | [`/dev-team-sync-issues`][cmd-sync-issues] | `--dry-run`, `--confirm-each` | Export the suite's ledgers (feature gaps, backlog, security findings, review verdicts, gate items) to your GitHub or GitLab tracker (platform auto-detected; see [Issue sync](#issue-sync-optional)); opt-in, dedup-safe. |
 | [`/dev-team-config`][cmd-config] | `show\|init` | Print the effective config (built-in defaults overlaid with `.dev-team/config.yml`), or scaffold a starter repo-scoped config file (see [Configuration & feature toggles](#configuration--feature-toggles)). |
 | [`/dev-team-report`][cmd-report] | `[branch=<base>]` | Read-only, on-demand run report — phases/cycles, commits, agents by tier, a rough (not-a-bill) cost estimate — regardless of the `features.telemetry` toggle (see [Run reports & cost](#run-reports--cost)). |
-| [`/dev-team-move-ledgers`](commands/dev-team-move-ledgers.md) | `[--apply]` | Move dev-team ledgers written before v1.5.0 from the legacy root location into `.dev-team/`. Read-only preview by default; `--apply` moves only files carrying the dev-team marker without asking, asks about look-alikes, never touches a project's own file or a mixed one, and makes one commit (never pushes). |
+| [`/dev-team-move-ledgers`][cmd-move-ledgers] | `[--apply]` | Move dev-team ledgers written before v1.5.0 from the legacy root location into `.dev-team/`. Read-only preview by default; `--apply` moves only files carrying the dev-team marker without asking, asks about look-alikes, never touches a project's own file or a mixed one, and makes one commit (never pushes). |
 
 **Detail worth knowing:**
 
@@ -361,6 +361,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 - **`/dev-team-sync-issues`** — first run in a repo (and any `--confirm-each` run) shows the planned set and waits for the user's go-ahead before creating anything; `--dry-run` reports without touching the tracker (GitHub or GitLab).
 - **`/dev-team-config`** — `show` (default if omitted) is read-only: it never creates, edits, or touches the file. `init` creates `.dev-team/config.yml` with the commented starter schema **only if one doesn't already exist**; it never overwrites a file that's there, and never commits it for you — the file is meant to be committed by the user so its defaults and toggles apply to every session and collaborator.
 - **`/dev-team-report`** — `branch=<base>` sets the base to diff commits against; if omitted it resolves from `.dev-team/config.yml`'s `git.default-branch`, then auto-detects `origin/HEAD`, then falls back to `main`/`master`. Agents-spawned-by-tier and the cost estimate read from `.dev-team/autopilot.json`'s `budget.spawns_by_tier` when present; without it (a plain, non-autopilot run with no persisted spawn ledger) it reports those as "not tracked outside an autopilot run" rather than guessing. Never writes or fetches anything.
+- **`/dev-team-move-ledgers`** — without `--apply` it only reads and reports, sorting each legacy top-level file into "ours — will move", "looks like ours — ask", "not ours — leave alone", or "mixed — needs a person" (see [Where the plugin writes, and the ownership rule](#cross-cutting-behaviors)). `--apply` moves only files it can prove are its own without asking, asks about every look-alike one at a time, refuses to touch a mixed file (a project's own document with dev-team records appended into it — cutting that apart needs a person), and makes one commit for everything it moves, never pushing it. Refuses `--apply` outside a git repo or with a dirty working tree, and asks before committing straight onto the default branch.
 
 ---
 
@@ -416,7 +417,7 @@ Every switch lives in **one file in your project**: `.dev-team/config.yml`. Beca
 | Silence the run cost / telemetry summary | `features: → telemetry` | `off` | — |
 | Silence autopilot gate/blocked/done notifications | `features: → notifications` | `off` | — |
 | Make building skills preview-only (show the plan, change nothing) | `features: → dry-run` | `on` | add `dry-run=on` to a request |
-| Stop regenerating `HANDOFF.md` after every task (on by default) | `features: → auto-handoff` | `off` | `export DEV_TEAM_NO_AUTO_HANDOFF=1` |
+| Stop regenerating `.dev-team/HANDOFF.md` after every task (on by default) | `features: → auto-handoff` | `off` | `export DEV_TEAM_NO_AUTO_HANDOFF=1` |
 | Stop the per-task local commits (on by default; never pushes either way) | `features: → auto-commit` | `off` | `export DEV_TEAM_NO_AUTO_COMMIT=1` |
 | Reflect work in GitHub/GitLab issues as it's done (off by default) | `defaults: → issues` | `auto` (or `sync`) | add `issues=auto` to a request |
 | Default to cheaper models | `defaults: → models` | `economy` | say "keep costs down" / add `models=economy` |
@@ -444,7 +445,7 @@ Each row is one setting; you can set as many as you like in the same file. The `
   | `notifications` | Autopilot gate/blocked/done notifications | `on`, `off` | none yet — config-only | `on` |
   | `telemetry` | Run-end telemetry + cost estimate | `on`, `off` | none yet — config-only | `on` |
   | `dry-run` | Default plan-preview for building skills | `on`, `off` | none yet — config-only (a per-run argument still overrides for one run) | `off` |
-  | `auto-handoff` | Regenerate the assistant-agnostic `HANDOFF.md` after every completed task/workstream | `on`, `off` | `DEV_TEAM_NO_AUTO_HANDOFF` | `on` |
+  | `auto-handoff` | Regenerate the assistant-agnostic `.dev-team/HANDOFF.md` after every completed task/workstream | `on`, `off` | `DEV_TEAM_NO_AUTO_HANDOFF` | `on` |
   | `auto-commit` | Local per-task commit of each completed-and-checked workstream (never pushes, never opens a PR) | `on`, `off` | `DEV_TEAM_NO_AUTO_COMMIT` | `on` |
 
   For `guard` specifically, the values aren't a simple on/off pair: `off` disables it repo-wide **even if** `DEV_TEAM_GUARD` is set for the session; `on` forces it active regardless of whether a run is in progress; `auto` (default) preserves today's behavior — active only while `.dev-team/autopilot.json` exists, unless `DEV_TEAM_GUARD` forces it on.
@@ -469,7 +470,7 @@ The suite routes each kind of work to a named agent/tier. Source of truth: [mode
 |---|---|---|---|
 | Reasoning | [`deep-architect`][deep-architect] | fable | Architecture, subtle multi-file bugs, algorithm design, concurrency/data-model trade-offs, big cross-cutting refactors, debate advocates — the genuinely hard stuff. Also the recommended taste-first orchestrator tier. |
 | Build / Verify | [`opus-builder`][opus-builder] | opus | Building features, scouting, and **all** verification (checker, red-team, validator, reviewer) — the default worker. |
-| Scribe | [`sonnet-scribe`][sonnet-scribe] | sonnet | Documentarian: `PROJECT.md` / `FEATURES.md` / `SECURITY.md` / `VERIFICATION.md` upkeep, ledgers, run records, `HANDOFF.md`, `autopilot.json` budget bookkeeping. |
+| Scribe | [`sonnet-scribe`][sonnet-scribe] | sonnet | Documentarian: `.dev-team/PROJECT.md` / `.dev-team/FEATURES.md` / `.dev-team/SECURITY.md` / `.dev-team/VERIFICATION.md` upkeep, ledgers, run records, `.dev-team/HANDOFF.md`, `.dev-team/autopilot.json` budget bookkeeping. |
 | Mechanical | [`quick-edits`][quick-edits] | haiku | Renames, formatting, import sorting, docstrings, boilerplate, trivial config. Start of the escalation chain. |
 | Economy Build (cost-posture add-on) | [`sonnet-builder`][sonnet-builder] | sonnet | The `economy` posture's build/scout endpoint — substitutes for `opus-builder` on **build work only**; never used for verification. |
 
@@ -488,7 +489,7 @@ The suite routes each kind of work to a named agent/tier. Source of truth: [mode
 - **Docs/state** → `sonnet-scribe` everywhere; **mechanical** → `quick-edits` everywhere.
 - `max` never economizes and never auto-tightens.
 
-**Autopilot budget auto-tighten** (autopilot only; see [loop-runtime.md][loop-runtime]): the `autopilot.json` `budget` block tracks per-tier spawn counts and cycles — a spawn-count trend, not a real spend figure. When frontier (Fable+Opus) spawns/cycle sustainedly exceed `threshold_per_cycle` (~6), `spend_posture` flips to `heavy`; if `budget-autotighten=on` (default) and posture is above economy, the loop steps posture **down one notch** (max → balanced → economy) for **build work only**, and surfaces it in the iteration report (e.g. "budget: auto-tightened balanced→economy at cycle 14"). It never touches verification. Disable with `budget-autotighten=off`. Always shown via [`/dev-team-status`](#commands); rolled into `HANDOFF.md` as a one-glance resume card.
+**Autopilot budget auto-tighten** (autopilot only; see [loop-runtime.md][loop-runtime]): the `autopilot.json` `budget` block tracks per-tier spawn counts and cycles — a spawn-count trend, not a real spend figure. When frontier (Fable+Opus) spawns/cycle sustainedly exceed `threshold_per_cycle` (~6), `spend_posture` flips to `heavy`; if `budget-autotighten=on` (default) and posture is above economy, the loop steps posture **down one notch** (max → balanced → economy) for **build work only**, and surfaces it in the iteration report (e.g. "budget: auto-tightened balanced→economy at cycle 14"). It never touches verification. Disable with `budget-autotighten=off`. Always shown via [`/dev-team-status`](#commands); rolled into `.dev-team/HANDOFF.md` as a one-glance resume card.
 
 ### Taste-first orchestration profile (optional)
 
@@ -505,9 +506,10 @@ Start a mechanical-looking workstream on `quick-edits` (Haiku); on a genuine **c
 Five behaviors apply the same way across every building skill (orchestrator, iterate, security, stripe, ship, docs, migrate) rather than being restated per skill. Canonical source: [conventions.md][conventions].
 
 - **Dry-run / plan-preview.** `dry-run=on` (per-run argument) or `features.dry-run: on` (repo `.dev-team/config.yml`; default `off`) makes a building skill produce its full plan and the briefs it WOULD issue, spawn **no builders**, and make **no file or git changes** — it stops after planning and reports the plan for approval. Precedence: per-run argument > plain language ("just show me the plan", "dry run first") > repo config > built-in default `off`. `dev-team-review` is unaffected — it's already read-only. Fail-open: a missing/unreadable config just leaves dry-run off.
-- **Cold-resume.** At the front of a run, a skill checks for its own prior owned artifact + run record before doing fresh work — `PROJECT.md` (orchestrator, iterate, stripe, and docs' Current-status note), `SECURITY.md` (security), `VERIFICATION.md` (review), `MIGRATION.md` (migrate). If a current one validates (a git-drift check plus a small spot-check against the real repo), the skill **resumes** from it instead of restarting cold; if it's missing, stale, or the tree is dirty in a way that invalidates it, it starts fresh. Always attempted, never a toggle. `dev-team-ship`, `dev-team-featurefind`, and `dev-team-ci-medic` have no cold-resume mechanic of their own.
+- **Cold-resume.** At the front of a run, a skill checks for its own prior owned artifact + run record before doing fresh work — `.dev-team/PROJECT.md` (orchestrator, iterate, stripe, and docs' Current-status note), `.dev-team/SECURITY.md` (security), `.dev-team/VERIFICATION.md` (review), `.dev-team/MIGRATION.md` (migrate), `.dev-team/FEATURES.md` (a later featurefind run). If a current one validates (a git-drift check plus a small spot-check against the real repo), the skill **resumes** from it instead of restarting cold; if it's missing, stale, or the tree is dirty in a way that invalidates it, it starts fresh. Always attempted, never a toggle. `dev-team-ship` and `dev-team-ci-medic` have no cold-resume mechanic of their own.
+- **Where the plugin writes, and the ownership rule.** Every one of the files above lives in the project's `.dev-team/` folder, never at the top level, in `docs/`, or in `.github/` — a project can have its own `FEATURES.md` or public `SECURITY.md`, and before this rule existed the plugin once appended its findings onto a real project's security policy. Each ledger carries a marker on line 2 (`verdict.json` carries one as a JSON field) that is the plugin's *only* proof a file is its own. Before writing anywhere in the Shared artifacts table, a skill reads the target first: file absent → create it with the marker; marker present → write it; **no marker → write nothing, and ask a person** rather than guess (an unattended autopilot cycle goes `BLOCKED` instead of guessing). A file written before this rule existed is still found automatically through a lookup order (`.dev-team/<name>` first, then the old top-level `<name>`), and `/dev-team-move-ledgers` moves a whole project's worth of them at once — see [Upgrading from 1.4 or earlier](#upgrading-from-14-or-earlier). Full rule, and what it cannot do: [conventions.md][conventions], "Where the plugin writes, and the ownership rule".
 - **Autopilot notifications.** When `features.notifications: on` (default), the `dev-team-autopilot` conductor surfaces a prominent, clearly-marked notice at three events: a gate item **QUEUED** for approval, a **BLOCKED** pause, and a terminal **DONE**/cap — each its own report line, not buried in a routine cycle update. You may additionally wire a Claude Code Notification/Stop hook or a push-notification integration for delivery outside the terminal (optional, not required for the in-report notice). `features.notifications: off` skips the notice entirely; fail-open otherwise.
-- **Auto-handoff.** `auto-handoff=on` (feature toggle, default `on`) regenerates `HANDOFF.md` after **every** completed task/workstream — not only at stage checkpoints / RECORD. The card is **assistant-agnostic**: any LLM coding tool (Claude, Codex, Gemini, …) can read it cold, at a stable **repo-root path**. It's committed alongside the work it describes so it travels with the repo for the next session or teammate (these behaviors never auto-push it). Owned by `sonnet-scribe`. Precedence: per-run argument > plain language > per-session env `DEV_TEAM_NO_AUTO_HANDOFF` > repo `.dev-team/config.yml` (`features.auto-handoff`) > built-in default `on`. Fail-open.
+- **Auto-handoff.** `auto-handoff=on` (feature toggle, default `on`) regenerates `.dev-team/HANDOFF.md` after **every** completed task/workstream — not only at stage checkpoints / RECORD. The card is **assistant-agnostic**: any LLM coding tool (Claude, Codex, Gemini, …) can read it cold, at the fixed path `.dev-team/HANDOFF.md`. It's committed alongside the work it describes so it travels with the repo for the next session or teammate (these behaviors never auto-push it). Owned by `sonnet-scribe`. Precedence: per-run argument > plain language > per-session env `DEV_TEAM_NO_AUTO_HANDOFF` > repo `.dev-team/config.yml` (`features.auto-handoff`) > built-in default `on`. Fail-open.
 - **Auto-commit.** `auto-commit=on` (feature toggle, default `on`) makes each **completed-and-checked** task/workstream its own **local** commit whose message names the task — additional fine-grained rollback points *between* the existing per-checkpoint / per-cycle commits, never replacing the checkpoint commit, and only for integrated+verified units (preserving *never commit a broken/unverified state*). It **never pushes** and **never opens a PR** — pushing stays your explicit choice. Precedence: per-run argument > plain language > per-session env `DEV_TEAM_NO_AUTO_COMMIT` > repo `.dev-team/config.yml` (`features.auto-commit`) > built-in default `on`. Fail-open.
 
 ---
@@ -516,15 +518,23 @@ Five behaviors apply the same way across every building skill (orchestrator, ite
 
 Every file the suite reads/writes. All ledgers are owned by the `sonnet-scribe` documentarian.
 
+Every one of the seven ledgers below lives in the project's `.dev-team/` folder (never at the top
+level, in `docs/`, or in `.github/`) and carries the dev-team marker on line 2 (a JSON field for
+`verdict.json`) — see [Where the plugin writes, and the ownership rule](#cross-cutting-behaviors).
+A file written before v1.5.0, still at the project's top level, is found automatically through a
+lookup order and never confused with a project's own same-named file — see
+[Upgrading from 1.4 or earlier](#upgrading-from-14-or-earlier).
+
 | File | Written by | Purpose |
 |---|---|---|
-| `PROJECT.md` | `sonnet-scribe` (orchestrator / iterate / security / stripe) | Human-readable source of truth: Goal, Definition of done, Constraints, Skills in play, House style, Stage plan, Current status (always overwritten for cheap cold-resume), Decision log, Checkpoint log, Feature Specs. iterate adds Codebase Map, Run record, Backlog, Proposed-Features ledger, Trajectory ledger. Read by every skill. Schema: [documentarian-protocol.md][documentarian-protocol] (+ [audit-and-backlog-protocol.md][audit-backlog] for iterate). |
-| `FEATURES.md` | `sonnet-scribe` (via featurefind) | Scored feature-gap ledger (`FG-` items, citation per claimed competitor feature). Read by iterate and autopilot. Schema: [gap-scoring-rubric.md][gap-rubric]. |
-| `SECURITY.md` | `sonnet-scribe` (via security) | Findings (`F-` items under `#Findings`) and the remediation record from the adversarial audit. Read by review, autopilot, and a later security resume. Schema: [threat-model-and-surface-protocol.md][threat-model]. |
-| `VERIFICATION.md` + `verdict.json` | `sonnet-scribe` (via review) | Independent QA/verification evidence and verdicts (`V-` items); `verdict.json` is machine-readable for CI gating. Read by the user and autopilot's VERIFY phase. Schema: [verdict-and-report-protocol.md][verdict-protocol]. |
-| `MIGRATION.md` | `sonnet-scribe` (via migrate) | This skill's own external memory: the Migration Plan (strategy, staged breakdown, risk sizing), the Stage Ledger (`M-` items — one per stage, its own commit), and the compatibility-shims-in-play table. Read by review and a later migrate resume. Schema: [migration-plan-protocol.md][migration-plan-protocol]. |
+| `.dev-team/PROJECT.md` | `sonnet-scribe` (orchestrator / iterate / security / stripe) | Human-readable source of truth: Goal, Definition of done, Constraints, Skills in play, House style, Stage plan, Current status (always overwritten for cheap cold-resume), Decision log, Checkpoint log, Feature Specs. iterate adds Codebase Map, Run record, Backlog, Proposed-Features ledger, Trajectory ledger. Read by every skill. Schema: [documentarian-protocol.md][documentarian-protocol] (+ [audit-and-backlog-protocol.md][audit-backlog] for iterate). |
+| `.dev-team/FEATURES.md` | `sonnet-scribe` (via featurefind) | Scored feature-gap ledger (`FG-` items, citation per claimed competitor feature). Read by iterate and autopilot. Schema: [gap-scoring-rubric.md][gap-rubric]. |
+| `.dev-team/SECURITY.md` | `sonnet-scribe` (via security) | Findings (`F-` items under `#Findings`) and the remediation record from the adversarial audit. Read by review, autopilot, and a later security resume. Schema: [threat-model-and-surface-protocol.md][threat-model]. |
+| `.dev-team/VERIFICATION.md` + `.dev-team/verdict.json` | `sonnet-scribe` (via review) | Independent QA/verification evidence and verdicts (`V-` items); `verdict.json` is machine-readable for CI gating. Read by the user and autopilot's VERIFY phase. Schema: [verdict-and-report-protocol.md][verdict-protocol] for the markdown report, [verdict.schema.json][verdict-schema] for `verdict.json`'s own JSON shape. |
+| `.dev-team/MIGRATION.md` | `sonnet-scribe` (via migrate) | This skill's own external memory: the Migration Plan (strategy, staged breakdown, risk sizing), the Stage Ledger (`M-` items — one per stage, its own commit), and the compatibility-shims-in-play table. Read by review and a later migrate resume. Schema: [migration-plan-protocol.md][migration-plan-protocol]. |
 | `.dev-team/autopilot.json` | autopilot conductor (fields updated by `sonnet-scribe` each RECORD step) | Machine-authoritative run state (read first every iteration, rewritten last): mission/done, plan/phase cursor, state, next action, gate ledger (`G-` items), blocked, cycle/cap, verify, budget block, lock, branch, last commit, trajectory ref. Schema: [loop-runtime.md][loop-runtime]. |
-| `HANDOFF.md` | `sonnet-scribe` (all modes) | Derived, always-regenerated **assistant-agnostic** resume card at a stable **repo-root path**, readable cold by any LLM coding tool (Claude, Codex, Gemini, …); built from `PROJECT.md#Current status` and regenerated after every completed task/workstream when `auto-handoff` is on (see [Cross-cutting behaviors](#cross-cutting-behaviors)). Committed alongside the work it describes; a convenience surface, never itself a source of truth. Schema: [handoff-template.md][handoff-template]. |
+| `.dev-team/HANDOFF.md` | `sonnet-scribe` (all modes) | Derived, always-regenerated **assistant-agnostic** resume card at the fixed path `.dev-team/HANDOFF.md`, readable cold by any LLM coding tool (Claude, Codex, Gemini, …); built from `.dev-team/PROJECT.md#Current status` and regenerated after every completed task/workstream when `auto-handoff` is on (see [Cross-cutting behaviors](#cross-cutting-behaviors)). Committed alongside the work it describes; a convenience surface, never itself a source of truth. Schema: [handoff-template.md][handoff-template]. |
+| `.dev-team/README.md` + `.dev-team/.gitignore` | any skill, created once if absent, never overwritten | A short explanation of the folder for anyone browsing the repo, and a `.gitignore` that keeps `loop.lock/` (which only means "a cycle is running right now") out of commits. See [conventions.md][conventions], "The first write into `.dev-team/`". |
 
 ---
 
@@ -538,6 +548,7 @@ Since v1.2.0, each hook also reads the repo-scoped [`.dev-team/config.yml`][conf
 |---|---|---|---|
 | [`hooks/check-update.sh`][check-update] | SessionStart | Layer-2 fallback update notifier: at most once per 24h, compares local vs. remote `plugin.json` and prints a one-line update notice if newer. Never updates anything; fails open/silent on missing `gh`/`jq` or network error. | `DEV_TEAM_NO_UPDATE_CHECK` (session), or `features.update-notifier: off` in `.dev-team/config.yml` (repo-wide) |
 | [`hooks/guard-dev-team.sh`][guard] | PreToolUse (Bash) | Best-effort safety net (one layer, never the guarantee). Blocks exactly three unrecoverable Bash actions while a run is active: `git push` to main/master, force-push to main/master, and any live Stripe key pattern (`sk_live_`/`rk_live_`/`pk_live_` — dev-team is test-mode only). Any parse error or no active run → silently allows. | `features.guard: off` in `.dev-team/config.yml` disables it repo-wide (wins even over `DEV_TEAM_GUARD`); otherwise it only engages when `.dev-team/autopilot.json` exists **or** `DEV_TEAM_GUARD` is set — unset `DEV_TEAM_GUARD` and/or remove `.dev-team/autopilot.json` to stop it firing for a session. |
+| [`hooks/guard-ledgers.sh`][guard-ledgers] | PreToolUse (Write, Edit, MultiEdit) | Best-effort safety net for the `.dev-team/` rule above, two separate checks. Rule 1 (always on unless `guard: off`): refuses a `Write` whose new content carries the dev-team marker on one of its first three lines when the target path is outside `.dev-team/` — this can only catch the plugin's own generated content, never a person's own file, which is why it stays on even outside a run. Rule 2 (only while `.dev-team/loop.lock/` exists — i.e. an autopilot cycle is running right now — `guard: on` is set, or `DEV_TEAM_GUARD` is set): refuses a `Write`, `Edit` or `MultiEdit` to one of the seven ledger names at the project's top level, or to `SECURITY.md` in `.github/`/`docs/`, but **only** when the incoming text carries the marker or a dev-team record id (`FG-012`, `F-001`, …) — a committed `.dev-team/autopilot.json` alone never triggers it, so a project that keeps that file in git can still edit its own top-level files freely. Neither rule sees a write made through `cat >>` or similar in Bash. | `features.guard: off` in `.dev-team/config.yml` disables both rules repo-wide (wins even over `DEV_TEAM_GUARD`) |
 | [`hooks/sync-branches-check.sh`][sync-check] | SessionStart | Network-free, read-only notifier: counts local branches whose upstream shows `gone` and, if >0, points to `/dev-team-sync-branches`. Deletes nothing, makes no network calls, silent when nothing to report. | `DEV_TEAM_NO_BRANCH_CHECK` (session), or `features.branch-notifier: off` in `.dev-team/config.yml` (repo-wide) |
 
 **All environment variables / switches** (per-session overrides layered on top of `.dev-team/config.yml`'s `features:` block — see [Configuration & feature toggles](#configuration--feature-toggles)):
@@ -547,7 +558,7 @@ Since v1.2.0, each hook also reads the repo-scoped [`.dev-team/config.yml`][conf
 | `DEV_TEAM_NO_UPDATE_CHECK` | Off-switch for the SessionStart update notifier — set to any non-empty value and it exits before doing anything. | Update check runs, throttled to ≤ once/24h; fails open/silent if `gh`/`jq` missing or network fails. |
 | `DEV_TEAM_NO_BRANCH_CHECK` | Off-switch for the SessionStart branch-hygiene notice — set to any non-empty value to suppress it entirely. | Check runs every SessionStart; network-free and silent when the "gone" count is 0. |
 | `DEV_TEAM_GUARD` | **Force-ON** switch (not an off-switch) for the Bash guard — makes it check every Bash command regardless of whether a run is active. | Guard scope limited to an active run (`.dev-team/autopilot.json` present). |
-| `DEV_TEAM_NO_AUTO_HANDOFF` | Off-switch for auto-handoff — set to any non-empty value and completed tasks stop triggering the extra `HANDOFF.md` regenerate for this session (the checkpoint/RECORD regenerate still happens). | Auto-handoff runs: `HANDOFF.md` is regenerated after every completed task/workstream. |
+| `DEV_TEAM_NO_AUTO_HANDOFF` | Off-switch for auto-handoff — set to any non-empty value and completed tasks stop triggering the extra `.dev-team/HANDOFF.md` regenerate for this session (the checkpoint/RECORD regenerate still happens). | Auto-handoff runs: `.dev-team/HANDOFF.md` is regenerated after every completed task/workstream. |
 | `DEV_TEAM_NO_AUTO_COMMIT` | Off-switch for auto-commit — set to any non-empty value and completed-and-checked tasks stop getting their own local per-task commit this session (checkpoint/cycle commits still happen). | Auto-commit runs: each completed-and-checked task/workstream lands its own local commit (never pushed). |
 | `DISABLE_AUTOUPDATER` | Global Claude Code var: turns off Claude Code's own auto-update entirely, including marketplace-level plugin auto-update (the plugin's Layer-1 update path). | Claude Code auto-update (and marketplace auto-update, if enabled) behaves normally. |
 | `FORCE_AUTOUPDATE_PLUGINS` | Global Claude Code var: keeps plugin auto-updates running even if `DISABLE_AUTOUPDATER` has otherwise turned off Claude Code's auto-update. | Unset. |
@@ -595,7 +606,7 @@ The command deletes nothing without `--apply` (it prints the plan and stops for 
 
 ## Issue sync (optional)
 
-The suite already maintains issue-shaped ledgers — feature gaps (`FEATURES.md`), backlog and proposed features (`PROJECT.md`), security findings (`SECURITY.md`), review verdicts (`VERIFICATION.md`), Migration Stage Ledger items (`MIGRATION.md`), and gate-deferred items (`.dev-team/autopilot.json`). Issue sync exports them to your project's tracker — **GitHub (via `gh`) or GitLab (via `glab`), auto-detected from the git remote** — so they're actionable in your real tracker instead of trapped in markdown. A plain-git repo with no detected platform simply skips issue sync (auto-handoff and auto-commit still work). It's **opt-in** and owned by the `sonnet-scribe` agent (cheap bookkeeping, not reasoning) — full detail in [issue-sync-protocol.md][issue-sync-protocol].
+The suite already maintains issue-shaped ledgers — feature gaps (`.dev-team/FEATURES.md`), backlog and proposed features (`.dev-team/PROJECT.md`), security findings (`.dev-team/SECURITY.md`), review verdicts (`.dev-team/VERIFICATION.md`), Migration Stage Ledger items (`.dev-team/MIGRATION.md`), and gate-deferred items (`.dev-team/autopilot.json`). Issue sync exports them to your project's tracker — **GitHub (via `gh`) or GitLab (via `glab`), auto-detected from the git remote** — so they're actionable in your real tracker instead of trapped in markdown. A plain-git repo with no detected platform simply skips issue sync (auto-handoff and auto-commit still work). It's **opt-in** and owned by the `sonnet-scribe` agent (cheap bookkeeping, not reasoning) — full detail in [issue-sync-protocol.md][issue-sync-protocol].
 
 Turn it on two ways:
 
@@ -606,12 +617,12 @@ Turn it on two ways:
 
 | Source ledger | Item prefix | Issue label |
 |---|---|---|
-| `FEATURES.md` (featurefind) | `FG-` | `for consideration` (→ `enhancement` once approved) |
-| `PROJECT.md` Backlog (iterate) | `B-` | `enhancement` |
-| `PROJECT.md` Proposed-Features ledger | (feature) | `for consideration` |
-| `SECURITY.md` findings (security) | `F-` | `security` |
-| `VERIFICATION.md` verdicts (review) | `V-` (fail) / `I-` | `bug` / `enhancement` |
-| `MIGRATION.md` Stage Ledger (migrate) | `M-` | `enhancement` |
+| `.dev-team/FEATURES.md` (featurefind) | `FG-` | `for consideration` (→ `enhancement` once approved) |
+| `.dev-team/PROJECT.md` Backlog (iterate) | `B-` | `enhancement` |
+| `.dev-team/PROJECT.md` Proposed-Features ledger | (feature) | `for consideration` |
+| `.dev-team/SECURITY.md` findings (security) | `F-` | `security` |
+| `.dev-team/VERIFICATION.md` verdicts (review) | `V-` (fail) / `I-` | `bug` / `enhancement` |
+| `.dev-team/MIGRATION.md` Stage Ledger (migrate) | `M-` | `enhancement` |
 | `.dev-team/autopilot.json` gate-ledger | `G-` | `for consideration` |
 
 **Dedup is the core.** Each ledger item carries an `issue:` field holding its GitHub/GitLab issue number once synced. An item with no `issue:` ref gets a new issue created (and the returned number written back); an item that already has one is updated in place — never a duplicate. The hidden `<!-- dev-team:<id> -->` footer marker is the identity backstop if a ledger ref is ever lost.
@@ -628,12 +639,12 @@ Turn it on two ways:
 
 The plugin guards its own integrity in CI. [`.github/workflows/plugin-audit.yml`][plugin-audit] (workflow name `plugin-audit`) triggers on every `pull_request` and on `push` to `main`, with **two jobs — both required checks**:
 
-- **`audit`** (id `audit`, `name: audit`) — checks out, installs `jq`, and runs [`scripts/audit-model-ids.sh`][audit-script].
+- **`audit`** (id `audit`, `name: audit`) — checks out, installs `jq`, and runs [`scripts/audit-model-ids.sh`][audit-script] followed by [`scripts/audit-ledger-paths.sh`][ledger-audit-script].
 - **`test`** (id `test`, `name: test`) — checks out, installs `jq`/`shellcheck`/`bats`, and runs the plugin's own self-tests: [`tests/smoke-structure.sh`][smoke-test] (the delivery shape a marketplace installer relies on), `shellcheck` over `scripts/*.sh hooks/*.sh tests/*.sh`, and `bats tests/scripts.bats` (behavior contracts for the hooks/scripts).
 
 > **Required-check names:** the job `name:` fields are the literal strings **`audit`** and **`test`** — those byte-for-byte strings (not the "plugin-audit / audit" UI form) are what you register as required checks in branch protection / rulesets.
 
-The audit script performs five checks and exits non-zero (`AUDIT FAIL: <reason>`) on any failure, or prints `AUDIT OK`:
+The model-id audit script performs five checks and exits non-zero (`AUDIT FAIL: <reason>`) on any failure, or prints `AUDIT OK`:
 
 1. No dated model id appears in any `.md`/`.json`/`.yml`/`.yaml` file **except** [model-routing.md][model-routing] (prevents model-id drift/rot).
 2. Both `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` parse as valid JSON.
@@ -641,20 +652,55 @@ The audit script performs five checks and exits non-zero (`AUDIT FAIL: <reason>`
 4. No `.claude/agents/` directory exists (plugin agents must live under `agents/` at the plugin root, or installers won't receive them).
 5. **Docs-coverage:** every `skills/dev-team-*/` directory name and every `commands/*.md` basename must appear as a substring somewhere in `README.md` — fails (`AUDIT FAIL: <name> not documented in README`) if a skill or command ships without being documented here, so this file can't silently drift out of date again.
 
+The ledger-path audit script ([`scripts/audit-ledger-paths.sh`][ledger-audit-script], added for issue #41) exits non-zero (`LEDGER-PATHS FAIL: <reason>`) if any skill, command, agent or README line still tells a writer to put a ledger at the old top-level location instead of `.dev-team/<name>` with its ownership marker — checking `conventions.md` and every ledger's schema-defining reference file for the correct path (positive checks), and the rest of `skills/`, `commands/`, `agents/`, `hooks/`, `README.md` and `CONTRIBUTING.md` for leftover "repo root" phrasing, a ledger anchor with no `.dev-team/` prefix, or the retired marker form (negative checks) — or prints `LEDGER-PATHS OK`. It checks the plugin's own files only, never a user's project, and only the exact phrases it's told to look for — see the script's own header comment for the full list and what it can't catch. Details and its bats coverage: [`tests/README.md`][tests-readme].
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full repo layout, how to run all of the above locally before committing, and the release flow; the test suite itself (fixtures, how to install `bats`/`shellcheck`) is documented in [`tests/README.md`][tests-readme].
+
+---
+
+## Upgrading from 1.4 or earlier
+
+Before v1.5.0 the suite wrote its ledgers (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`,
+`VERIFICATION.md` + `verdict.json`, `MIGRATION.md`, `HANDOFF.md`) at the **top level of your
+project** — the legacy root location. From v1.5.0 on, every new write goes to `.dev-team/<name>`
+instead; the file names themselves don't change, only the folder. Nothing you have stops working:
+a skill still finds a file left at the old location through a lookup order (`.dev-team/<name>`
+first, then the old top-level name), so there's nothing you're required to do.
+
+**To move everything over deliberately, run `/dev-team-move-ledgers`.** With no arguments it only
+reads and reports — a safe, read-only preview of what it would do. Add `--apply` to actually move
+things: it `git mv`s each top-level file it can *prove* is the plugin's own (the dev-team marker on
+line 2, or the equivalent field in `verdict.json`) into `.dev-team/`, stamps the file with the
+current marker form if it was carrying the old one, and makes one commit for the whole move
+(never pushed — that stays your choice).
+
+**A file the plugin cannot prove is its own is never moved or touched automatically.** If a
+top-level file has the *shape* of one of the plugin's ledgers but no marker — for example a real
+project's own hand-written `FEATURES.md` or `HANDOFF.md` — the command asks you, one file at a
+time, whether it's a pre-1.5.0 dev-team file (in which case it's stamped and moved) or your own
+document (in which case nothing is written to it, ever). It never guesses either way.
+
+**A "mixed" file needs a person.** If a project's own document has had dev-team records appended
+into it by an earlier run — the exact failure this whole change exists to stop, seen for real in
+one project's public `SECURITY.md` — the command refuses to cut it apart itself and instead tells
+you the line where the plugin's part probably starts, so you can separate it by hand into
+`.dev-team/<name>`. Getting that boundary wrong either publishes findings as if they were policy,
+or deletes part of the policy, and neither would be noticed until much later — which is exactly
+why it's a person's call, not the plugin's.
 
 ---
 
 ## Privacy
 
 - The plugin ships from a **private org marketplace** (MWBMPartners); it is not published to any public registry.
-- **Keep secrets out of skill files.** The suite is designed never to embed credentials: it operates in Stripe **test mode** by default, hands you exact GitHub web-UI steps for any secret the pipeline needs (rather than setting secrets itself), and the Bash guard blocks live Stripe key patterns during a run. When a secret is required, set it yourself via the GitHub web UI; don't paste credentials into `PROJECT.md`, briefs, or any committed file.
+- **Keep secrets out of skill files.** The suite is designed never to embed credentials: it operates in Stripe **test mode** by default, hands you exact GitHub web-UI steps for any secret the pipeline needs (rather than setting secrets itself), and the Bash guard blocks live Stripe key patterns during a run. When a secret is required, set it yourself via the GitHub web UI; don't paste credentials into `.dev-team/PROJECT.md`, briefs, or any committed file.
 
 ---
 
 <!-- link references -->
 [check-update]: hooks/check-update.sh
 [guard]: hooks/guard-dev-team.sh
+[guard-ledgers]: hooks/guard-ledgers.sh
 [sync-check]: hooks/sync-branches-check.sh
 [model-routing]: skills/dev-team-orchestrator/references/model-routing.md
 [orchestration-profiles]: skills/dev-team-orchestrator/references/orchestration-profiles.md
@@ -677,9 +723,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full repo layout, how to run all 
 [sonnet-builder]: agents/sonnet-builder.md
 [plugin-audit]: .github/workflows/plugin-audit.yml
 [audit-script]: scripts/audit-model-ids.sh
+[ledger-audit-script]: scripts/audit-ledger-paths.sh
 [branch-hygiene]: scripts/branch-hygiene.sh
 [smoke-test]: tests/smoke-structure.sh
 [tests-readme]: tests/README.md
+[verdict-schema]: schemas/verdict.schema.json
 [cmd-dev-team]: commands/dev-team.md
 [cmd-status]: commands/dev-team-status.md
 [cmd-approve]: commands/dev-team-approve.md
@@ -689,3 +737,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full repo layout, how to run all 
 [cmd-sync-issues]: commands/dev-team-sync-issues.md
 [cmd-config]: commands/dev-team-config.md
 [cmd-report]: commands/dev-team-report.md
+[cmd-move-ledgers]: commands/dev-team-move-ledgers.md
