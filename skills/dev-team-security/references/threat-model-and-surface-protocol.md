@@ -1,6 +1,6 @@
 # Threat Model & Attack-Surface Protocol (Phase 0)
 
-The front end of `dev-team-security`: before attacking anything, understand what you're protecting, where the trust boundaries are, and **every class of vulnerability that could apply**. Steps: security scout → **tooling sweep** → **multi-role fixtures** → threat model → attack-surface map + **coverage ledger**. The documentarian records all of it in `SECURITY.md`.
+The front end of `dev-team-security`: before attacking anything, understand what you're protecting, where the trust boundaries are, and **every class of vulnerability that could apply**. Steps: security scout → **tooling sweep** → **multi-role fixtures** → threat model → attack-surface map + **coverage ledger**. The documentarian records all of it in `.dev-team/SECURITY.md`. Every file the dev-team suite writes for itself lives in `.dev-team/` and carries the dev-team marker on line 2; a file at that path without the marker is never written to — the run stops and asks. See `dev-team-orchestrator/references/conventions.md`, "Where the plugin writes, and the ownership rule".
 
 Reasoning is not enough on its own. This phase combines **deterministic tooling** (scanners that find what code-reading misses) with the **threat model** that tells the red team where to aim.
 
@@ -114,7 +114,7 @@ Walk the **full checklist** below. For each class, record: *applies / not applic
 
 ## Output of Phase 0
 
-The documentarian writes into `SECURITY.md`:
+The documentarian writes into `.dev-team/SECURITY.md`:
 
 - **Threat model** — assets, entry points, trust boundaries, adversaries, crown jewels.
 - **Attack-surface map** — the checklist with applies / N/A (reason) / investigate, and the files per class.
@@ -134,5 +134,32 @@ The documentarian writes into `SECURITY.md`:
 ```
 
 Map each class to its **CWE** where applicable (e.g. SQLi → CWE-89, IDOR → CWE-639, XSS → CWE-79) so findings inherit a standard identifier.
+
+## SECURITY.md structure
+
+`.dev-team/SECURITY.md` follows this shape — title, then the dev-team marker on line 2, then one `##`
+heading per section this protocol fills in:
+
+```markdown
+# Security Findings Register — <project>
+<!-- dev-team: ledger=security schema=1.0 -->
+
+## Threat model
+
+## Attack-surface map
+
+## Coverage ledger
+
+## Findings register
+
+## Sandbox & test setup
+```
+
+## Security-policy locations are refused
+
+The security skill never writes `SECURITY.md` at the top level, in `.github/` or in `docs/` — the three
+places GitHub reads a public security policy from — even when an argument names one of those paths. It
+refuses and says why: that file is the project's public policy, and findings written into it would be
+published as if they were policy. The security skill's register lives only at `.dev-team/SECURITY.md`.
 
 Then report the plan + surface map + coverage ledger to the user, and **surface any already-confirmed Critical immediately**. Then begin the purple-team cycle, crown jewels and highest-severity classes first.

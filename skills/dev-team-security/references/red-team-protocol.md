@@ -136,7 +136,7 @@ Run validators in parallel across a round's findings (it's a barrier before the 
 
 ## What the lead does with the report
 
-- The documentarian appends each finding to the **findings register** in `SECURITY.md` (id, title, class, cwe, severity/cvss, status=`open`, location, source).
+- The documentarian appends each finding to the **findings register** in `.dev-team/SECURITY.md` (id, title, class, cwe, severity/cvss, status=`open`, location, source).
 - The lead triages: dedup, set provisional severity/disposition (fix-now / propose / accept-document), and **notifies the user immediately of any Critical**.
 - Every fix-now finding goes through the **validation gate** above; `strong-suspicion-needs-confirmation` findings get a focused second red pass to reach confirmed-with-PoC first.
 - Validated (CONFIRMED/ANALYSIS-CONFIRMED) findings flow into the blue-team fix + verify cycle (`remediation-and-verify-protocol.md`).

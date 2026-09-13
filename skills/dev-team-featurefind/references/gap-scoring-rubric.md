@@ -49,10 +49,14 @@ Within the in-scope set, rank by **importance first**, then favor lower effort a
 
 ## FEATURES.md structure
 
-The documentarian writes this at the repo root (sibling to `PROJECT.md` / `SECURITY.md`):
+The documentarian writes this at `.dev-team/FEATURES.md`. Every file the dev-team suite writes for itself
+lives in `.dev-team/` and carries the dev-team marker on line 2; a file at that path without the marker is
+never written to — the run stops and asks. See `dev-team-orchestrator/references/conventions.md`, "Where
+the plugin writes, and the ownership rule".
 
 ```markdown
 # Feature Gap Ledger
+<!-- dev-team: ledger=features schema=1.0 -->
 
 ## Aim  (the yardstick every gap is measured against)
 [confirmed 1–2 sentence product aim]  ·  **category:** [...]
@@ -77,7 +81,7 @@ The documentarian writes this at the repo root (sibling to `PROJECT.md` / `SECUR
 Competitor features as of <date>, from public sources; marketing claims may overstate. Re-run to refresh.
 ```
 
-On a re-run, update the run record, refresh the comparable inventories (the market moved), re-diff against the now-current feature set (the product moved), and re-rank — delta, not cold rebuild. If `PROJECT.md` exists, sync the top in-scope gaps into its **Proposed-Features ledger** so `dev-team-iterate` / `dev-team-autopilot` can pick them up under the Feature Spec Gate.
+On a re-run, update the run record, refresh the comparable inventories (the market moved), re-diff against the now-current feature set (the product moved), and re-rank — delta, not cold rebuild. If `.dev-team/PROJECT.md` exists, sync the top in-scope gaps into its **Proposed-Features ledger** so `dev-team-iterate` / `dev-team-autopilot` can pick them up under the Feature Spec Gate.
 
 ## The boundary, restated
 
