@@ -138,7 +138,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 | `models=economy\|balanced\|max` | `balanced` | Cost posture biasing which tier does build work; verification always stays frontier (per [model-routing.md][model-routing]). |
 | `dry-run=on\|off` | `off` | Run Phase 0 (resume/scout, purpose, scored backlog) and write the cycle plan it WOULD run, but delegate no builders and make no file or git changes; report the plan for approval. See [Cross-cutting behaviors](#cross-cutting-behaviors). |
 
-**Cold-resume.** Phase 0 looks for a `PROJECT.md` with a Codebase Map + run record from a prior run; if it validates as current, it reuses it as context and delta-scouts only what changed, instead of re-gathering the whole codebase — see [Cross-cutting behaviors](#cross-cutting-behaviors).
+**Cold-resume.** Phase 0 looks for `.dev-team/PROJECT.md` (found through the lookup order — see [Upgrading from 1.4 or earlier](#upgrading-from-14-or-earlier)) with a Codebase Map + run record from a prior run; if it validates as current, it reuses it as context and delta-scouts only what changed, instead of re-gathering the whole codebase — see [Cross-cutting behaviors](#cross-cutting-behaviors).
 
 **Artifacts.** [`.dev-team/PROJECT.md`](#artifacts-glossary), extended with the Codebase Map, a run record (map-commit + date, for the resume check), the scored backlog, the Proposed-Features ledger, and the trajectory ledger (metrics over time).
 
@@ -361,7 +361,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 - **`/dev-team-sync-issues`** — first run in a repo (and any `--confirm-each` run) shows the planned set and waits for the user's go-ahead before creating anything; `--dry-run` reports without touching the tracker (GitHub or GitLab).
 - **`/dev-team-config`** — `show` (default if omitted) is read-only: it never creates, edits, or touches the file. `init` creates `.dev-team/config.yml` with the commented starter schema **only if one doesn't already exist**; it never overwrites a file that's there, and never commits it for you — the file is meant to be committed by the user so its defaults and toggles apply to every session and collaborator.
 - **`/dev-team-report`** — `branch=<base>` sets the base to diff commits against; if omitted it resolves from `.dev-team/config.yml`'s `git.default-branch`, then auto-detects `origin/HEAD`, then falls back to `main`/`master`. Agents-spawned-by-tier and the cost estimate read from `.dev-team/autopilot.json`'s `budget.spawns_by_tier` when present; without it (a plain, non-autopilot run with no persisted spawn ledger) it reports those as "not tracked outside an autopilot run" rather than guessing. Never writes or fetches anything.
-- **`/dev-team-move-ledgers`** — without `--apply` it only reads and reports, sorting each legacy top-level file into "ours — will move", "looks like ours — ask", "not ours — leave alone", or "mixed — needs a person" (see [Where the plugin writes, and the ownership rule](#cross-cutting-behaviors)). `--apply` moves only files it can prove are its own without asking, asks about every look-alike one at a time, refuses to touch a mixed file (a project's own document with dev-team records appended into it — cutting that apart needs a person), and makes one commit for everything it moves, never pushing it. Refuses `--apply` outside a git repo or with a dirty working tree, and asks before committing straight onto the default branch.
+- **`/dev-team-move-ledgers`** — without `--apply` it only reads and reports, sorting each legacy top-level file into "ours — will move", "looks like ours — ask", "not ours — leave alone", "mixed — needs a person", or "conflict" (a `.dev-team/<name>` already exists, so that copy wins — see [Where the plugin writes, and the ownership rule](#cross-cutting-behaviors)). `--apply` moves only files it can prove are its own without asking, asks about every look-alike one at a time, refuses to touch a mixed file (a project's own document with dev-team records appended into it — cutting that apart needs a person), **never asks about a conflicted file** — it is always left exactly as it is, whatever else it looks like — and makes one commit for everything it moves, never pushing it. Refuses `--apply` outside a git repo or with a dirty working tree, and asks before committing straight onto the default branch. **Before moving anything**, it checks whether the project's own `.gitignore` would swallow any file it's about to move or create (`.dev-team/README.md`, `.dev-team/.gitignore`, `.dev-team/autopilot.json`, and each file's new `.dev-team/<name>` path); if so, `--apply` refuses and reports the ignored paths rather than moving files somewhere git will not track them. If a commit fails partway through, it rolls the whole attempt back (`git reset --hard`, plus removing anything it created) rather than leaving a half-moved tree.
 
 ---
 
@@ -422,6 +422,7 @@ Every switch lives in **one file in your project**: `.dev-team/config.yml`. Beca
 | Reflect work in GitHub/GitLab issues as it's done (off by default) | `defaults: → issues` | `auto` (or `sync`) | add `issues=auto` to a request |
 | Default to cheaper models | `defaults: → models` | `economy` | say "keep costs down" / add `models=economy` |
 | Force the Bash safety guard on at all times | `features: → guard` | `on` | `export DEV_TEAM_GUARD=1` |
+| Skip the `.dev-team/` pointer-sentence offer without answering it each run | `features: → pointer-sentence` | `declined` | — |
 | Never stack PRs (the safe default) / allow it | `git: → stack-prs` | `false` / `true` | — |
 | Converge on one open PR per line of work (reuse existing PR, not a duplicate) | `git: → single-pr` | `true` (default) / `false` | — |
 
@@ -441,14 +442,15 @@ Each row is one setting; you can set as many as you like in the same file. The `
   |---|---|---|---|---|
   | `update-notifier` | SessionStart update check | `on`, `off` | `DEV_TEAM_NO_UPDATE_CHECK` | `on` |
   | `branch-notifier` | SessionStart gone-branch notice | `on`, `off` | `DEV_TEAM_NO_BRANCH_CHECK` | `on` |
-  | `guard` | PreToolUse Bash safety net | `on`, `off`, `auto` | `DEV_TEAM_GUARD` (force-on) | `auto` (active only during a run) |
+  | `guard` | `hooks/guard-dev-team.sh` (Bash safety net) **and** `hooks/guard-ledgers.sh` (Write/Edit/MultiEdit ledger guard — see [Hooks & environment switches](#hooks--environment-switches)) | `on`, `off`, `auto` | `DEV_TEAM_GUARD` (force-ON — makes **both** hooks check every call regardless of whether a run is active) | `auto` (each hook judges "is a run active" its own way — see below) |
   | `notifications` | Autopilot gate/blocked/done notifications | `on`, `off` | none yet — config-only | `on` |
   | `telemetry` | Run-end telemetry + cost estimate | `on`, `off` | none yet — config-only | `on` |
   | `dry-run` | Default plan-preview for building skills | `on`, `off` | none yet — config-only (a per-run argument still overrides for one run) | `off` |
   | `auto-handoff` | Regenerate the assistant-agnostic `.dev-team/HANDOFF.md` after every completed task/workstream | `on`, `off` | `DEV_TEAM_NO_AUTO_HANDOFF` | `on` |
   | `auto-commit` | Local per-task commit of each completed-and-checked workstream (never pushes, never opens a PR) | `on`, `off` | `DEV_TEAM_NO_AUTO_COMMIT` | `on` |
+  | `pointer-sentence` | Whether an interactive run offers to add the `.dev-team/` pointer sentence to `CLAUDE.md` / `.claude/CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (v1.5.0) | `ask`, `declined` | none — config-only | `ask` (not yet asked) |
 
-  For `guard` specifically, the values aren't a simple on/off pair: `off` disables it repo-wide **even if** `DEV_TEAM_GUARD` is set for the session; `on` forces it active regardless of whether a run is in progress; `auto` (default) preserves today's behavior — active only while `.dev-team/autopilot.json` exists, unless `DEV_TEAM_GUARD` forces it on.
+  For `guard` specifically, the values aren't a simple on/off pair, and — since v1.5.0 — one toggle governs **two** hooks that each judge "is a run active" a different way. `hooks/guard-dev-team.sh`: `off` disables it repo-wide **even if** `DEV_TEAM_GUARD` is set; `on` forces it active regardless of whether a run is in progress; `auto` (default) preserves today's behavior — active only while `.dev-team/autopilot.json` exists, unless `DEV_TEAM_GUARD` forces it on. `hooks/guard-ledgers.sh` splits by rule: Rule 1 (a ledger-named file whose content carries the marker, once the path's `.`/`..` parts are worked out, outside `.dev-team/`) stays **on** in `auto` mode regardless of whether a run is active — only `off` disables it, because the mistake it guards against (a stale instruction writing a ledger to the legacy root) can happen in a one-off session just as easily as inside a run; Rule 2 (a top-level ledger file whose incoming text looks like plugin output) is active only while `.dev-team/loop.lock/` exists, `guard: on` is set, or `DEV_TEAM_GUARD` is set, and **never** merely because `.dev-team/autopilot.json` exists — some real projects keep that file committed, which would otherwise make Rule 2 permanently on and stop the project owner ever editing their own top-level `HANDOFF.md` or `FEATURES.md` again. `guard: off` turns **both hooks entirely off**, and wins over a session's `DEV_TEAM_GUARD` either way; `DEV_TEAM_GUARD` forces **both hooks** on. Full reasoning: [`config-and-toggles.md`][config-toggles].
 
 ## Run reports & cost
 
@@ -548,7 +550,7 @@ Since v1.2.0, each hook also reads the repo-scoped [`.dev-team/config.yml`][conf
 |---|---|---|---|
 | [`hooks/check-update.sh`][check-update] | SessionStart | Layer-2 fallback update notifier: at most once per 24h, compares local vs. remote `plugin.json` and prints a one-line update notice if newer. Never updates anything; fails open/silent on missing `gh`/`jq` or network error. | `DEV_TEAM_NO_UPDATE_CHECK` (session), or `features.update-notifier: off` in `.dev-team/config.yml` (repo-wide) |
 | [`hooks/guard-dev-team.sh`][guard] | PreToolUse (Bash) | Best-effort safety net (one layer, never the guarantee). Blocks exactly three unrecoverable Bash actions while a run is active: `git push` to main/master, force-push to main/master, and any live Stripe key pattern (`sk_live_`/`rk_live_`/`pk_live_` — dev-team is test-mode only). Any parse error or no active run → silently allows. | `features.guard: off` in `.dev-team/config.yml` disables it repo-wide (wins even over `DEV_TEAM_GUARD`); otherwise it only engages when `.dev-team/autopilot.json` exists **or** `DEV_TEAM_GUARD` is set — unset `DEV_TEAM_GUARD` and/or remove `.dev-team/autopilot.json` to stop it firing for a session. |
-| [`hooks/guard-ledgers.sh`][guard-ledgers] | PreToolUse (Write, Edit, MultiEdit) | Best-effort safety net for the `.dev-team/` rule above, two separate checks. Rule 1 (always on unless `guard: off`): refuses a `Write` whose new content carries the dev-team marker on one of its first three lines when the target path is outside `.dev-team/` — this can only catch the plugin's own generated content, never a person's own file, which is why it stays on even outside a run. Rule 2 (only while `.dev-team/loop.lock/` exists — i.e. an autopilot cycle is running right now — `guard: on` is set, or `DEV_TEAM_GUARD` is set): refuses a `Write`, `Edit` or `MultiEdit` to one of the seven ledger names at the project's top level, or to `SECURITY.md` in `.github/`/`docs/`, but **only** when the incoming text carries the marker or a dev-team record id (`FG-012`, `F-001`, …) — a committed `.dev-team/autopilot.json` alone never triggers it, so a project that keeps that file in git can still edit its own top-level files freely. Neither rule sees a write made through `cat >>` or similar in Bash. | `features.guard: off` in `.dev-team/config.yml` disables both rules repo-wide (wins even over `DEV_TEAM_GUARD`) |
+| [`hooks/guard-ledgers.sh`][guard-ledgers] | PreToolUse (Write, Edit, MultiEdit) | Best-effort safety net for the `.dev-team/` rule above, two separate checks, both judging the path with any `.`/`..` parts worked out first (`.dev-team/../SECURITY.md` starts with `.dev-team/` as plain text but names the top-level file — this hook resolves that before deciding). Rule 1 (always on unless `guard: off`): refuses a `Write` only when **all three** hold — the new content carries the dev-team marker on one of its first three lines, the target's file name (ignoring capitals) is one of the seven ledger names, and the resolved path lands outside `.dev-team/`. That is one narrow shape — for example a person pasting a copy of a ledger into `docs/FEATURES.md` — not a blanket claim that it can never touch a person's own file; to proceed, write the file under `.dev-team/` instead, or set `guard: off`. Rule 2 (only while `.dev-team/loop.lock/` exists — i.e. an autopilot cycle is running right now — `guard: on` is set, or `DEV_TEAM_GUARD` is set): refuses a `Write`, `Edit` or `MultiEdit` to one of the seven ledger names at the project's top level, or to `SECURITY.md` in `.github/`/`docs/`, but **only** when the incoming text carries the marker or a dev-team record id (`FG-012`, `F-001`, …) — a committed `.dev-team/autopilot.json` alone never triggers it, so a project that keeps that file in git can still edit its own top-level files freely. Neither rule sees a write made through `cat >>` or similar in Bash. | `features.guard: off` in `.dev-team/config.yml` disables both rules repo-wide (wins even over `DEV_TEAM_GUARD`) |
 | [`hooks/sync-branches-check.sh`][sync-check] | SessionStart | Network-free, read-only notifier: counts local branches whose upstream shows `gone` and, if >0, points to `/dev-team-sync-branches`. Deletes nothing, makes no network calls, silent when nothing to report. | `DEV_TEAM_NO_BRANCH_CHECK` (session), or `features.branch-notifier: off` in `.dev-team/config.yml` (repo-wide) |
 
 **All environment variables / switches** (per-session overrides layered on top of `.dev-team/config.yml`'s `features:` block — see [Configuration & feature toggles](#configuration--feature-toggles)):
@@ -557,7 +559,7 @@ Since v1.2.0, each hook also reads the repo-scoped [`.dev-team/config.yml`][conf
 |---|---|---|
 | `DEV_TEAM_NO_UPDATE_CHECK` | Off-switch for the SessionStart update notifier — set to any non-empty value and it exits before doing anything. | Update check runs, throttled to ≤ once/24h; fails open/silent if `gh`/`jq` missing or network fails. |
 | `DEV_TEAM_NO_BRANCH_CHECK` | Off-switch for the SessionStart branch-hygiene notice — set to any non-empty value to suppress it entirely. | Check runs every SessionStart; network-free and silent when the "gone" count is 0. |
-| `DEV_TEAM_GUARD` | **Force-ON** switch (not an off-switch) for the Bash guard — makes it check every Bash command regardless of whether a run is active. | Guard scope limited to an active run (`.dev-team/autopilot.json` present). |
+| `DEV_TEAM_GUARD` | **Force-ON** switch (not an off-switch) for **both** guard hooks — makes `hooks/guard-dev-team.sh` check every Bash command, and makes `hooks/guard-ledgers.sh`'s Rule 2 active, regardless of whether a run is active (that hook's Rule 1 is already on regardless — see [Hooks & environment switches](#hooks--environment-switches)). | `hooks/guard-dev-team.sh` scope limited to an active run (`.dev-team/autopilot.json` present); `hooks/guard-ledgers.sh`'s Rule 2 limited to while `.dev-team/loop.lock/` exists, its Rule 1 on regardless. |
 | `DEV_TEAM_NO_AUTO_HANDOFF` | Off-switch for auto-handoff — set to any non-empty value and completed tasks stop triggering the extra `.dev-team/HANDOFF.md` regenerate for this session (the checkpoint/RECORD regenerate still happens). | Auto-handoff runs: `.dev-team/HANDOFF.md` is regenerated after every completed task/workstream. |
 | `DEV_TEAM_NO_AUTO_COMMIT` | Off-switch for auto-commit — set to any non-empty value and completed-and-checked tasks stop getting their own local per-task commit this session (checkpoint/cycle commits still happen). | Auto-commit runs: each completed-and-checked task/workstream lands its own local commit (never pushed). |
 | `DISABLE_AUTOUPDATER` | Global Claude Code var: turns off Claude Code's own auto-update entirely, including marketplace-level plugin auto-update (the plugin's Layer-1 update path). | Claude Code auto-update (and marketplace auto-update, if enabled) behaves normally. |
@@ -663,22 +665,46 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full repo layout, how to run all 
 Before v1.5.0 the suite wrote its ledgers (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`,
 `VERIFICATION.md` + `verdict.json`, `MIGRATION.md`, `HANDOFF.md`) at the **top level of your
 project** — the legacy root location. From v1.5.0 on, every new write goes to `.dev-team/<name>`
-instead; the file names themselves don't change, only the folder. Nothing you have stops working:
-a skill still finds a file left at the old location through a lookup order (`.dev-team/<name>`
-first, then the old top-level name), so there's nothing you're required to do.
+instead; the file names themselves don't change, only the folder.
+
+**What happens automatically the next time a run writes ledgers, depends on what it finds:**
+
+- **A legacy top-level file that already carries the dev-team marker** is moved into `.dev-team/`
+  and committed **on its own, before any other work** — the first commit on the run's own branch,
+  made once that branch exists or has been adopted, never straight onto the default branch without
+  asking (see [conventions.md][conventions], "Files from before v1.5.0 — the lookup order").
+- **A legacy top-level file with no marker** makes an **interactive** run stop and ask whether it's
+  a pre-1.5.0 dev-team file or your own document — it's never guessed at either way. An
+  **unattended autopilot cycle** that hits the same file goes `BLOCKED` (reason `ledger-ownership`)
+  instead of asking, since nobody is there to answer.
+- **A read-only command or phase moves nothing.** `/dev-team-status`, `/dev-team-report`,
+  `/dev-team-approve`, the review skill's verification phase, and docs audit mode each promise to
+  change nothing (or one named field), so a marked legacy file is read where it is and the move is
+  reported as pending: "`<name>` is still at the top level of the project — run
+  `/dev-team-move-ledgers` to move it into `.dev-team/`."
+
+**So there's something worth doing, even though nothing breaks if you don't:** run
+`/dev-team-move-ledgers` once — without arguments to preview, then again with `--apply` to move
+everything over in one deliberate, reviewable commit, rather than leaving it to whichever run
+happens to touch a given file next. Do this **before your first 1.5.0 run**, and above all
+**before any unattended autopilot run** — discovering a `BLOCKED` cycle mid-run over a
+marker-less legacy file is a worse time to find this out than up front.
 
 **To move everything over deliberately, run `/dev-team-move-ledgers`.** With no arguments it only
 reads and reports — a safe, read-only preview of what it would do. Add `--apply` to actually move
 things: it `git mv`s each top-level file it can *prove* is the plugin's own (the dev-team marker on
-line 2, or the equivalent field in `verdict.json`) into `.dev-team/`, stamps the file with the
-current marker form if it was carrying the old one, and makes one commit for the whole move
+line 2, or the equivalent field in `verdict.json`) into `.dev-team/` and, if it was still carrying
+the old marker form, rewrites that to the current one — then makes one commit for the whole move
 (never pushed — that stays your choice).
 
 **A file the plugin cannot prove is its own is never moved or touched automatically.** If a
-top-level file has the *shape* of one of the plugin's ledgers but no marker — for example a real
-project's own hand-written `FEATURES.md` or `HANDOFF.md` — the command asks you, one file at a
-time, whether it's a pre-1.5.0 dev-team file (in which case it's stamped and moved) or your own
-document (in which case nothing is written to it, ever). It never guesses either way.
+top-level file happens to have the *shape* of one of the plugin's ledgers but no marker — most
+hand-written `FEATURES.md` or `HANDOFF.md` files won't, but some will (a heading like "In-scope
+gaps", a `NEXT:` line) — the command asks you, one file at a time, whether it's a pre-1.5.0
+dev-team file (in which case it's **moved into `.dev-team/` first, and only then stamped** with
+the marker, on its own commit) or your own document (in which case nothing is written to it,
+ever). **A file with none of that shape is left alone without any question, whatever it's
+named** — the command only asks about look-alikes; it never decides by name alone.
 
 **A "mixed" file needs a person.** If a project's own document has had dev-team records appended
 into it by an earlier run — the exact failure this whole change exists to stop, seen for real in

@@ -36,24 +36,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   security policy — even if asked to.
 - **Files written before this release keep working.** A reader looks for `.dev-team/<name>` first
   and, only if that's absent, falls back to the old top-level `<name>`. A top-level file that
-  already carries the marker is moved into `.dev-team/` and committed on its own, automatically; one
-  with no marker triggers the same ownership question above. Values inside `.dev-team/autopilot.json`
+  already carries the marker is moved into `.dev-team/` and committed on its own — the first commit
+  on the run's own branch, never straight onto the default branch without asking — the next time a
+  run that actually writes ledgers touches it; one with no marker triggers the same ownership
+  question above, and an unattended autopilot cycle that hits it goes `BLOCKED` (reason
+  `ledger-ownership`) instead of guessing. **A read-only command or phase never does this move.**
+  `/dev-team-status`, `/dev-team-report`, `/dev-team-approve`, the review skill's verification
+  phase, and docs audit mode each promise to change nothing (or one named field); each of them now
+  reads a marked legacy file exactly where it sits, moves and commits nothing, and reports the move
+  as pending instead — "`<name>` is still at the top level of the project — run
+  `/dev-team-move-ledgers` to move it into `.dev-team/`." Values inside `.dev-team/autopilot.json`
   written before this release (`queue`, `spec_ref`, `trajectory_ref`) that name a ledger without the
   `.dev-team/` folder in front are still accepted and are rewritten to the new form at the next
-  RECORD step.
-- Names are compared **ignoring case** everywhere this change touches path-checking logic (in
-  `hooks/guard-ledgers.sh` and in the lookup order), because a filesystem that ignores case (macOS,
-  by default) treats `security.md` and `SECURITY.md` as the exact same file on disk — matching
-  capitals only would have let a write spelled in lower case walk straight past a check meant to
-  protect that file.
+  RECORD step — but only once the file they name has actually moved; a value naming a file still at
+  the top level is left as it is and called out in the report, rather than pointing at a
+  `.dev-team/` file that doesn't exist yet.
+- `hooks/guard-ledgers.sh`'s ledger-**name** matching (Rule 2, and now Rule 1's name test too)
+  compares names **ignoring case**, because a filesystem that ignores case (macOS, by default)
+  treats `security.md` and `SECURITY.md` as the exact same file on disk — matching capitals only
+  would have let a write spelled in lower case walk straight past a check meant to protect that
+  file. The hook's separate `.dev-team/` **folder** test stays case-sensitive on purpose: refusing
+  a write to something that merely looks like `.DEV-TEAM/` is the safe direction to be wrong in.
+  The lookup order (`.dev-team/<name>` first, then the legacy root `<name>`) is a plain, exact
+  file-name match and says nothing about case either way.
 - The `verdict.json` marker is recognised whether it's written with normal spacing
   (`"dev-team": "ledger=verdict schema=1.0"`) or as **compact JSON with no spaces at all**
   (`{"dev-team":"ledger=verdict schema=1.0"}`) — both are exactly the same content, and a stricter
   match would have missed the second, equally valid, form.
 - The example `verdict.json` shown in the review skill's own protocol doc
-  (`verdict-and-report-protocol.md`) is now valid JSON that actually passes
-  `schemas/verdict.schema.json` — it previously wasn't valid JSON as written, so nobody could have
-  copied it as a working starting point.
+  (`verdict-and-report-protocol.md`) is now real, valid JSON with real enum values that actually
+  passes `schemas/verdict.schema.json`. The example was already valid JSON as written (`jq` parsed
+  it fine) — the problem was that it used placeholder values (`PASS | PASS_WITH_GAPS | FAIL` and
+  `V-0XX`) that the schema's enums and id patterns reject, so nobody could have copied it as a
+  working starting point.
 - The `HANDOFF.md` resume card's own Artifacts line now lists `MIGRATION.md` and `verdict.json`
   alongside the other ledgers, so a session resuming cold from the card can see at a glance whether
   those two exist for this project.
@@ -62,19 +77,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - `/dev-team-move-ledgers` (dry-run by default; `--apply` to act): sorts every legacy top-level
   ledger file into "ours — will move" (has the marker), "looks like ours — ask" (no marker, but has
-  the shape of one), "not ours — leave alone", or "mixed — needs a person" (a project's own document
+  the shape of one), "not ours — leave alone", "mixed — needs a person" (a project's own document
   with dev-team records appended into it — the command refuses to cut that apart itself, because
   getting that boundary wrong either publishes findings as if they were policy or deletes part of
-  the policy, and a person needs to make that call). Files agreed to move are moved and stamped
-  with the current marker form in one commit, which is never pushed automatically.
+  the policy, and a person needs to make that call), or "conflict" (a `.dev-team/<name>` already
+  exists — that copy wins, the legacy file is left exactly as it is, and it is never asked about,
+  whatever else it also looks like). Files agreed to move are `git mv`d and, only once safely inside
+  `.dev-team/`, stamped with the current marker form — moving first and stamping second, on purpose,
+  because writing marker content to a file still at the top level is exactly what the ledger guard's
+  Rule 1 refuses — then committed together in one commit, never pushed automatically. **Before
+  touching anything**, it checks whether the project's own `.gitignore` would swallow any file it's
+  about to move or create; if so, `--apply` refuses up front and reports which paths are ignored,
+  rather than moving files somewhere git will never track. If the commit fails partway through, it
+  rolls the whole attempt back (discarding only this command's own changes) rather than leaving a
+  half-moved tree.
+- **The `.dev-team/` pointer sentence.** Any interactive run that writes into `.dev-team/` —
+  including autopilot's bootstrap and `/dev-team-config init` — offers, once per run, to add one
+  fixed sentence — "Dev-team plugin state and the current handover live in `.dev-team/` — read
+  `.dev-team/HANDOFF.md` first." — to whichever of `CLAUDE.md`, `.claude/CLAUDE.md`, `AGENTS.md` and
+  `GEMINI.md` exist and don't already carry it. The trigger is "is the sentence actually missing
+  from a file that exists", not "is this the run that first creates `.dev-team/`" — the rejected
+  version of that trigger would have meant the offer could never come up again once the folder
+  already existed, even on a project whose instruction files have never once seen the sentence. It
+  only ever offers — it never adds the sentence silently — and a read-only command never offers it
+  at all. **A decline is remembered**, so it isn't re-asked every run: choosing "no" sets
+  `features.pointer-sentence: declined` in `.dev-team/config.yml` (creating a minimal file holding
+  just `version: 1` and that key, if none exists yet) and says so; an unreadable config file counts
+  as "not yet asked", so the offer can safely come back.
 - `hooks/guard-ledgers.sh` (a new PreToolUse hook on `Write`, `Edit`, and `MultiEdit`), a second,
   independent layer behind the written rule above. Two separate checks, both best-effort and
   fail-open — never the guarantee, only a second line of defense:
-  - **Rule 1** is on all the time unless `guard: off`: it refuses a `Write` whose new content
-    carries the dev-team marker on one of its first three lines when the target path is outside
-    `.dev-team/`. Only content the plugin itself generated ever carries that marker, so this can
-    never block a person editing their own file — only a scribe about to write a ledger to the
-    wrong place.
+  - **Rule 1** is on all the time unless `guard: off`: it refuses a `Write` only when **all three**
+    hold — the new content carries the dev-team marker on one of its first three lines, the
+    target's file name (ignoring capitals) is one of the seven ledger names, and the path, once
+    any `.`/`..` parts in it are worked out (`.dev-team/../SECURITY.md` starts with `.dev-team/`
+    as plain text but names the top-level file), lands outside `.dev-team/`. That's one narrow
+    shape it can block — for example a person pasting a copy of a ledger into `docs/FEATURES.md` —
+    not a blanket guarantee that it can never touch a person's own file; to proceed, write the file
+    under `.dev-team/` instead, or set `guard: off`.
   - **Rule 2** only activates while `.dev-team/loop.lock/` exists (an autopilot cycle is running
     right now), `guard: on` is set in `.dev-team/config.yml`, or `DEV_TEAM_GUARD` is set — and even
     then it only refuses a write to one of the seven ledger names at the top level (or `SECURITY.md`
@@ -86,6 +126,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     top-level `HANDOFF.md` or `FEATURES.md` forever. `loop.lock/` is a real "right now" signal
     instead — it's created for the length of one cycle and removed at the end, and it's never
     committed to git.
+  - **Path resolution**, used by both rules: before either one decides, the target path is worked
+    out lexically — every `.` piece dropped, and every `..` piece cancels the piece right before it
+    — so `.dev-team/../SECURITY.md` is correctly read as naming the top-level `SECURITY.md`, not a
+    file inside `.dev-team/`, even though the raw text starts with `.dev-team/`. A path that tries
+    to climb higher than it started (more `..` pieces than there is anything left to cancel) is
+    treated as having left the project entirely: Rule 1 still judges it by file name, but Rule 2
+    never matches it, since a path that has left the project cannot be "the project's own top-level
+    file" Rule 2 exists to protect.
   - What it still can't do: it never sees a write made through `cat >>` or similar in Bash, and it's
     a best-effort pattern match, not a guarantee — a determined rewrite that avoids the marker and
     every id pattern won't be caught. The real protection stays the written rule plus a person
