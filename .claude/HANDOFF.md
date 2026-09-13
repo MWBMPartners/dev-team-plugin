@@ -108,6 +108,17 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
 `scripts/audit-model-ids.sh` AUDIT OK · `tests/smoke-structure.sh` SMOKE OK · `shellcheck` clean ·
 `bats tests/scripts.bats` 17 of 17 passed. So any failure from here on was introduced by this work.
 
+## Checked while stage 1 runs
+
+- **Every file is assigned.** 45 tracked files mention one of the seven names (`.claude/` not
+  counted), and each one falls into exactly one work package's file list. None is left unassigned.
+  Largest: `README.md` 44 lines, `skills/dev-team-review/SKILL.md` 24, `conventions.md` 20.
+- **The mentions most likely to be project files are not.** The mentions in the ship, docs and ci-medic
+  skills and in the small orchestrator references were read one by one. All of them mean the plugin's
+  own `PROJECT.md` record, not a project's own file, so no exceptions are needed in stage 2. The stage 2
+  briefs still tell builders to leave, and report, any mention that means a project's own file.
+- **Codex is signed in** (`codex login status`: "Logged in using ChatGPT"), so the review step can run.
+
 ## What to do next
 
 Stage 1 is running. When it reports:
