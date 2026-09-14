@@ -303,6 +303,26 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
             hook from a subfolder under bash 3.2 and 5. Read the move-ledgers rollback text carefully.
             Commit per builder with the review status. Then ONE more Codex review (gpt-5.6-sol if astra
             is still busy).
+        - **Stand-in verification of fix round 3 DONE** (`wf_0ba23093-a39`; record
+          `standin-verify-fix-round-3.md`, committed after the model-id audit passed). All 14 Codex
+          round-3 findings are confirmed fixed (#6 as a limit). **7 new problems confirmed:**
+          - (high) the subfolder fix refuses writes to a session-folder `.dev-team/` and ignores
+            `guard: off` there;
+          - (medium) the rollback's single `git restore` aborts on a never-existing path;
+          - (low) a half-failed stamp makes the rollback refuse;
+          - (medium) the "never touches repo" tests catch too little;
+          - (low) check-verdict.sh uses the wrong exit code for invalid JSON;
+          - (low) a trailing-slash cwd;
+          - (low) three missing pinning tests (symlink, check G, wrapped sentence copies).
+
+          One claim was refuted (E/G heuristics).
+          **Fix round 4 running** (`fix-round-4-standin-findings`):
+          - stage 1: hook (Opus) and move-ledgers rollback (Sonnet);
+          - stage 2: tests plus the check-verdict.sh exit code (Sonnet).
+          **When it reports:** rerun every check and probe the hook from a subfolder yourself, then
+          commit per builder. The Codex retry at 07:38 must not start while fix round 4 is mid-edit.
+          If it fires first, wait for the commits, and update `codex-exec-prompt-4.md`'s "what is new"
+          header to include rounds 3 and 4.
         - **03:29 — Codex review round 4 did NOT happen.** It started on gpt-5.6-sol (high effort,
           read-only) and stopped at once: "You've hit your usage limit … try again at 7:33 AM". No
           output was written.
