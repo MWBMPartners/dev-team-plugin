@@ -250,6 +250,19 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
           verify each finding against the files, have a Sonnet builder fix confirmed ones, rerun every
           check, commit (stating the review status), and run one more Codex review if the findings
           were substantive.
+        - **02:39 — Codex review round 3 FAILED, but not on credit.** The configured model
+          `gpt-6-astra` returned "ERROR: Selected model is at capacity. Please try a different model."
+          after about 30,600 tokens of reading, and wrote no review (exit 1, no output file). This is a
+          provider capacity problem (in the brief's terms a transient provider failure or brownout),
+          not a usage limit. **No Codex review of this branch has happened yet.** The review had not
+          produced anything, so the brief's pre-phase fallback applies: retry with an equivalent model
+          from the same Codex runtime, chosen from `codex debug models`, not guessed. It is still
+          cross-provider, since Claude built the work. #41 is updated once the retry is confirmed
+          running.
+        - **02:40 — plan saved and posted.** `.claude/plans/orchestrator-v2/plan.md` and
+          `plan-critique.md` are committed (2d58278, all checks OK, tail matches the returned text
+          byte for byte, secret scan clean), and #46 has a summary. The plan is DRAFT until the owner
+          answers D1–D4, then increment 0a hand-locks it.
         - **Orchestrator deep planning finished (about 23:00, 13 September)**, but the reviser's
           returned result was only the END of its plan (from partway through §5.2); the earlier
           sections were in earlier messages. The lead is rebuilding the full revised plan from the
