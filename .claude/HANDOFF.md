@@ -259,6 +259,13 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
           from the same Codex runtime, chosen from `codex debug models`, not guessed. It is still
           cross-provider, since Claude built the work. #41 is updated once the retry is confirmed
           running.
+        - **02:40 — Codex review round 3b STARTED on `gpt-5.6-sol` and confirmed** (02:41: banner
+          shows that model, `reasoning effort: high`, `sandbox: read-only`, no capacity or limit
+          error, log growing). #41 has been told. Output goes to the scratchpad files
+          `codex-review-3b-sol.md` and `codex-review-3b-sol.log`. **If this session is interrupted:** do NOT
+          start another Codex run until that log shows `CODEX EXIT`. If it finished, read the `.md`.
+          If it failed, read the log tail for the cause, then retry once (next visible model by
+          priority, or wait for a stated reset).
         - **02:40 — plan saved and posted.** `.claude/plans/orchestrator-v2/plan.md` and
           `plan-critique.md` are committed (2d58278, all checks OK, tail matches the returned text
           byte for byte, secret scan clean), and #46 has a summary. The plan is DRAFT until the owner
