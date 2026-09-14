@@ -285,6 +285,24 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
             the confirmed findings; rerun every check; commit stating "Codex round 3 findings fixed,
             re-review pending"; run ONE more Codex review (use `-m gpt-5.6-sol` if gpt-6-astra is still
             at capacity; mind the allowance).
+        - **About 03:10 — verification of Codex round 3 done** (`wf_3351eee1-ec9`, three Opus
+          verifiers). 13 confirmed; #6 (symlinks) partly confirmed and recorded as a stated limit. #5 is
+          worse than reported: from a subfolder the hook also refuses the plugin's own correct writes and
+          ignores `guard: off`. #9, #11 and #14 were partly pre-existing on main. Saved at
+          `codex-review-3-verification.md`, with the full fix specs. #41 has been told.
+        - **Fix round 3 running** (workflow `fix-round-3-codex-findings`).
+          - Stage 1, side by side:
+            - move-ledgers 1–4 (Opus): rollback restores only its own paths, never a blanket
+              reset --hard;
+            - hook 5–7 (Opus): git --show-prefix for the repo top folder; the legacy marker; a symlink
+              limit note;
+            - docs, audit and schema 8–10 and 12–14 (Sonnet).
+          - Stage 2: a Sonnet builder owns tests/scripts.bats and tests/README.md (#11's scratch-tree
+            audit tests, plus new tests for the other findings).
+          - **When it reports:** rerun every check and run bats yourself (Codex could not). Probe the
+            hook from a subfolder under bash 3.2 and 5. Read the move-ledgers rollback text carefully.
+            Commit per builder with the review status. Then ONE more Codex review (gpt-5.6-sol if astra
+            is still busy).
         - **02:40 — plan saved and posted.** `.claude/plans/orchestrator-v2/plan.md` and
           `plan-critique.md` are committed (2d58278, all checks OK, tail matches the returned text
           byte for byte, secret scan clean), and #46 has a summary. The plan is DRAFT until the owner
