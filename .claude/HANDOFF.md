@@ -6,8 +6,8 @@
             Rewritten as work happens, not tidied at the end. See .claude/CLAUDE.md section 2.
 -->
 
-**Last updated:** 14 September 2026, about 04:10. Fix round 4 committed and pushed (960ef64, 6f9d1ab, 8be396b);
-waiting for Codex review round 4 (booked 07:38). Newest entries in "What to do next" are near the top of that list,
+**Last updated:** 14 September 2026, 07:39. Fix round 4 committed and pushed (960ef64, 6f9d1ab, 8be396b).
+Codex review round 4 STARTED at 07:38 and is confirmed running (see the 07:38 entry). Newest entries in "What to do next" are near the top of that list,
 starting with "Fix round 4 DONE".
 **Working branch:** `claude/ledger-file-clashes` (made from `main`; `alpha` is fully contained in
 `main`, so this branch can later go to `alpha` in one pull request). Pushed to GitHub.
@@ -352,6 +352,45 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
             the banner and that there is no limit error before telling #41. Verify each finding against the
             files, fix, and review again. Until then, nothing else on #41 needs doing. Orchestrator (#46)
             waits for the owner's D1–D4.
+        - **07:38, 14 September — Codex review round 4 STARTED and confirmed** (attempt "4b").
+          - At 07:38:27 the banner showed `model: gpt-5.6-sol`, `reasoning effort: high`,
+            `sandbox: read-only`. At 07:38:45 there was no "You've hit your usage limit", "at capacity" or
+            `ERROR:` line, the log was growing (361 KB → 398 KB) and the process was alive. #41 told.
+          - Output goes to the scratchpad files `codex-review-4b.md` (final message) and `codex-review-4b.log`.
+            The log ends with a `CODEX EXIT <code>` line when it finishes.
+          - **Trap found:** a plain grep for "usage limit" in the log matches Codex printing this branch's
+            own commit messages (9713e65 mentions a usage limit). Match the real error wording instead:
+            "You've hit your usage limit", "Selected model is at capacity", or a line starting `ERROR:`.
+          - **Do not commit while it runs.** This handover note is left uncommitted on purpose. Codex
+            reviews `main...HEAD`, so a new commit mid-review would change what it is reading. Commit this
+            note straight after `CODEX EXIT` appears.
+          - **If this session is interrupted:** do NOT start another Codex run until the log shows
+            `CODEX EXIT`. If the exit code is 0 and the `.md` exists, verify its findings. Otherwise read
+            the log tail for the cause, record it here and on #41, and book one more single try after any
+            stated reset.
+        - **07:50 — Codex review round 4 did NOT finish. Usage limit hit mid-review.** It read for 12 minutes
+          (284,405 tokens), then: "ERROR: You've hit your usage limit … try again at 12:35 PM". Exit 1, no
+          `codex-review-4b.md`. **Codex has still not reviewed fix rounds 3 or 4.** #41 told.
+          - **Salvaged from its log** (Codex's own progress messages; not a finished review, so unverified).
+            It said it had confirmed two regressions by direct probes:
+            - (lead A) with the guard active, a record id `F-001` is caught, but `F-1000` gets through. The
+              pattern `[0-9]{3}\b` needs exactly three digits;
+            - (lead B) a session rooted in a repo subfolder can write an `F-001` edit to that subfolder's own
+              `SECURITY.md`, although fix round 4 now treats `<subfolder>/.dev-team/` as the session's
+              legitimate plugin folder.
+
+            It also noted that audits, smoke and shellcheck pass. It was still checking whether the verdict
+            schema accepts a `FAIL` when neither failure condition holds.
+          - **False lead, checked:** the README text about `HANDOFF.md` at a "repo-root path", which Codex
+            was reading, is `main`'s old text. The current branch no longer has it (grep finds nothing).
+          - **Hand-over, per the rule:** workflow `standin-verify-fix-round-4`, read-only. A fresh Fable
+            reviewer checks fix round 4's seven fixes, tests leads A and B, checks the schema FAIL question,
+            and looks for new problems. Then an Opus refuter challenges every finding. The record is to be
+            saved as `.claude/plans/ledger-file-clashes/standin-verify-fix-round-4.md`, after the model-id
+            audit passes.
+          - **Codex retry:** ONE run booked for 12:40 on 14 September (CronCreate, this session only). Output
+            goes to `codex-review-4c.md` / `.log`. Before it starts: no fix round may be mid-edit, and the
+            prompt header must list any new commits. If this session was closed, start it by hand after 12:35.
         - **03:29 — Codex review round 4 did NOT happen.** It started on gpt-5.6-sol (high effort,
           read-only) and stopped at once: "You've hit your usage limit … try again at 7:33 AM". No
           output was written.
