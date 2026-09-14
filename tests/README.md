@@ -167,6 +167,20 @@ findings required, plus a handful of tests on the real `git` behaviour those ins
   (there is no separate script to run it against) — covered by reading the walk-through in the
   command's own text, since the pinned git-behaviour test above already exercises the per-path
   restore machinery point 3's fix depends on.
+- **Finding N1 (round-4 stand-in verification) — the by-hand recovery text was missing the `-f` its
+  own reasoning needed**: point 4's text explains why `git rm -qf --cached --ignore-unmatch` needs
+  `-f` — after `git mv`, a moved file's index entry keeps `git mv`'s pre-stamp copy right up until
+  step 9's `git add` finally replaces it, so once step 6 has written anything to that file, whether
+  the write finished cleanly or died partway, the index no longer matches both the file on disk and
+  HEAD, and a plain `git rm --cached` refuses. Point 6's manual-recovery text — the one command a
+  person is handed precisely when the AUTOMATIC undo has already refused, which a half- or
+  fully-written stamp can easily coexist with — used to give the same command WITHOUT `-f`, so the
+  one recovery path a person is handed could fail in exactly the case this whole section exists to
+  recover from. Both texts now say `-f`. Two new git-behaviour tests prove the underlying fact both
+  texts rely on, each in its own throwaway repo: `git rm --cached` (no `-f`) on a moved file refuses
+  once ANYTHING has been written to it after `git mv` — proven once for a FULLY stamped file and once
+  for a HALF-WRITTEN one — and `git rm -qf --cached` (with `-f`) succeeds in both cases. A text check
+  confirms both point 4 and point 6 say `-qf --cached --ignore-unmatch` (count at least 2).
 
 ### `conventions.md` — the canonical ownership sentence (finding 8)
 
@@ -232,6 +246,16 @@ and the test matrix is split the same way:
   same file on disk; a `MultiEdit` is checked across every one of its edits, not just the first;
   `guard: on` forces Rule 2 on with no lock file present, and `guard: off` wins even with a lock
   file present.
+
+  **Record id width (round-4 stand-in verification, finding A).** Fault fixed: the id pattern used
+  to require EXACTLY three digits followed by a word boundary right after the third one, so a
+  fourth digit broke the match — `F-1000` walked straight past Rule 2 while `F-999` on the very same
+  edit was refused. Nothing caps a project's record counter at 999, ids are never reused, and the
+  verdict schema already allows "at least three digits". The pattern now matches three OR MORE
+  digits. Two cases, with the lock present: `F-1000` in an `Edit` to the top-level `SECURITY.md` is
+  still caught; `F-12` (two digits) still is not, pinning the pattern's lower bound — the plugin
+  always zero-pads to at least three digits, so a shorter form is far more likely to be a person's
+  own text.
 - **Path normalisation (both rules).** Fault found by a later reading of the hook: stripping a
   leading `<cwd>/` (or `$PWD/`) and a leading `./` was done ONCE each, which is one pass, not a
   resolution — a path spelled with `.` or `..` segments walked straight past both rules.
@@ -304,12 +328,14 @@ and the test matrix is split the same way:
   whether given as an absolute path or as `../SECURITY.md`; the plugin's own correct
   `.dev-team/` writes from a subfolder (absolute and relative) are still allowed; `guard: off` set
   at the top level is honoured from a subfolder; a bare relative name from a subfolder (really
-  `src/SECURITY.md`) is correctly NOT treated as the top-level file; two levels deep
-  (`src/deep`, `../../SECURITY.md`) still resolves correctly. One case deliberately runs with **no**
-  `git init` at all, to pin the documented remaining limit: outside a git repository, a session
-  started in a subfolder is still judged as if that subfolder were the top — this test first checks
-  that `$SCRATCH` is not itself accidentally sitting inside some outer repository on the machine
-  running the suite, and skips rather than passing for the wrong reason if it is.
+  `src/SECURITY.md`) — **round-4 stand-in verification found this test pinned the wrong answer; see
+  "Rule 2 also protects a subfolder session's own top-level ledger names", below, for the fix** —
+  two levels deep (`src/deep`, `../../SECURITY.md`) still resolves correctly. One case deliberately
+  runs with **no** `git init` at all, to pin the documented remaining limit: outside a git
+  repository, a session started in a subfolder is still judged as if that subfolder were the top —
+  this test first checks that `$SCRATCH` is not itself accidentally sitting inside some outer
+  repository on the machine running the suite, and skips rather than passing for the wrong reason if
+  it is.
 
 - **A session's OWN `.dev-team/` inside its subfolder (round-4 stand-in verification, new finding).**
   Fault found by review: the subfolder fix just above went too far the other way. It counted only the
@@ -332,6 +358,35 @@ and the test matrix is split the same way:
   subfolder still resolves out of that subfolder's own `.dev-team/` and is denied, proving the new
   `<sub>/.dev-team/` match cannot be tricked with a `..`; and `cwd` sent as the filesystem root (`/`)
   does not crash the trailing-slash strip, whichever way Rule 1 ends up deciding the write.
+
+- **Rule 2 also protects a subfolder session's own top-level ledger names (round-4 stand-in
+  verification, finding B).** Fault fixed: the finding-5 fix above, and the round-4 refinement just
+  above it, fixed how the hook finds `.dev-team/`, `config.yml` and `loop.lock/` from a subfolder
+  session — but neither one touched Rule 2's own list of PROTECTED NAMES, which still matched only
+  the seven ledger names at the git TOP folder. So the very test that was meant to pin this
+  behaviour ("a relative ledger name from a subfolder is not the top-level file") used to assert
+  exit 0 for exactly the failure this whole change exists to stop, one folder down: a stale
+  instruction that appends findings to a relative `SECURITY.md` from a subfolder session lands on
+  that subfolder's own file, and Rule 2 never fired for it, even with the subfolder's own
+  `loop.lock/` present and genuinely active. That test is now renamed and flipped to expect exit 2.
+  Rule 2 now ALSO matches the seven ledger names sitting directly inside the session's own
+  subfolder — additive to the top-level list, never instead of it (see the hook's own Rule 2 code,
+  "why ADDITIVE", for the reasoning: the written documents and the skills disagree about which
+  folder is really "the top level", and protecting both is correct whichever way the owner
+  eventually settles that) — but deliberately NOT `<sub>/.github/security.md` or
+  `<sub>/docs/security.md` (GitHub only ever reads a security policy from the repository's top, its
+  `.github/`, or its `docs/` — never a subfolder's own copies of those, and this plugin never wrote
+  a ledger there either), and NOT anything deeper than the subfolder's own top level (none of the
+  seven names contains a `/`, so a path like `src/deep/SECURITY.md` can never match). Cases cover:
+  the subfolder's own `SECURITY.md` is protected with the lock only in the session's own
+  `.dev-team/`, and by its absolute path too; the subfolder's own `FEATURES.md` is protected the
+  same way; a path one level below the subfolder, and the subfolder's own `.github/`/`docs/`
+  `SECURITY.md`, are controls showing the deliberate exclusions above are NOT matched; with no lock
+  and no guard setting anywhere the subfolder's own `SECURITY.md` is not blocked; a subfolder named
+  with a glob character (`s*`) is matched literally, never as a wildcard, against a sibling folder
+  (`sx`) that must not also match; `guard: off` in the subfolder's own `config.yml` clears the
+  subfolder's own ledger-name protection too; a plain edit to the subfolder's own `SECURITY.md`,
+  with no marker and no record id, is still allowed.
 
 - **A symlinked `.dev-team/` path (finding 6, pinning test added round 4).** The fix specification for
   finding 6 called for a bats case pinning a KNOWN, DOCUMENTED limit, not a claim that the limit has
@@ -368,15 +423,33 @@ is still caught before merge.
 **Findings 12 and 13 (issue #41, Codex round 3):** before this fix, the schema accepted verdict
 shapes that `verdict-and-report-protocol.md`'s own "Overall verdict rule" already calls
 impossible — for example `overall: PASS` while the clean-room integration check failed, or
-`overall: PASS_WITH_GAPS` with a critical `FAILED` claim. The schema now carries three `allOf` rules
+`overall: PASS_WITH_GAPS` with a critical `FAILED` claim. The schema now carries `allOf` rules
 that reject exactly those shapes (see the schema's own top-level `$comment` for the reasoning), and
 finding 13's wrong wording in the `severity` field's description ("A FAILED or DRIFTED claim at
 critical severity is what forces FAIL" — wrong; a critical `DRIFTED` claim rules out `PASS` but does
-not force `FAIL`) is corrected to match the protocol and the sample fixture's own `V-003`. Nine new
+not force `FAIL`) is corrected to match the protocol and the sample fixture's own `V-003`. Nine
 fixtures under `tests/fixtures/` (`verdict.invalid-*.json` and `verdict.valid-fail-critical-failed.json`)
 each break, or deliberately satisfy, exactly one rule; the tests here check each one against
 `check-jsonschema`, confirm the protocol document's own worked JSON example validates, and confirm
 the old wrong wording is gone from the schema file.
+
+**Finding C (round-4 stand-in verification):** the three rules above only ever pushed the verdict
+TOWARDS `FAIL` (a failed integration check, or a critical `FAILED` claim) — nothing stopped a
+producer writing `overall: FAIL` on its own with NEITHER cause true, which the protocol calls just
+as impossible as a `PASS` with a failed integration check (`verdict-and-report-protocol.md`,
+"Overall verdict rule": "FAIL — any critical done-criterion / feature / security claim FAILED, or
+the integration check failed"). A fourth `allOf` rule now requires a `FAIL` verdict to show one of
+those two causes elsewhere in the file; the schema's top-level `$comment` also gained one sentence
+explaining that `PASS_WITH_GAPS` is deliberately left unconstrained from below — the protocol allows
+it whenever nothing critical failed and integration passed, even for a gap this schema does not
+track at all (something noted only in `VERIFICATION.md` prose), so an "empty" `PASS_WITH_GAPS` is
+not a shape the protocol calls impossible. Two new fixtures: `verdict.invalid-fail-without-cause.json`
+(FAIL, but every claim VERIFIED and integration passed — must be rejected by the schema, while
+still passing `check-verdict.sh`'s own four rules cleanly, proving the schema is the only thing that
+calls it impossible) and `verdict.valid-fail-integration-failed.json` (FAIL caused only by a failed
+integration check, with no FAILED claim at all — must still validate, pinning the second branch of
+the new rule's `anyOf`, since the pre-existing `verdict.valid-fail-critical-failed.json` fixture
+only ever pinned the first branch).
 
 Four further invariants cannot be expressed in JSON Schema at all — comparing a COUNT of array
 entries to another field, or one claim's field against another claim's field — so
@@ -400,37 +473,109 @@ checker that could not run at all. Fixed by changing the code to match the heade
 correct meaning here: nothing was checked), not the other way around. One bats test pins it: a file
 containing `{not json` is refused with exit 2 and the "not valid JSON" message.
 
-### This file's own hygiene (finding 11; broadened round 4)
+**Finding N2 (round-4 stand-in verification):** the round-4 fix above tested validity with
+`jq empty`, which only checks that its input parses at all and then discards whatever it parsed to —
+it does not care whether the input was empty, whitespace-only, or held several JSON values back to
+back, so all three of those returned 0 from `jq empty` and went on to fail all eight rule checks,
+exiting 1 ("checked, and it failed badly") when the true state was "nothing was checked at all". An
+interrupted write that leaves `.dev-team/verdict.json` empty is exactly the ordinary case this let
+slip through. The test is now `jq -s -e 'length == 1 and (.[0] | type == "object")'`, which slurps
+the whole file into an array first: empty or whitespace-only input slurps to a zero-length array
+(rejected), two values back to back slurp to a two-element array (rejected), and a bare scalar such
+as `42` — syntactically valid JSON, but not an object, and every rule below reads a field off the
+top level — slurps to a one-element array whose element is not type `object` (also rejected). The
+message is now `"'$file' is empty, not valid JSON, or not a single JSON object"` (still contains the
+substring "not valid JSON", so the existing exact-message bats assertion keeps passing), and the
+header's own exit-code paragraph was updated to name all of these cases under exit 2, including the
+bare-scalar case explicitly (`42` is valid JSON by itself but still exits 2 here, because this
+script's whole job is checking an object's fields, not merely confirming the input parses). Four new
+bats cases beside the invalid-JSON test: a zero-byte file, a whitespace-only file, two JSON values in
+one file (`{} {}`), and a bare scalar (`42`) — all four refused with exit 2 and the same message,
+never silently run through the eight rule checks below.
 
-The last two tests in `scripts.bats` grep the test file itself: one confirms no test deletes or
-creates a path under `$REPO_ROOT` or `$MOVE_LEDGERS_MD` (the second variable also names a real file
-in this repository, just reached a different way — see `setup()` near the top of the file), the
-other confirms no test writes into either of those with a shell redirect. Both patterns are built
-with a small string split in the test's own source (`REPO''_ROOT`, `MOVE_LEDGERS''_MD`) so that the
-test does not flag its own definition line while still catching the real thing. These are a
-deliberate pin on the fix for finding 11 (see "Fault fixed (finding 11)", above): a future test added
-carelessly, in the old style this file used to use, would delete or overwrite a real path in this
-repository on every run — including a contributor's own untracked files — and these two tests are
-what stop that pattern from quietly coming back.
+### This file's own hygiene (finding 11; broadened round 4; broadened again by finding N3)
 
-**Round-4 fix:** a stand-in verification found the two patterns only ever matched ONE exact shape
-each, spelled out letter for letter — a two-flag deletion of the quoted repository-root variable, and
-a bare redirect naming that same quoted variable with a slash right after it. A future test using
-`mkdir`, `cp`, `mv`, `tee`, `touch` or `ln` instead of the one deletion command the old pattern
-watched for, or the curly-brace form of the variable, or a redirect with the closing quote placed
-somewhere other than around the whole path, or a deletion of the path held in `$MOVE_LEDGERS_MD`,
-would have passed both tests silently — including the exact directory-creation shape the old, unsafe
-version of the `.claude/agents` test used to run (see "Fault fixed (finding 11)" above). Reproduced
-in a scratch copy of this file, outside the repository, with seven lines added covering every one of
-those shapes: only the original two-flag deletion shape was caught; the other six passed unnoticed.
-The two patterns now watch six command words (a deletion, a new directory, a copy, a rename or move,
-a write through `tee`, and touching or symlinking a path) for either variable in either written form,
-plus either redirect operator for the same, stopping only at a pipe, an ampersand or a semicolon
-between the command word and the variable (each of those would start a different instruction). A
-read-only use of the repository-root variable needs no separate allow-list entry today, because
-reading the tree to build the throwaway copy in `make_tree()` uses none of the six watched words; if
-a genuinely read-only line using one of those words is ever needed, allow-list that one line
-explicitly with a comment, rather than loosening the pattern for everything.
+The last four tests in `scripts.bats` grep the test file itself: the first confirms no test deletes,
+creates, copies, moves, or touches a path under `$REPO_ROOT` or `$MOVE_LEDGERS_MD` (the second
+variable also names a real file in this repository, just reached a different way — see `setup()`
+near the top of the file); the second confirms no test writes into either of those with a shell
+redirect; the third confirms no test uses `git` or `sed` to change a path in either; the fourth
+confirms no test `cd`s into `$REPO_ROOT` at all, except the two lines already proven read-only by
+their own assertions. Every pattern is built with a small string split in the test's own source
+(`REPO''_ROOT`, `MOVE_LEDGERS''_MD`) so that the test does not flag its own definition line while
+still catching the real thing. These are a deliberate pin on the fix for finding 11 (see "Fault
+fixed (finding 11)", above): a future test added carelessly, in the old style this file used to use,
+would delete or overwrite a real path in this repository on every run — including a contributor's
+own untracked files — and these four tests are what stop that pattern from quietly coming back.
+
+**Round-4 fix:** a stand-in verification found the two patterns that existed at the time only ever
+matched ONE exact shape each, spelled out letter for letter — a two-flag deletion of the quoted
+repository-root variable, and a bare redirect naming that same quoted variable with a slash right
+after it. A future test using `mkdir`, `cp`, `mv`, `tee`, `touch` or `ln` instead of the one deletion
+command the old pattern watched for, or the curly-brace form of the variable, or a redirect with the
+closing quote placed somewhere other than around the whole path, or a deletion of the path held in
+`$MOVE_LEDGERS_MD`, would have passed both tests silently — including the exact directory-creation
+shape the old, unsafe version of the `.claude/agents` test used to run (see "Fault fixed (finding
+11)" above). Reproduced in a scratch copy of this file, outside the repository, with seven lines
+added covering every one of those shapes: only the original two-flag deletion shape was caught; the
+other six passed unnoticed. The two patterns were widened to watch six command words (a deletion, a
+new directory, a copy, a rename or move, a write through `tee`, and touching or symlinking a path)
+for either variable in either written form, plus either redirect operator for the same, stopping
+only at a pipe, an ampersand or a semicolon between the command word and the variable.
+
+**Round-4 stand-in verification, finding N3:** even the widened patterns above still needed the
+watched WORD to be followed LATER on the same line by the variable — so a line built like
+`( cd "$REPO_ROOT" && rm -rf .claude/agents )` was missed entirely, because the repository-root
+variable sits BEFORE `rm` there, not after it: the write names a path relative to the working
+folder AFTER the `cd`, never spelling the variable itself on the same line as the deleting word.
+That is exactly the subshell idiom this file already uses for its own read-only git steps (see
+`make_tree()`, and the branch-hygiene test), so it is also the shape most likely for a careless
+future test to copy. Separately, the `$MOVE_LEDGERS_MD` half of the delete pattern watched only
+`rm` (not the other five words) and had no brace-form support at all; the command-word list had no
+LEFT boundary either, so a comment ending in a word like "platform" (which itself ends in the
+letters "rm") was wrongly flagged; and neither `git` nor `sed` — both fully capable of changing a
+real file in the repository — were watched at all, although the comment claimed the patterns caught
+"either variable in either written form" without qualification. Reproduced again in a fresh scratch
+copy, outside the repository, with lines covering the brace form of `$MOVE_LEDGERS_MD`, the
+cd-then-write subshell idiom, `sed`'s in-place flag, a `git checkout` of `$REPO_ROOT`, a path built
+through a third, unwatched variable, and the "platform" comment: only the original shapes were
+caught, the rest passed unnoticed. Fixed with four checks instead of two (matching the four tests
+above):
+
+1. The delete/create/copy/move/touch pattern now watches the same six words on both variable
+   branches, with brace-or-no-brace support on both, and is anchored so the word must START a real
+   word (`platform` no longer trips it).
+2. The write-redirect pattern gained brace-or-no-brace support on the `$MOVE_LEDGERS_MD` branch too
+   (previously only `$REPO_ROOT` had it).
+3. `git` and `sed` are watched in a SEPARATE test, not folded into check 1's word list — a plain
+   word-boundary test on `git` or `sed` alone is far too broad, since this file already reads
+   `$REPO_ROOT` through several harmless uses that must stay legal (a read-only `git -C` branch
+   listing, a `git ls-files` text search whose search STRING merely contains the word "git", and a
+   `sed -n` print-only extraction with no in-place flag). This check instead requires the word
+   `git` together with one of a short list of mutating subcommands (`checkout`, `reset`, `clean`,
+   `restore`, `apply`, `stash`, `merge`, `rebase`, `cherry-pick`, `revert`, `rm`, `mv`, `add`,
+   `commit`) AND either variable, anywhere on the line in any order — or the word `sed` together
+   with its in-place flag AND either variable — checked with three chained `grep` calls rather than
+   one combined pattern, since "all of these appear somewhere, in any order" is awkward and easy to
+   get subtly wrong as a single regular expression.
+4. A brand new fourth check: no line may `cd` into `$REPO_ROOT` at all, except the two lines already
+   proven read-only by their OWN assertions — the tar copy in `make_tree()` (only ever reads, to
+   build `$TREE`) and the branch-hygiene test (asserts the branch list is unchanged before and
+   after) — named by their EXACT current text, not by line number. This is what catches the
+   cd-then-write idiom that no amount of widening checks 1–3 could ever catch on their own, since
+   those look for the variable NEAR the command word, and this idiom never puts them on the same
+   line at all.
+
+**What is still NOT caught, stated plainly rather than left for a reader to assume:** a path reached
+through a THIRD variable — for example `x="$REPO_ROOT/.claude/agents"; mkdir -p "$x"` — is invisible
+to every check above, because none of them ever look at `$x`. A read-only use of either variable
+through a command word not on any of these lists needs no separate allow-list entry. If a genuinely
+read-only line using one of the watched words, or the `cd` shape, is ever needed, allow-list that
+one line explicitly, with a comment saying why it is safe, rather than loosening a pattern for
+everything. These patterns were run under `/usr/bin/grep` (BSD grep, what a fresh shell resolves
+`grep` to on macOS, which is what `bats` itself uses to run these tests) and under both
+`/bin/bash` 3.2 and a newer bash; GNU grep was not available on the machine these were built and
+proven on, so its behaviour on these exact patterns is assumed, not exercised, here.
 
 ## Running locally
 

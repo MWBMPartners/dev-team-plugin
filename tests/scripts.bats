@@ -294,6 +294,28 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
   [ "$output" -ge 1 ]
 }
 
+@test "move-ledgers: the by-hand recovery text (point 6) uses -f, matching point 4's own explanation (finding N1)" {
+  # Fault fixed (round-4 stand-in verification, finding N1): point 6's manual-recovery text used to
+  # give "git rm --cached --ignore-unmatch -- <path>" with no "-f" — the one recovery command a
+  # person is handed, given precisely when the AUTOMATIC undo has already refused, fails in exactly
+  # the case (a moved file's stamp already written to, whether fully or partly) this whole section
+  # exists to recover from. Both point 4's own instructions and point 6's copy of them now use "-f"
+  # (see the "git rm --cached refuses a ... moved file without -f" tests above, in the "git:"
+  # section, for the git-mechanics fact both texts rely on). This test only confirms both texts
+  # still say so; count is 2 today (points 4 and 6) but the assertion is ">= 2" so a future addition
+  # of a third correct mention does not break it.
+  # Searches for "-qf --cached --ignore-unmatch" rather than the fuller "rm -qf --cached
+  # --ignore-unmatch" on purpose: this file's own hygiene tests, further down, watch for the
+  # deleting word that starts this phrase, followed on the same line by the variable this test
+  # reads from — as a sign of a test that might delete this real file — and a grep SEARCH STRING
+  # that merely contains that same word would trip that guard even though this line only reads the
+  # move-ledgers file, never writes to it. Dropping that one word off the front keeps this test
+  # working under those checks without weakening what it confirms: "-qf --cached --ignore-unmatch"
+  # is still the exact, distinctive substring of the fixed command.
+  run grep -c -- '-qf --cached --ignore-unmatch' "$MOVE_LEDGERS_MD"
+  [ "$output" -ge 2 ]
+}
+
 @test "git: an ignored legacy root file passes the clean check but is not tracked" {
   # Proves the fact finding 2's fix depends on: "git status --porcelain" does not list an ignored
   # file at all, so the command's clean-tree check cannot see it — but "git mv" (and "git
@@ -372,6 +394,48 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
   [ "$(cat "$repo/FEATURES.md")" = v1 ]
   [ ! -e "$repo/.dev-team" ]
   [ -z "$(cd "$repo" && git status --porcelain --untracked-files=all)" ]
+}
+
+# Fault fixed (round-4 stand-in verification, finding N1): commands/dev-team-move-ledgers.md point
+# 6's manual-recovery text used to give "git rm --cached --ignore-unmatch -- <path>" with no "-f" —
+# the one recovery command a person is handed, for exactly the case (something else changed the
+# repo, so the automatic undo refuses) where a moved file's stamp write is most likely to have
+# reached only partway. Point 4's own explanation of why "-f" is needed was also narrower than the
+# truth: it named only a HALF-written stamp. The two tests below prove the wider fact the fixed
+# text now relies on: after "git mv", the index keeps git mv's PRE-STAMP copy of a moved file right
+# up until the final "git add" replaces it — so once step 6 has written anything to that file,
+# whether the write finished cleanly or died partway, the index no longer matches both the file on
+# disk and HEAD, and a plain "git rm --cached" refuses rather than risk discarding an edit.
+
+@test "git: git rm --cached refuses a FULLY stamped moved file without -f, and succeeds with -f" {
+  repo="$SCRATCH/repo"
+  mkdir -p "$repo"
+  ( cd "$repo" && git init -q && git config user.email t@t.example && git config user.name t \
+    && printf 'v1\n' > FEATURES.md && git add FEATURES.md && git commit -qm base )
+  ( cd "$repo" && mkdir .dev-team && git mv FEATURES.md .dev-team/FEATURES.md \
+    && printf '<!-- dev-team: ledger=features schema=1.0 -->\nv1\n' > .dev-team/FEATURES.md )
+  [ "$(cd "$repo" && git status --porcelain)" = "RM FEATURES.md -> .dev-team/FEATURES.md" ]
+  run bash -c "cd '$repo' && git rm --cached --ignore-unmatch -- .dev-team/FEATURES.md"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"use -f to force removal"* ]]
+  # Nothing was removed by the refused attempt — the rename is still staged exactly as before.
+  [ "$(cd "$repo" && git status --porcelain)" = "RM FEATURES.md -> .dev-team/FEATURES.md" ]
+  run bash -c "cd '$repo' && git rm -qf --cached --ignore-unmatch -- .dev-team/FEATURES.md"
+  [ "$status" -eq 0 ]
+}
+
+@test "git: git rm --cached refuses a HALF-WRITTEN stamp on a moved file without -f, and succeeds with -f" {
+  repo="$SCRATCH/repo"
+  mkdir -p "$repo"
+  ( cd "$repo" && git init -q && git config user.email t@t.example && git config user.name t \
+    && printf 'v1\n' > FEATURES.md && git add FEATURES.md && git commit -qm base )
+  ( cd "$repo" && mkdir .dev-team && git mv FEATURES.md .dev-team/FEATURES.md \
+    && printf 'half' > .dev-team/FEATURES.md )
+  run bash -c "cd '$repo' && git rm --cached --ignore-unmatch -- .dev-team/FEATURES.md"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"use -f to force removal"* ]]
+  run bash -c "cd '$repo' && git rm -qf --cached --ignore-unmatch -- .dev-team/FEATURES.md"
+  [ "$status" -eq 0 ]
 }
 
 @test "git: ignored untracked config.yml is refused by git add, tracked one is not" {
@@ -790,12 +854,28 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
   [ "$status" -eq 0 ]
 }
 
-@test "guard-ledgers: a relative ledger name from a subfolder is not the top-level file" {
+@test "guard-ledgers: a subfolder session's own relative ledger name is now protected too (round-4 stand-in verification, finding B)" {
+  # Fault fixed: this test used to pin exit 0, on the reasoning that only the git TOP folder's
+  # SECURITY.md is anyone's ledger, so "SECURITY.md" typed from "src" (really "src/SECURITY.md")
+  # was nobody's business to protect. But the section further below this one, and the hook's own
+  # header comment, establish something this test used to ignore: every skill in this plugin
+  # writes ".dev-team/<name>" RELATIVE to the session's own working folder, not the git top. So a
+  # stale instruction telling a scribe to "append the findings to SECURITY.md" lands on
+  # "src/SECURITY.md" — before v1.5.0 that genuinely was where a subfolder session's ledger went,
+  # and today it may be that package's own security policy or feature list. The hook before fix
+  # round 3 (commit f58a08a, where the project root WAS taken to be the session's cwd) refused
+  # exactly this write; round 3 deliberately allowed it (this test, until now); round 4 kept that
+  # gap open even while starting to treat "src/.dev-team/" as the session's own plugin folder for
+  # everything else. See hooks/guard-ledgers.sh, Rule 2, "why ADDITIVE (both places)", for why the
+  # fix protects BOTH the top-level names and the session folder's own names, rather than picking
+  # one: the written documents and the skills disagree about which one is really "the top level",
+  # and protecting both is correct whichever way that question is eventually settled by the owner.
   git init -q "$SCRATCH"
   s="$(cd "$SCRATCH" && pwd)"
   mkdir -p "$s/src" "$s/.dev-team/loop.lock"
   run run_ledger_guard "$s/src" '{"cwd":"'"$s"'/src","tool_name":"Edit","tool_input":{"file_path":"SECURITY.md","new_string":"F-001"}}'
-  [ "$status" -eq 0 ]
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"dev-team guard"* ]]
 }
 
 @test "guard-ledgers: outside git the hook falls back to cwd as the top folder (documented limit)" {
@@ -935,6 +1015,114 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
     [[ "$stderr" == *"dev-team guard"* ]]
     [[ "$stderr" != *"unbound variable"* ]]
   fi
+}
+
+# ---------------------------------------------------------------------------
+# hooks/guard-ledgers.sh — Rule 2 also protects a subfolder session's OWN top-level ledger names
+# (round-4 stand-in verification, finding B)
+# ---------------------------------------------------------------------------
+# Fault fixed: the section above this one (finding 5) and the round-4 section before it fixed how
+# the hook finds .dev-team/, config.yml and loop.lock/ from a subfolder session — but neither one
+# touched Rule 2's own list of PROTECTED NAMES, which still matched only the seven ledger names at
+# the git TOP folder. So the flipped test just above this section used to pin exit 0 for exactly
+# the failure this whole change exists to stop, one folder down: a stale instruction that appends
+# findings to a RELATIVE "SECURITY.md" from a subfolder session lands on that subfolder's own file,
+# and Rule 2 never fired for it, even with the subfolder's own loop.lock/ present and genuinely
+# active. Rule 2 now ALSO matches the seven ledger names sitting directly inside the session's own
+# subfolder — additive to the top-level list, never instead of it (see the hook's own Rule 2 code,
+# "why ADDITIVE", for the reasoning) — but deliberately NOT "<sub>/.github/security.md" or
+# "<sub>/docs/security.md" (GitHub only ever reads a security policy from the repository's top, its
+# .github/, or its docs/ — never a subfolder's own copies of those, and this plugin never wrote a
+# ledger there either), and NOT anything deeper than the subfolder's own top level (none of the
+# seven names contains a "/", so a path like "src/deep/SECURITY.md" can never match). Each test
+# below builds its own throwaway git repository under $SCRATCH with a "src" subfolder, the same
+# convention the sections above use.
+
+@test "guard-ledgers: the subfolder's own SECURITY.md is protected with the lock ONLY in the session's own .dev-team/" {
+  git init -q "$SCRATCH"
+  s="$(cd "$SCRATCH" && pwd)"
+  mkdir -p "$s/src/.dev-team/loop.lock"
+  run run_ledger_guard "$s/src" '{"cwd":"'"$s"'/src","tool_name":"Edit","tool_input":{"file_path":"SECURITY.md","new_string":"F-001 fixed"}}'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"dev-team guard"* ]]
+}
+
+@test "guard-ledgers: the subfolder's own SECURITY.md is protected by its absolute path too" {
+  git init -q "$SCRATCH"
+  s="$(cd "$SCRATCH" && pwd)"
+  mkdir -p "$s/src" "$s/.dev-team/loop.lock"
+  run run_ledger_guard "$s/src" '{"cwd":"'"$s"'/src","tool_name":"Edit","tool_input":{"file_path":"'"$s"'/src/SECURITY.md","new_string":"F-001 fixed"}}'
+  [ "$status" -eq 2 ]
+}
+
+@test "guard-ledgers: the subfolder's own FEATURES.md is protected the same way" {
+  git init -q "$SCRATCH"
+  s="$(cd "$SCRATCH" && pwd)"
+  mkdir -p "$s/src" "$s/.dev-team/loop.lock"
+  run run_ledger_guard "$s/src" '{"cwd":"'"$s"'/src","tool_name":"Edit","tool_input":{"file_path":"FEATURES.md","new_string":"FG-001 done"}}'
+  [ "$status" -eq 2 ]
+}
+
+@test "guard-ledgers: a path one level below the subfolder is NOT matched (control)" {
+  # Only the session folder's OWN top-level names are protected. None of the seven names contains
+  # a "/", so "cut the sub prefix, compare what is left" can never match anything deeper.
+  git init -q "$SCRATCH"
+  s="$(cd "$SCRATCH" && pwd)"
+  mkdir -p "$s/src" "$s/.dev-team/loop.lock"
+  run run_ledger_guard "$s/src" '{"cwd":"'"$s"'/src","tool_name":"Edit","tool_input":{"file_path":"deep/SECURITY.md","new_string":"F-001 fixed"}}'
+  [ "$status" -eq 0 ]
+}
+
+@test "guard-ledgers: the subfolder's own .github/ and docs/ SECURITY.md are NOT matched (control)" {
+  # Deliberately excluded (unlike the top-level list, which DOES cover .github/ and docs/): GitHub
+  # only reads a repository's security policy from the repository's top, its .github/, or its
+  # docs/ — never a subfolder's .github/ or docs/ — and this plugin never wrote a ledger there
+  # either, so matching them would widen the rule without guarding against a real mistake.
+  git init -q "$SCRATCH"
+  s="$(cd "$SCRATCH" && pwd)"
+  mkdir -p "$s/src" "$s/.dev-team/loop.lock"
+  run run_ledger_guard "$s/src" '{"cwd":"'"$s"'/src","tool_name":"Edit","tool_input":{"file_path":".github/SECURITY.md","new_string":"F-001 fixed"}}'
+  [ "$status" -eq 0 ]
+  run run_ledger_guard "$s/src" '{"cwd":"'"$s"'/src","tool_name":"Edit","tool_input":{"file_path":"docs/SECURITY.md","new_string":"F-001 fixed"}}'
+  [ "$status" -eq 0 ]
+}
+
+@test "guard-ledgers: with no lock and no guard setting anywhere, the subfolder's own SECURITY.md is not blocked" {
+  git init -q "$SCRATCH"
+  s="$(cd "$SCRATCH" && pwd)"
+  mkdir -p "$s/src"
+  run run_ledger_guard "$s/src" '{"cwd":"'"$s"'/src","tool_name":"Edit","tool_input":{"file_path":"'"$s"'/src/SECURITY.md","new_string":"F-001 fixed"}}'
+  [ "$status" -eq 0 ]
+}
+
+@test "guard-ledgers: a subfolder named with a glob character is matched literally, never as a wildcard" {
+  # $sub is quoted both where the hook tests it and where it cuts the prefix off, so a folder
+  # literally named "s*" protects only a path that really starts with "s*/" — it never widens into
+  # a pattern that would also catch an unrelated sibling folder such as "sx".
+  git init -q "$SCRATCH"
+  s="$(cd "$SCRATCH" && pwd)"
+  mkdir -p "$s/s*/.dev-team/loop.lock" "$s/sx"
+  run run_ledger_guard "$s/s*" '{"cwd":"'"$s"'/s*","tool_name":"Edit","tool_input":{"file_path":"'"$s"'/sx/SECURITY.md","new_string":"F-001 fixed"}}'
+  [ "$status" -eq 0 ]
+  run run_ledger_guard "$s/s*" '{"cwd":"'"$s"'/s*","tool_name":"Edit","tool_input":{"file_path":"'"$s"'/s*/SECURITY.md","new_string":"F-001 fixed"}}'
+  [ "$status" -eq 2 ]
+}
+
+@test "guard-ledgers: guard: off in the subfolder's own config.yml also clears the subfolder's own ledger-name protection" {
+  git init -q "$SCRATCH"
+  s="$(cd "$SCRATCH" && pwd)"
+  mkdir -p "$s/src/.dev-team/loop.lock"
+  printf 'guard: off\n' > "$s/src/.dev-team/config.yml"
+  run run_ledger_guard "$s/src" '{"cwd":"'"$s"'/src","tool_name":"Edit","tool_input":{"file_path":"SECURITY.md","new_string":"F-001 fixed"}}'
+  [ "$status" -eq 0 ]
+}
+
+@test "guard-ledgers: a plain edit to the subfolder's own SECURITY.md, with no marker and no record id, is still allowed" {
+  git init -q "$SCRATCH"
+  s="$(cd "$SCRATCH" && pwd)"
+  mkdir -p "$s/src" "$s/.dev-team/loop.lock"
+  run run_ledger_guard "$s/src" '{"cwd":"'"$s"'/src","tool_name":"Edit","tool_input":{"file_path":"SECURITY.md","new_string":"our own policy text, no ids here"}}'
+  [ "$status" -eq 0 ]
 }
 
 # ---------------------------------------------------------------------------
@@ -1103,6 +1291,28 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
   [ "$status" -eq 0 ]
 }
 
+# Fault fixed (round-4 stand-in verification, finding A): id_pattern used to require EXACTLY three
+# digits followed by a word boundary right after the third one, so a fourth digit broke the match —
+# "F-1000" walked straight past Rule 2 while "F-999" was refused on the very same edit. Nothing
+# caps a project's record counter at 999, ids are never reused, and the verdict schema already
+# allows "at least three digits" (^V-[0-9]{3,}$, see schemas/verdict.schema.json). The pattern now
+# uses "{3,}" — three OR MORE digits — so it agrees with the schema.
+@test "guard-ledgers: a four-digit record id (F-1000) is caught the same as a three-digit one" {
+  mkdir -p "$SCRATCH/.dev-team/loop.lock"
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Edit","tool_input":{"file_path":"SECURITY.md","new_string":"F-1000 fixed"}}'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"dev-team guard"* ]]
+}
+
+@test "guard-ledgers: a two-digit id (F-12) still does not match, pinning the pattern's lower bound" {
+  # The plugin always zero-pads its own ids to at least three digits, so a two-digit form like this
+  # one is far more likely to be a person's own text (a version number, a step count) than one of
+  # this plugin's own record ids. Deliberately NOT widened along with the fix above.
+  mkdir -p "$SCRATCH/.dev-team/loop.lock"
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Edit","tool_input":{"file_path":"SECURITY.md","new_string":"F-12 fixed"}}'
+  [ "$status" -eq 0 ]
+}
+
 # ---------------------------------------------------------------------------
 # hooks/check-update.sh
 # ---------------------------------------------------------------------------
@@ -1171,19 +1381,31 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
 }
 
 # ---------------------------------------------------------------------------
-# schemas/verdict.schema.json — the three protocol-invariant "allOf" rules, and
+# schemas/verdict.schema.json — the four protocol-invariant "allOf" rules, and
 # scripts/check-verdict.sh — the invariants JSON Schema itself cannot express
-# (issue #41, Codex round 3, findings 12 and 13)
+# (issue #41, Codex round 3, findings 12 and 13; round-4 stand-in verification, finding C)
 # ---------------------------------------------------------------------------
 # Before this fix the schema accepted verdict shapes verdict-and-report-protocol.md's own "Overall
 # verdict rule" already calls impossible — e.g. overall PASS while the integration check failed, or
-# overall PASS with a critical FAILED claim. The three fixtures below (already validated by hand
-# against both tools — see the builder's report for issue #41, finding 12) each break exactly one of
-# the three new "allOf" rules; the schema tests skip (never fail) when check-jsonschema is not
+# overall PASS with a critical FAILED claim. The fixtures below (already validated by hand against
+# both tools — see the builders' reports for issue #41, findings 12 and C) each break exactly one
+# of the four "allOf" rules; the schema tests skip (never fail) when check-jsonschema is not
 # installed, matching the pattern the two tests above already use. check-verdict.sh checks four
 # further invariants no JSON Schema "if/then" can express at all (counting across the claims array,
 # comparing one claim's field against another) — those tests skip when "jq" is missing, since the
 # script itself needs it to run.
+#
+# Finding C (round-4 stand-in verification): the first three rules only ever pushed the verdict
+# TOWARDS FAIL (integration failed, or a critical claim FAILED) — nothing stopped a producer
+# writing "overall": "FAIL" on its own with NEITHER cause true, which the protocol calls just as
+# impossible as a PASS with a failed integration check (verdict-and-report-protocol.md, "Overall
+# verdict rule": "FAIL — any critical done-criterion / feature / security claim FAILED, or the
+# integration check failed"). A fourth "allOf" rule now requires a FAIL verdict to show one of
+# those two causes elsewhere in the file. The two new tests below use the two new fixtures: one
+# FAIL with neither cause (must be rejected), and one FAIL caused only by a failed integration
+# check with every claim VERIFIED (must still validate — the second branch of the new rule's
+# "anyOf", otherwise untested by the pre-existing verdict.valid-fail-critical-failed.json fixture,
+# whose own cause is a critical FAILED claim).
 
 @test "verdict-schema: PASS with failed integration is rejected" {
   command -v check-jsonschema >/dev/null 2>&1 || skip "check-jsonschema not installed"
@@ -1212,6 +1434,21 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
 @test "verdict-schema: FAIL with a critical FAILED claim validates" {
   command -v check-jsonschema >/dev/null 2>&1 || skip "check-jsonschema not installed"
   run check-jsonschema --schemafile "$REPO_ROOT/schemas/verdict.schema.json" "$REPO_ROOT/tests/fixtures/verdict.valid-fail-critical-failed.json"
+  [ "$status" -eq 0 ]
+}
+
+@test "verdict-schema: FAIL with no cause (neither a failed integration check nor a critical FAILED claim) is rejected" {
+  command -v check-jsonschema >/dev/null 2>&1 || skip "check-jsonschema not installed"
+  run check-jsonschema --schemafile "$REPO_ROOT/schemas/verdict.schema.json" "$REPO_ROOT/tests/fixtures/verdict.invalid-fail-without-cause.json"
+  [ "$status" -ne 0 ]
+}
+
+@test "verdict-schema: FAIL caused only by a failed integration check, with no FAILED claim, still validates" {
+  # Pins the second branch of the new rule's "anyOf" — verdict.valid-fail-critical-failed.json
+  # already pins the first branch (a critical FAILED claim), so without this fixture a FAIL caused
+  # only by integration failure would be untested.
+  command -v check-jsonschema >/dev/null 2>&1 || skip "check-jsonschema not installed"
+  run check-jsonschema --schemafile "$REPO_ROOT/schemas/verdict.schema.json" "$REPO_ROOT/tests/fixtures/verdict.valid-fail-integration-failed.json"
   [ "$status" -eq 0 ]
 }
 
@@ -1267,6 +1504,17 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
   [ "$status" -eq 1 ]
 }
 
+@test "check-verdict: the FAIL-with-no-cause fixture still passes check-verdict.sh's own rules (only the schema rejects it)" {
+  # Proves finding C's fixture is a well-formed, self-consistent verdict by check-verdict.sh's own
+  # four counting rules — nothing here is broken about it, its claims list length, counts and ids
+  # all agree with each other. The schema is the only thing that calls it impossible, because it is
+  # the only place the "overall FAIL needs a cause" rule lives (see the verdict-schema tests above).
+  command -v jq >/dev/null 2>&1 || skip "jq not installed"
+  run bash "$REPO_ROOT/scripts/check-verdict.sh" "$REPO_ROOT/tests/fixtures/verdict.invalid-fail-without-cause.json"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"VERDICT-CHECK OK"* ]]
+}
+
 @test "check-verdict: invalid JSON is refused with exit 2, matching the header's own definition" {
   # Round-4 stand-in verification: the header (see the script's own comment, "Exit codes") already
   # said exit 2 covers "the file is not valid JSON" — nothing was checked — but the code used to
@@ -1276,6 +1524,52 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
   command -v jq >/dev/null 2>&1 || skip "jq not installed"
   printf '%s' '{not json' > "$SCRATCH/bad.json"
   run bash "$REPO_ROOT/scripts/check-verdict.sh" "$SCRATCH/bad.json"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"not valid JSON"* ]]
+}
+
+# Fault fixed (round-4 stand-in verification, finding N2): the validity test above used to be
+# "jq empty", which only checks that its input parses at all and then discards whatever it parsed
+# to — it does not care whether the input was empty, whitespace-only, or held several JSON values
+# back to back, so all three of those returned 0 from "jq empty" and went on to fail all eight rule
+# checks below, exiting 1 ("checked, and it failed") when the true state was "nothing was checked
+# at all". An interrupted write that leaves .dev-team/verdict.json empty is exactly the ordinary
+# case this let slip through. The test is now "jq -s -e 'length == 1 and (.[0] | type == \"object\")'",
+# which slurps the whole file into an array first: empty or whitespace-only input slurps to a
+# zero-length array (rejected), and two values back to back slurp to a two-element array (rejected)
+# — both now correctly refused with exit 2 rather than silently run through the rules below.
+@test "check-verdict: a zero-byte file is refused with exit 2, not run through the rule checks" {
+  command -v jq >/dev/null 2>&1 || skip "jq not installed"
+  printf '' > "$SCRATCH/empty.json"
+  run bash "$REPO_ROOT/scripts/check-verdict.sh" "$SCRATCH/empty.json"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"not valid JSON"* ]]
+}
+
+@test "check-verdict: a whitespace-only file is refused with exit 2" {
+  command -v jq >/dev/null 2>&1 || skip "jq not installed"
+  printf '   \n\t\n' > "$SCRATCH/ws.json"
+  run bash "$REPO_ROOT/scripts/check-verdict.sh" "$SCRATCH/ws.json"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"not valid JSON"* ]]
+}
+
+@test "check-verdict: a file holding two JSON values back to back is refused with exit 2, not judged as the last one" {
+  command -v jq >/dev/null 2>&1 || skip "jq not installed"
+  printf '{} {}' > "$SCRATCH/two.json"
+  run bash "$REPO_ROOT/scripts/check-verdict.sh" "$SCRATCH/two.json"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"not valid JSON"* ]]
+}
+
+@test "check-verdict: a bare JSON scalar (42) is refused with exit 2, not treated as a rule failure" {
+  # "42" is syntactically valid JSON by itself, but every rule below reads a FIELD off the top
+  # level (.checked, .claims, and so on) — a bare number has no fields, so it cannot be checked any
+  # more than an empty file can. The header's own exit-code paragraph was updated to say so, rather
+  # than leaving a bare scalar to exit 1 as though it were an object that failed every rule.
+  command -v jq >/dev/null 2>&1 || skip "jq not installed"
+  printf '42' > "$SCRATCH/scalar.json"
+  run bash "$REPO_ROOT/scripts/check-verdict.sh" "$SCRATCH/scalar.json"
   [ "$status" -eq 2 ]
   [[ "$output" == *"not valid JSON"* ]]
 }
@@ -1311,14 +1605,16 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
 }
 
 # ---------------------------------------------------------------------------
-# this file's own hygiene (issue #41, Codex round 3, finding 11; broadened round 4)
+# this file's own hygiene (issue #41, Codex round 3, finding 11; broadened round 4; broadened again
+# by round-4 stand-in verification, finding N3)
 # ---------------------------------------------------------------------------
-# Pins the fix for finding 11: no test in this file may delete anything under $REPO_ROOT, or write a
-# file directly into it. This is what makes make_tree() (near the top of this file) load-bearing
-# rather than optional — a future test added carelessly, in the old style, would delete or overwrite
-# a real path in this repository on every run, including a contributor's own untracked files. Both
-# patterns are split with string concatenation / a mid-word escape so that this test's OWN source
-# lines are never mistaken for what it is checking for.
+# Pins the fix for finding 11: no test in this file may delete anything under $REPO_ROOT, write a
+# file directly into it, change it with git or sed, or cd into it except in the two places already
+# proven read-only. This is what makes make_tree() (near the top of this file) load-bearing rather
+# than optional — a future test added carelessly, in the old style, would delete or overwrite a real
+# path in this repository on every run, including a contributor's own untracked files. Every pattern
+# below is split with string concatenation / a mid-word escape so that this test's OWN source lines
+# are never mistaken for what it is checking for.
 #
 # Fault fixed (round 4 stand-in verification): each of the two patterns used to match only ONE
 # exact shape, spelled out letter for letter, and nothing resembling it. The delete pattern matched
@@ -1336,28 +1632,110 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
 # original two-flag deletion was caught; the other six passed both tests unnoticed. See the builder's
 # report for issue #41, round 4, for that run's full output.
 #
-# The two patterns below now watch six command words instead of one — a deletion, a new directory, a
-# copy, a rename or move, a append-safe write, and touching or symlinking a path — each followed
-# later on the same line by either form of the repository-root variable, brace or no brace, or by the
-# separate variable naming the move-ledgers file; and, in the write pattern, either redirect operator
-# followed by an optional quote and either variable, brace or no brace. Between the command word and
-# the variable, only a line that starts a different instruction outright — a piped-to command, a
-# backgrounded one, or a second statement after a semicolon — stops the match; nothing else does, so a
-# path built up with extra flags or an extra path segment in between is still caught. A read-only
-# use of the repository-root variable is deliberately NOT caught, and needs no separate allow-list
-# entry today: reading the tree to build the throwaway copy in make_tree() (near the top of this
-# file) uses none of the six watched command words. If a genuinely read-only line using one of those
-# six words ever is needed, allow-list that one line explicitly, with a comment saying why it is
-# safe, rather than loosening the pattern for everything.
+# Fault fixed again (round-4 stand-in verification, finding N3): the widened patterns above still
+# needed the WATCHED WORD to be followed LATER on the same line by the variable — so a line built
+# like "( cd <into the repository root> && rm -rf .claude/agents )" was missed entirely, because
+# the repository-root variable sits BEFORE "rm" there, not after it: the write names a path
+# relative to the working folder AFTER the cd, never spelling the variable itself on the same line
+# as the deleting word. That is exactly the subshell idiom this file already uses
+# for its own read-only git steps (see make_tree(), just below setup(), and the branch-hygiene test
+# further up), so it is also the shape most likely for a careless future test to copy. Separately,
+# the MOVE_LEDGERS_MD half of the delete pattern watched only "rm" (not the other five words), had
+# no brace-form support at all, and the command-word list had no LEFT boundary, so a comment ending
+# in a word like "platform" (which itself ends in the letters "rm") was wrongly flagged. And neither
+# "git" nor "sed" — both fully capable of changing a real file in the repository — were watched at
+# all. Reproduced with a fresh scratch copy of this file, outside the repository, with lines added
+# for the brace form of the move-ledgers-file variable, the cd-then-write subshell idiom, sed's
+# in-place flag, a git checkout of the repository-root variable, a path built through a third,
+# unwatched variable, and the "platform" comment; only the original shapes were caught, the rest
+# passed unnoticed. Fixed with four checks instead of two:
+#
+#   1. Deletion / creation / copy / move / append-write / touch-or-link, against EITHER variable,
+#      brace or no brace, now watching the SAME eight words on both branches (the six from before,
+#      plus "sed" and "git" — but see check 3 below for why those two are handled separately rather
+#      than added to this list outright) and anchored with "\b" so the word must start a real word,
+#      not merely end one embedded inside another ("platform" no longer matches). Between the word
+#      and the variable, only a pipe, an ampersand, or a semicolon stops the match — nothing else
+#      does, so extra flags or an extra path segment in between are still caught, and so is a
+#      command wrapped inside a quoted `bash -c "..."` string (the word can now be preceded by a
+#      quote character as well as by whitespace or a shell operator).
+#   2. Either redirect operator writing to either variable, brace or no brace on both (the same gap
+#      as check 1 — the old pattern's MOVE_LEDGERS_MD branch had no brace form).
+#   3. "git" and "sed" are watched SEPARATELY from check 1, not folded into its word list, because a
+#      plain word-boundary test on "git" or "sed" alone is far too broad: this file already reads
+#      the repository-root variable through several harmless git and sed uses that must stay legal
+#      — a "git -C" branch listing (read-only, twice, in the branch-hygiene test above), a "git
+#      ls-files" text search on the move-ledgers file's own contents (not a git command that
+#      touches the repository at all — the word "git" merely appears inside the quoted search
+#      pattern being grepped for), and a "sed -n" print-only extraction of the protocol's worked
+#      JSON example (no in-place flag, so nothing on disk is ever touched). Folding "git"/"sed"
+#      into check 1's list as originally proposed would have flagged all of those and broken this
+#      very file. Instead, check 3 requires ALL of: the word "git" together with one of a short list of
+#      git subcommands that actually change something (checkout, reset, clean, restore, apply,
+#      stash, merge, rebase, cherry-pick, revert, rm, mv, add, commit) — or the word "sed" together
+#      with the "-i" (in-place) flag — AND either variable, anywhere on the line, in any order (the
+#      three pieces are checked with three chained greps rather than one combined pattern, since
+#      order-independent "all of these appear somewhere" is awkward to express as a single regex and
+#      easy to get subtly wrong).
+#   4. No line may "cd" into $REPO_ROOT at all, except the two lines already proven read-only by
+#      their OWN tests — the tar copy in make_tree() (only ever reads, to build $TREE) and the
+#      branch-hygiene test above (asserts the branch list is unchanged before and after) — named
+#      here by their exact current text. This is what catches the "cd then write with no $REPO_ROOT
+#      in sight" idiom that no amount of widening checks 1-3 could ever catch on their own, since
+#      those checks look for the variable NEAR the command word, and this idiom never puts them
+#      together on one line at all.
+#
+# What is still NOT caught, on purpose, and needs saying plainly rather than assuming a reader will
+# notice: a path reached through a THIRD variable — for example "x=\"$REPO_ROOT/.claude/agents\";
+# mkdir -p \"\$x\"" — is invisible to every check above, because none of them ever look at \$x. A
+# read-only use of either variable through a command word not on any of these lists (for instance
+# "cat", or the "git ls-files -c" text search named above) needs no separate allow-list entry. If a
+# genuinely read-only line using one of the watched words or the "cd" shape is ever needed, allow-
+# list that one line explicitly, with a comment saying why it is safe, rather than loosening a
+# pattern for everything.
 
-@test "scripts.bats: no test deletes anything inside the real repository" {
-  pat='(rm|mkdir|cp|mv|tee|touch|ln)\b[^|&;]*\$\{?REPO''_ROOT|\brm\b[^|&;]*\$MOVE_LEDGERS''_MD'
+@test "scripts.bats: no test deletes, creates, copies, moves, or touches a path in the real repository" {
+  pat='\b(rm|mkdir|cp|mv|tee|touch|ln)\b[^|&;]*\$\{?(REPO''_ROOT|MOVE_LEDGERS''_MD)\b'
   run grep -nE "$pat" "$BATS_TEST_FILENAME"
   [ "$status" -eq 1 ]
 }
 
-@test "scripts.bats: no test writes a file directly into the real repository" {
-  pat='>>?[[:space:]]*"?\$\{?REPO''_ROOT|>>?[[:space:]]*"?\$MOVE_LEDGERS''_MD'
+@test "scripts.bats: no test writes a file directly into the real repository with a redirect" {
+  pat='>>?[[:space:]]*"?\$\{?(REPO''_ROOT|MOVE_LEDGERS''_MD)\b'
   run grep -nE "$pat" "$BATS_TEST_FILENAME"
   [ "$status" -eq 1 ]
+}
+
+@test "scripts.bats: no test uses git or sed to change a path in the real repository" {
+  # Chained greps, not one combined pattern — see check 3 in the header comment above for why "git"
+  # or "sed" alone would be far too broad a word to watch on its own in this file.
+  gitpat='\b(checkout|reset|clean|restore|apply|stash|merge|rebase|cherry-pick|revert|rm|mv|add|commit)\b'
+  varpat='\$\{?(REPO''_ROOT|MOVE_LEDGERS''_MD)\b'
+  # A pipeline's own exit status is its LAST command's — a "no match" grep exits 1, so an all-clear
+  # file makes every stage exit 1 in turn and the whole pipeline exits 1 too, same as the other
+  # single-pattern tests in this section.
+  run bash -c 'grep -nE "\bgit\b" "$1" | grep -E "$2" | grep -E "$3"' _ \
+    "$BATS_TEST_FILENAME" "$gitpat" "$varpat"
+  [ "$status" -eq 1 ]
+  run bash -c 'grep -nE "\bsed\b" "$1" | grep -E -- "-i\b" | grep -E "$2"' _ \
+    "$BATS_TEST_FILENAME" "$varpat"
+  [ "$status" -eq 1 ]
+}
+
+@test "scripts.bats: no test cd's into the real repository, except the two lines already proven read-only" {
+  pat='\bcd\b[[:space:]]+["'"'"']?\$\{?REPO''_ROOT\b'
+  # Named by their exact current text (not by line number, which a later edit could change): the
+  # tar copy in make_tree() only ever reads the repository to build $TREE, and the branch-hygiene
+  # test's own assertions (just above) prove the branch list is unchanged before and after.
+  safe1='  ( cd "$REPO''_ROOT" && tar --exclude=.git -cf - . ) | ( cd "$TREE" && tar -xf - )'
+  safe2='  run bash -c "cd '"'"'$REPO''_ROOT'"'"' && bash scripts/branch-hygiene.sh --no-fetch"'
+  run bash -c '
+    grep -nE "$1" "$2" | while IFS= read -r hit; do
+      line="${hit#*:}"
+      [ "$line" = "$3" ] && continue
+      [ "$line" = "$4" ] && continue
+      printf "%s\n" "$hit"
+    done
+  ' _ "$pat" "$BATS_TEST_FILENAME" "$safe1" "$safe2"
+  [ -z "$output" ]
 }
