@@ -266,6 +266,25 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
           start another Codex run until that log shows `CODEX EXIT`. If it finished, read the `.md`.
           If it failed, read the log tail for the cause, then retry once (next visible model by
           priority, or wait for a stated reset).
+        - **02:51 — CODEX REVIEW ROUND 3 COMPLETED** (gpt-5.6-sol, high effort, exit 0). This is the
+          first real cross-system review of #41. **14 findings (6 high, 5 medium, 3 low).** Saved at
+          `.claude/plans/ledger-file-clashes/codex-review-3.md`, and #41 has been told.
+          - High: move-ledgers mixed-file misclassification (1); a half-done move from an ignored or
+            untracked source (2); `reset --hard` rollback can erase unrelated work (3); hook bypass
+            when cwd is a repo subdirectory (5); the ownership rule applies line-2 markers to
+            autopilot.json and .gitignore (8); bats cleanup deletes `.claude/agents` (11).
+          - Medium: ignored config.yml on the no-move decline path (4); symlinks (6); legacy marker
+            missing from Rule 1 (7); README bare ledger destinations plus audit blind spot (9);
+            verdict schema allows impossible verdicts (12).
+          - Low: check E too broad (10); critical-DRIFTED schema description (13); `guard: auto`
+            comment (14).
+          - Codex could not run bats (sandbox), so the lead must.
+          - **Now:** workflow `verify-codex-review-3` — three Opus verifiers (move-ledgers 1–4; hook
+            5–7; rules, README, audit, tests and schema 8–14), read-only. Each confirms or refutes,
+            marks introduced vs pre-existing, and writes a fix spec. **Then:** Sonnet builders fix
+            the confirmed findings; rerun every check; commit stating "Codex round 3 findings fixed,
+            re-review pending"; run ONE more Codex review (use `-m gpt-5.6-sol` if gpt-6-astra is still
+            at capacity; mind the allowance).
         - **02:40 — plan saved and posted.** `.claude/plans/orchestrator-v2/plan.md` and
           `plan-critique.md` are committed (2d58278, all checks OK, tail matches the returned text
           byte for byte, secret scan clean), and #46 has a summary. The plan is DRAFT until the owner
