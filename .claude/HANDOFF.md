@@ -303,7 +303,19 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
             hook from a subfolder under bash 3.2 and 5. Read the move-ledgers rollback text carefully.
             Commit per builder with the review status. Then ONE more Codex review (gpt-5.6-sol if astra
             is still busy).
-        - **About 03:45 — fix round 3 finished and committed** (five commits: hook; move-ledgers;
+        - **03:29 — Codex review round 4 did NOT happen.** It started on gpt-5.6-sol (high effort,
+          read-only) and stopped at once: "You've hit your usage limit … try again at 7:33 AM". No
+          output was written.
+          - **Hand-over:** workflow `standin-verify-fix-round-3` — a fresh Fable reviewer checks that
+            each of the 14 round-3 findings is genuinely fixed and looks for new problems (the rollback,
+            --show-prefix edge cases, schema and checker, rule copies, audit E/G, scratch-tree tests),
+            and an Opus refuter challenges every claim. Read-only.
+          - **Codex retry:** one run booked for 07:38 on 14 September (CronCreate; this session only).
+            It uses gpt-5.6-sol and the prompt `codex-exec-prompt-4.md`. Update that prompt's "what is new"
+            header if the stand-in round adds commits.
+          - **Correction:** the fix round 3 entry below, the #41 comment and the commits said "about
+            03:45". The clock showed about 03:28 when they were committed.
+        - **About 03:28 (earlier written as 03:45) — fix round 3 finished and committed** (five commits: hook; move-ledgers;
           rules, docs, audit and schema; tests; the verification-record fix), pushed, #41 updated.
           - The lead reran every check before committing (all pass, including bats) and probed the
             hook from a subfolder by hand: 14 of 14 correct under bash 3.2 and 5.
