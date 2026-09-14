@@ -3,7 +3,7 @@
   "$id": "https://github.com/MWBMPartners/dev-team-plugin/schemas/verdict.schema.json",
   "title": "dev-team verdict.json",
   "description": "Shape of .dev-team/verdict.json, the machine-readable summary the dev-team-review skill writes alongside its human-readable .dev-team/VERIFICATION.md report (see skills/dev-team-review/references/verdict-and-report-protocol.md, 'VERIFICATION.md structure'). It exists so a CI step can gate a build on the review's outcome (exit non-zero on a FAIL verdict) without having to parse the markdown report. This file is JSON, which has no comment syntax of its own, so every field's reason for existing and who reads it is recorded here in its 'description' instead of in '//' comments that would make the file invalid JSON.",
-  "$comment": "File: schemas/verdict.schema.json. Validates tests/fixtures/verdict.sample.json (see tests/scripts.bats) and is meant to be run in CI against every verdict.json a dev-team-review run produces, using check-jsonschema (pip install check-jsonschema; see .github/workflows/plugin-audit.yml). Written for issue #41 (moving dev-team's own files into .dev-team/), which is also why the 'dev-team' marker field below exists on this ledger the same way it exists on every markdown one. Note on 'additionalProperties: false' just below: it is set on purpose, so that a field added under a new or misspelled name (e.g. 'verified_count' instead of 'verified') fails this check loudly and immediately, in CI, rather than being silently accepted and only noticed much later by a person reading the JSON by eye. A genuinely new field is added here, with its own description, in the same change that starts emitting it — this schema is not meant to be a ceiling on the format, only a guard against silent drift. The three 'allOf' rules below only reject verdict shapes that verdict-and-report-protocol.md's 'Overall verdict rule' already calls impossible (e.g. overall PASS while the integration check failed) — they are not a new, stricter format, just this schema catching a self-contradictory file that the old schema let through. Rules that JSON Schema cannot express — the claims list length matching 'checked', the five counts adding up to 'checked', each count matching the number of claims carrying that verdict, and claim ids being unique (JSON Schema's 'uniqueItems' compares whole objects, not one field of them) — are checked by scripts/check-verdict.sh, which must be run alongside this schema, not instead of it.",
+  "$comment": "File: schemas/verdict.schema.json. Validates tests/fixtures/verdict.sample.json (see tests/scripts.bats) and is meant to be run in CI against every verdict.json a dev-team-review run produces, using check-jsonschema (pip install check-jsonschema; see .github/workflows/plugin-audit.yml). Written for issue #41 (moving dev-team's own files into .dev-team/), which is also why the 'dev-team' marker field below exists on this ledger the same way it exists on every markdown one. Note on 'additionalProperties: false' just below: it is set on purpose, so that a field added under a new or misspelled name (e.g. 'verified_count' instead of 'verified') fails this check loudly and immediately, in CI, rather than being silently accepted and only noticed much later by a person reading the JSON by eye. A genuinely new field is added here, with its own description, in the same change that starts emitting it — this schema is not meant to be a ceiling on the format, only a guard against silent drift. The four 'allOf' rules below only reject verdict shapes that verdict-and-report-protocol.md's 'Overall verdict rule' already calls impossible (e.g. overall PASS while the integration check failed, or overall FAIL with no critical FAILED claim and a passing integration check) — they are not a new, stricter format, just this schema catching a self-contradictory file that the old schema let through. One thing they deliberately do NOT do: nothing here requires PASS_WITH_GAPS to actually contain a gap (a HOLLOW, DRIFTED, or non-critical FAILED claim). That is left unconstrained from below on purpose, because the protocol allows PASS_WITH_GAPS whenever nothing critical failed and the integration check passed — a review can carry a real gap of a kind this schema does not track at all (for example a shortfall noted only in the VERIFICATION.md prose), so a PASS_WITH_GAPS verdict with no matching per-claim entry is not a shape the protocol calls impossible, and this schema only rejects shapes the protocol calls impossible. Rules that JSON Schema cannot express — the claims list length matching 'checked', the five counts adding up to 'checked', each count matching the number of claims carrying that verdict, and claim ids being unique (JSON Schema's 'uniqueItems' compares whole objects, not one field of them) — are checked by scripts/check-verdict.sh, which must be run alongside this schema, not instead of it.",
   "type": "object",
   "required": [
     "dev-team",
@@ -159,6 +159,35 @@
             }
           }
         }
+      }
+    },
+    {
+      "$comment": "FAIL must have a cause. The first three rules above only ever push the verdict TOWARDS FAIL (integration failed, or a critical claim FAILED); nothing stopped a producer writing FAIL on its own with neither cause true, which is exactly as impossible under the protocol as a PASS with a failed integration check. See verdict-and-report-protocol.md, 'Overall verdict rule': \"FAIL — any critical done-criterion / feature / security claim FAILED, or the integration check failed (app doesn't run / core task broken).\" So a FAIL verdict must show one of those two causes in the rest of the file.",
+      "if": {
+        "properties": { "overall": { "const": "FAIL" } },
+        "required": ["overall"]
+      },
+      "then": {
+        "anyOf": [
+          {
+            "properties": { "integration": { "const": "fail" } },
+            "required": ["integration"]
+          },
+          {
+            "properties": {
+              "claims": {
+                "contains": {
+                  "properties": {
+                    "verdict": { "const": "FAILED" },
+                    "severity": { "const": "critical" }
+                  },
+                  "required": ["verdict", "severity"]
+                }
+              }
+            },
+            "required": ["claims"]
+          }
+        ]
       }
     }
   ]

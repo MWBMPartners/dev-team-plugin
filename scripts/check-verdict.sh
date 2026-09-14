@@ -35,11 +35,17 @@
 # require that, and adding it here would be a silent design decision, not an enforcement of an
 # existing rule.
 #
-# Exit codes: 0 = every rule held ("VERDICT-CHECK OK" on stdout). 1 = the file is readable, valid
-# JSON, but fails one or more rules ("VERDICT-CHECK FAIL: <rule text>" lines on stderr, one per
-# failed rule). 2 = this script could not even attempt the checks — no argument, the file cannot be
-# read, the file is not valid JSON, or the "jq" tool is not on PATH. Exit 2 is a refusal, not a
-# pass: a checker that cannot run must never be silently treated as "nothing wrong was found".
+# Exit codes: 0 = every rule held ("VERDICT-CHECK OK" on stdout). 1 = the file is readable, holds
+# exactly one JSON object, but fails one or more rules ("VERDICT-CHECK FAIL: <rule text>" lines on
+# stderr, one per failed rule). 2 = this script could not even attempt the checks — no argument, the
+# file cannot be read, the file is empty or whitespace-only, the file is not valid JSON, the file
+# does not hold exactly one JSON value of type object (for example a bare number, a bare array, or
+# two JSON values run together in one file), or the "jq" tool is not on PATH. Exit 2 is a refusal,
+# not a pass: a checker that cannot run must never be silently treated as "nothing wrong was found".
+# A bare scalar such as "42" is, by itself, syntactically valid JSON — but this script's whole job
+# is to check a JSON *object*'s fields against each other (see "What it checks" above), so a file
+# that parses but is not an object cannot be checked either, and exits 2 for the same reason an
+# unreadable file does, not 1 (see the fault note further down, where this is enforced).
 set -uo pipefail
 
 note() { echo "VERDICT-CHECK FAIL: $*" >&2; }
@@ -61,16 +67,51 @@ if [ ! -r "$file" ]; then
   exit 2
 fi
 
-if ! jq empty "$file" >/dev/null 2>&1; then
-  # Invalid JSON means none of the four checks below can even run, so this is the same
-  # kind of "could not attempt the checks" case as a missing file or missing jq, not a
-  # checked-and-failed verdict. Round-3 verification found this line exiting 1 instead,
-  # which contradicted the exit-code table above (line 41 already listed "not valid
-  # JSON" under exit 2) — a caller that treats 1 as "checked, and it failed" would read
-  # a truncated verdict.json as a real failed review. Fixed by matching the header
-  # instead of changing the header to match the code, since exit 2 is the correct
-  # meaning: nothing was checked.
-  note "'$file' is not valid JSON"
+if ! jq -s -e 'length == 1 and (.[0] | type == "object")' "$file" >/dev/null 2>&1; then
+  # Invalid, empty, or multi-value JSON means none of the four checks below can even
+  # run, so this is the same kind of "could not attempt the checks" case as a missing
+  # file or missing jq, not a checked-and-failed verdict. Round-3 verification found
+  # this line exiting 1 instead of 2 for unparseable JSON, which contradicted the
+  # exit-code paragraph above — fixed at the time by testing with "jq empty" and
+  # exiting 2 when that failed.
+  #
+  # Round-4's stand-in review (finding N2) found that "jq empty" fixed only the
+  # unparseable case and quietly let three other bad inputs straight through to the
+  # eight rule checks below: a zero-byte file, a whitespace-only file, and a file
+  # holding more than one JSON value back to back (e.g. "{} {}"). jq's "empty" filter
+  # only checks that the input parses at all and then discards whatever it parsed to —
+  # it does not care how many values it found or what shape the last one was — so all
+  # three of those inputs make "jq empty" exit 0. The eight rule checks below then ran
+  # against nothing (or against the second of two objects), failed every one of them,
+  # and this script exited 1 with eight "VERDICT-CHECK FAIL" lines — read by a caller
+  # as "checked, and it failed badly", when the true state was "nothing was checked".
+  # An interrupted write that leaves .dev-team/verdict.json empty is exactly the
+  # ordinary case this let slip through.
+  #
+  # Fixed by slurping the whole file into a one-element-or-more JSON array with
+  # "jq -s" and requiring that array to have exactly one element, of type object:
+  #   - empty or whitespace-only input slurps to an empty array (length 0) — rejected.
+  #   - "{} {}" slurps to a two-element array (length 2) — rejected.
+  #   - "{not json" still fails to parse at all — jq itself errors — rejected.
+  #   - a bare scalar or array such as "42" or "[]" slurps to a one-element array, but
+  #     that element's type is not "object" — rejected. This is new: a plain "is it
+  #     valid JSON" test has no way to know the caller wanted an object specifically,
+  #     only whether what was written parses. Since this script's rules all read
+  #     fields off the top level (.checked, .claims, etc.), a file that parses but
+  #     is not an object cannot be checked any more than an empty file can, so it is
+  #     refused here rather than run through eight rule checks it cannot possibly
+  #     satisfy. The exit-code paragraph above was updated to say so, because that
+  #     paragraph and this check have to agree, or a caller reading only the header
+  #     would expect a bare "42" to reach exit 1 when it now reaches exit 2.
+  #   - a genuine single JSON object still slurps to a one-element array of type
+  #     object — accepted, and control passes to the eight rule checks as before.
+  #
+  # What this still cannot do: a file holding one JSON object followed by trailing
+  # garbage that jq's streaming parser treats as a second (invalid) value will also be
+  # rejected here, which is correct; but this check says nothing about whether that one
+  # object is the *right* shape (required fields, enum values) — that is still
+  # schemas/verdict.schema.json's job, run first, as the header above says.
+  note "'$file' is empty, not valid JSON, or not a single JSON object"
   exit 2
 fi
 
