@@ -104,10 +104,12 @@ reorganised its layout." sentence now PASSES the audit (it used to be asserted a
 ledger name sits on the line just before the phrase ("The documentarian keeps `` `PROJECT.md` ``" /
 "at the repo root.", on two separate lines) — and check F ("This file still uses
 `<!-- dev-team-schema: 1.0 -->` in one place." — the old marker text with no word "legacy" nearby).
-**Check G has no dedicated bats test yet** — it was added in the same round as this file's other
-fixes (issue #41, Codex round 3, finding 9), by a different builder working on the script itself,
-and adding G's own fault-injection test was assigned to a later round; until then, G's correctness
-rests on the same "passes on the clean repo" test as everything else in this script.
+**Check G** has two tests of its own, added in round 4 after a stand-in verification found it had
+shipped with none (it had been riding along only on the "passes on the clean repo" test, which would
+stay green even if a later edit broke G outright): one appends a `**Modes.**` line naming a bare
+ledger to a throwaway copy of `README.md` and confirms `LEDGER-PATHS FAIL: G:` fires; the other
+appends the identical line with the ledger named as `.dev-team/PROJECT.md` instead and confirms the
+audit stays clean.
 
 Fault found by a later reading of these tests: the two negative cases that used to exist here
 injected a single sentence — "The documentarian writes `` `PROJECT.md` `` at the repo root." — that
@@ -148,18 +150,40 @@ findings required, plus a handful of tests on the real `git` behaviour those ins
   the ignore check now names `config.yml`; a second confirms it skips paths that are already tracked
   (refusing those would be wrong — a tracked file accepts `git add` even when it matches an ignore
   pattern); a git-behaviour test proves both halves of that fact in one throwaway repo.
+- **Round-4 finding — a batch rollback aborts entirely if the list carries a path that never
+  existed** (the target of a `git mv` that itself failed, or, on every move, the move's own
+  `.dev-team/<name>` new path, which can never have existed at H0): the command now checks each
+  listed path against H0 (`git cat-file -e <H0>:<path>`) and restores or removes it on its own,
+  rather than naming every path in one `git restore`, so a single ill-fitting path can no longer
+  cancel the undo of the rest. A git-behaviour test reproduces the OLD batch failure first (one
+  `git restore` naming a never-existing `.dev-team/<name>` fails outright — "did not match", nothing
+  restored, not even the paths that would have worked alone) and then proves the per-path fix undoes
+  the same three paths cleanly.
+- **Round-4 finding — a stamp that fails partway made the rollback refuse for the wrong reason**: a
+  moved file's recorded blob id is taken right after `git mv` and only replaced once the marker stamp
+  in step 6 finishes; if that write fails partway, the command now clears the path's recorded id
+  before the rollback runs, so the "no id yet" exemption in point 3 covers it instead of a stale id
+  being compared against half-written content and refusing to undo anything. This is a text-only fix
+  (there is no separate script to run it against) — covered by reading the walk-through in the
+  command's own text, since the pinned git-behaviour test above already exercises the per-path
+  restore machinery point 3's fix depends on.
 
 ### `conventions.md` — the canonical ownership sentence (finding 8)
 
 One sentence — "Every record file the dev-team suite writes for itself lives in `.dev-team/`..." —
-is meant to read identically in `conventions.md` (its canonical home) and six other files that quote
-it. One test asserts the exact sentence appears, byte-for-byte, in exactly 7 files under `agents/`,
-`commands/` and `skills/`; that the sentence's old, too-broad wording ("Every file the dev-team suite
-writes for itself...", which read as covering `autopilot.json`, `config.yml`, `loop.lock/` and
-`.gitignore` too, none of which can carry a line-2 marker) is gone everywhere; and that the rule's
-own old phrase ("any file in the Shared artifacts table") survives only inside the one deliberate
-"*Earlier wording:*" footnote that explains, on purpose, why the rule was narrowed — never anywhere
-else, where it would read as a live instruction again.
+is meant to read identically in `conventions.md` (its canonical home) and eight other files that
+quote it (seven on a single unbroken line, plus two more that wrap it across several lines in their
+own source markdown). One test asserts the exact sentence appears, byte-for-byte, in exactly 7 files
+under `agents/`, `commands/` and `skills/`; that the sentence's old, too-broad wording ("Every file
+the dev-team suite writes for itself...", which read as covering `autopilot.json`, `config.yml`,
+`loop.lock/` and `.gitignore` too, none of which can carry a line-2 marker) is gone everywhere; and
+that the rule's own old phrase ("any file in the Shared artifacts table") survives only inside the
+one deliberate "*Earlier wording:*" footnote that explains, on purpose, why the rule was narrowed —
+never anywhere else, where it would read as a live instruction again. A second test (added round 4,
+after a stand-in verification found the first test structurally blind to these two files — a wrapped
+copy never matches a single-line literal search at all) joins each of `gap-scoring-rubric.md` and
+`migration-plan-protocol.md`'s lines with a single space before comparing, the same transformation a
+markdown renderer applies to a wrapped paragraph, and checks the sentence still matches word for word.
 
 ### `hooks/guard-ledgers.sh` — the ledger guard's test matrix
 
@@ -287,6 +311,39 @@ and the test matrix is split the same way:
   that `$SCRATCH` is not itself accidentally sitting inside some outer repository on the machine
   running the suite, and skips rather than passing for the wrong reason if it is.
 
+- **A session's OWN `.dev-team/` inside its subfolder (round-4 stand-in verification, new finding).**
+  Fault found by review: the subfolder fix just above went too far the other way. It counted only the
+  TOP folder's `.dev-team/` as `.dev-team/`, and read `config.yml`/`loop.lock/` only from the top
+  folder — but every skill in this plugin writes `.dev-team/<name>` relative to the SESSION folder,
+  and `/dev-team-config init` creates `config.yml` there too. So from `src` (a monorepo package, say),
+  the plugin's own correct write to `src/.dev-team/PROJECT.md` (absolute or relative) was refused,
+  telling the caller to write it under `.dev-team/` — where it already was — and `guard: off` written
+  into `src/.dev-team/config.yml` was ignored. The hook now also counts `<sub>/.dev-team/` as inside
+  `.dev-team/`, and reads `config.yml`/`loop.lock/` from BOTH the session folder and the top folder,
+  with `off` and "a lock is present" each winning from either place. Cases cover: the plugin's own
+  absolute and relative writes to the session folder's own `.dev-team/` are allowed; a harmful
+  top-level write from a subfolder with no session config file present is still denied (control);
+  `guard: off` in the session folder's own `config.yml` is honoured; `guard: off` in the session
+  folder wins over `guard: on` at the top when the two disagree; `guard: on` in the session folder's
+  config forces Rule 2 on with no lock file anywhere; `loop.lock/` present only in the session
+  folder still counts as an active run for the top-level file; a trailing slash on `cwd` (`"<repo>/
+  src/"`) does not defeat the top-folder match (a separate, smaller fault the same review found, in
+  the prefix-strip step added for the finding-5 fix); `.dev-team/../SECURITY.md` given relative to a
+  subfolder still resolves out of that subfolder's own `.dev-team/` and is denied, proving the new
+  `<sub>/.dev-team/` match cannot be tricked with a `..`; and `cwd` sent as the filesystem root (`/`)
+  does not crash the trailing-slash strip, whichever way Rule 1 ends up deciding the write.
+
+- **A symlinked `.dev-team/` path (finding 6, pinning test added round 4).** The fix specification for
+  finding 6 called for a bats case pinning a KNOWN, DOCUMENTED limit, not a claim that the limit has
+  been fixed: this hook judges a path by its text alone and never follows a symbolic link. If
+  `.dev-team/SECURITY.md` is itself a link pointing back out to the project's real top-level
+  `SECURITY.md`, the hook sees the text `.dev-team/SECURITY.md`, counts it as inside `.dev-team/`, and
+  allows the write. One test builds exactly that symlink in a throwaway repo, confirms the hook allows
+  the write, and then writes through the symlink with an ordinary shell redirect (a stand-in for what
+  some write path might do — Claude Code's own Write/Edit tools were not tested against a link) to
+  show the write really can land on the real top-level file, which is what makes the limit worth
+  documenting rather than a difference that never shows up in practice.
+
 - **The legacy (pre-v1.5.0) marker (issue #41, Codex round 3, finding 7).** Fault found by review:
   `conventions.md` still accepts the legacy marker, `<!-- dev-team-schema: 1.0 -->`, as proof that
   the plugin owns a file (point 3) — but the hook's marker pattern only recognised the current
@@ -335,16 +392,45 @@ with the right named reason; a missing file and a `PATH` with no `jq` on it (a t
 holding nothing but a symlink to `bash`) are both refused with exit 2, never silently treated as a
 pass.
 
-### This file's own hygiene (finding 11)
+**Round-4 fix:** the code used to print the "not valid JSON" message and then exit **1** — the code
+for "read, valid JSON, but fails a rule" — which contradicted the header's own exit-code table just
+above it, which already listed invalid JSON under exit 2. A caller sorting exit 1 from exit 2 would
+have read a truncated or corrupt `verdict.json` as a checked-and-failed review rather than as a
+checker that could not run at all. Fixed by changing the code to match the header (exit 2 is the
+correct meaning here: nothing was checked), not the other way around. One bats test pins it: a file
+containing `{not json` is refused with exit 2 and the "not valid JSON" message.
 
-The last two tests in `scripts.bats` grep the test file itself: one confirms no test contains an
-`rm -rf`/`rm -r`/`rm -f` command targeting `$REPO_ROOT`, the other confirms no test writes a file
-straight into `$REPO_ROOT` with a shell redirect. Both patterns are built with a small string split
-in the test's own source so that the test does not flag its own definition line while still
-catching the real thing. These are a deliberate pin on the fix for finding 11 (see "Fault fixed
-(finding 11)", above): a future test added carelessly, in the old style this file used to use, would
-delete or overwrite a real path in this repository on every run — including a contributor's own
-untracked files — and these two tests are what stop that pattern from quietly coming back.
+### This file's own hygiene (finding 11; broadened round 4)
+
+The last two tests in `scripts.bats` grep the test file itself: one confirms no test deletes or
+creates a path under `$REPO_ROOT` or `$MOVE_LEDGERS_MD` (the second variable also names a real file
+in this repository, just reached a different way — see `setup()` near the top of the file), the
+other confirms no test writes into either of those with a shell redirect. Both patterns are built
+with a small string split in the test's own source (`REPO''_ROOT`, `MOVE_LEDGERS''_MD`) so that the
+test does not flag its own definition line while still catching the real thing. These are a
+deliberate pin on the fix for finding 11 (see "Fault fixed (finding 11)", above): a future test added
+carelessly, in the old style this file used to use, would delete or overwrite a real path in this
+repository on every run — including a contributor's own untracked files — and these two tests are
+what stop that pattern from quietly coming back.
+
+**Round-4 fix:** a stand-in verification found the two patterns only ever matched ONE exact shape
+each, spelled out letter for letter — a two-flag deletion of the quoted repository-root variable, and
+a bare redirect naming that same quoted variable with a slash right after it. A future test using
+`mkdir`, `cp`, `mv`, `tee`, `touch` or `ln` instead of the one deletion command the old pattern
+watched for, or the curly-brace form of the variable, or a redirect with the closing quote placed
+somewhere other than around the whole path, or a deletion of the path held in `$MOVE_LEDGERS_MD`,
+would have passed both tests silently — including the exact directory-creation shape the old, unsafe
+version of the `.claude/agents` test used to run (see "Fault fixed (finding 11)" above). Reproduced
+in a scratch copy of this file, outside the repository, with seven lines added covering every one of
+those shapes: only the original two-flag deletion shape was caught; the other six passed unnoticed.
+The two patterns now watch six command words (a deletion, a new directory, a copy, a rename or move,
+a write through `tee`, and touching or symlinking a path) for either variable in either written form,
+plus either redirect operator for the same, stopping only at a pipe, an ampersand or a semicolon
+between the command word and the variable (each of those would start a different instruction). A
+read-only use of the repository-root variable needs no separate allow-list entry today, because
+reading the tree to build the throwaway copy in `make_tree()` uses none of the six watched words; if
+a genuinely read-only line using one of those words is ever needed, allow-list that one line
+explicitly with a comment, rather than loosening the pattern for everything.
 
 ## Running locally
 

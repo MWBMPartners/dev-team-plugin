@@ -62,8 +62,16 @@ if [ ! -r "$file" ]; then
 fi
 
 if ! jq empty "$file" >/dev/null 2>&1; then
+  # Invalid JSON means none of the four checks below can even run, so this is the same
+  # kind of "could not attempt the checks" case as a missing file or missing jq, not a
+  # checked-and-failed verdict. Round-3 verification found this line exiting 1 instead,
+  # which contradicted the exit-code table above (line 41 already listed "not valid
+  # JSON" under exit 2) — a caller that treats 1 as "checked, and it failed" would read
+  # a truncated verdict.json as a real failed review. Fixed by matching the header
+  # instead of changing the header to match the code, since exit 2 is the correct
+  # meaning: nothing was checked.
   note "'$file' is not valid JSON"
-  exit 1
+  exit 2
 fi
 
 fail=0
