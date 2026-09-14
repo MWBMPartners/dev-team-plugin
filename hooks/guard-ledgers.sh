@@ -37,9 +37,14 @@
 #   environment forces it on) — a write to one of the seven ledger names at the project's top
 #   level, or to SECURITY.md in .github/ or docs/ (GitHub's own security-policy locations), is
 #   refused if the incoming text looks like plugin output: it carries the dev-team marker, or it
-#   contains a dev-team record id such as F-001 or FG-012. This is the SIGNula.id failure this
-#   whole change exists to stop: a run appending its own findings onto a project's real
-#   SECURITY.md. Plain text with no marker and no ids — a person's own edit to their own file — is
+#   contains a dev-team record id such as F-001, FG-012 or F-1000 (a letter prefix, a dash, and at
+#   least three digits). This is the SIGNula.id failure this whole change exists to stop: a run
+#   appending its own findings onto a project's real SECURITY.md. When the session was started in
+#   a SUBFOLDER of the repository (say "src"), the seven ledger names directly inside that
+#   subfolder ("src/SECURITY.md" and so on) are protected as well, IN ADDITION to the top-level
+#   ones — but not "src/.github/SECURITY.md", "src/docs/SECURITY.md", or anything deeper such as
+#   "src/deep/SECURITY.md". Why both places, and why not those three, is explained where Rule 2 is
+#   coded, near the end of this file. Plain text with no marker and no ids — a person's own edit to their own file — is
 #   never blocked, on purpose: only the run gate plus the content test together decide this, never
 #   the path alone, because a project is allowed to keep its own PROJECT.md/FEATURES.md/etc. and a
 #   person must always be able to edit those.
@@ -54,7 +59,7 @@
 #   would have stopped the project owner editing their own top-level HANDOFF.md or FEATURES.md
 #   forever. `guard: off` in .dev-team/config.yml turns BOTH rules off, exactly like the Bash guard.
 #
-# Eleven faults found by later readings of this file, all now fixed:
+# Thirteen faults found by later readings of this file, all now fixed:
 #   - The JSON half of the marker match used to require exactly one space after each colon, so
 #     compact JSON — `{"dev-team":"ledger=verdict schema=1.0"}`, with no spaces at all — was not
 #     recognised as the marker even though it is exactly the same valid content. It now accepts
@@ -137,7 +142,10 @@
 #     Now "<sub>/.dev-team/" counts as inside .dev-team/ as well; `guard:` is read from both the
 #     session folder's and the top folder's config.yml with "off" from either winning; and
 #     loop.lock/ in either place means a run is active. Harmful writes to the top-level files from
-#     a subfolder are still refused, and `guard: off` at the top is still honoured.
+#     a subfolder are still refused, and `guard: off` at the top is still honoured. (This note used
+#     to end by saying the change "does NOT loosen Rule 2". That was true, but it only ever asked
+#     whether Rule 2 got looser, never whether it now protected too little — see the fault note
+#     about the session folder's own ledger names, further down this list.)
 #   - A cwd sent with a trailing slash, such as "<repo>/src/", did not end in git's subfolder
 #     prefix "src", so the top folder was never found and a harmful Edit to "<repo>/SECURITY.md"
 #     was allowed while the same payload with "<repo>/src" was refused. One trailing slash is now
@@ -146,6 +154,22 @@
 #     still accepts the legacy marker as proof of ownership. A Write of legacy-marked content to a
 #     top-level SECURITY.md passed Rule 1, and Rule 2 missed it too when it carried no record id.
 #     The legacy marker is now part of the pattern, so both rules recognise it.
+#   - Rule 2's record-id pattern demanded EXACTLY three digits followed by the end of a word, so
+#     "F-1000" never matched (the word boundary fails between the third and fourth digit) and an
+#     Edit adding "| F-1000 |" to the top-level SECURITY.md during a run was allowed while "F-999"
+#     was refused. Nothing caps a counter at 999, ids are never reused, and the verdict schema
+#     already says "at least three digits" (`^V-[0-9]{3,}$`). The pattern now uses `{3,}` to
+#     match. Two-digit text such as "F-12" still does not match, on purpose: the plugin always
+#     zero-pads to three digits, and a shorter form is far more likely to be ordinary project text.
+#   - A session started in a subfolder (say "src") had only the TOP folder's ledger names checked
+#     by Rule 2. The previous two fixes already treat "src/.dev-team/" as the session's own plugin
+#     folder and read the lock and config.yml from it, because the skills write relative paths.
+#     But the same relative writing means a stale instruction to append findings to "SECURITY.md"
+#     lands on "src/SECURITY.md" — the package's own file — and Rule 2 let that through even with
+#     "src/.dev-team/loop.lock/" present. (The hook before fix round 3, which judged everything
+#     from the session folder, did refuse it; round 3 allowed it and round 4 kept that.) Rule 2 now
+#     ALSO matches the seven ledger names directly inside the session folder. This is additive:
+#     every top-level match is unchanged. See the Rule 2 code for why both places are protected.
 #
 # Path handling: Claude Code sends the session's working folder as the top-level `cwd` field on
 # every hook call (the shell's own $PWD is used only if `cwd` is missing from the payload). The
@@ -415,8 +439,14 @@ deny() {
 # "legacy", or scripts/audit-ledger-paths.sh check F fails.
 legacy_marker='<!-- dev-team-schema:'   # legacy (pre-v1.5.0) ownership marker, still accepted — conventions.md point 3
 marker_pattern="<!-- dev-team: ledger=|$legacy_marker|\"dev-team\"[[:space:]]*:[[:space:]]*\"ledger="
-# A dev-team record id: FG-001, F-002, B-003, G-004, V-005, I-006, M-007.
-id_pattern='\b(FG|F|B|G|V|I|M)-[0-9]{3}\b'
+# A dev-team record id: FG-001, F-002, B-003, G-004, V-005, I-006, M-007 — and F-1000 and beyond.
+# `{3,}` means "three or more digits". It used to be `{3}` (exactly three), which, because of the
+# `\b` word-boundary check straight after, never matched a four-digit id such as F-1000: protection
+# quietly ended at a project's thousandth record. The verdict schema (schemas/verdict.schema.json)
+# already allows "at least three digits", so this now agrees with it. Fewer than three digits
+# (F-12) still does not match — the plugin always zero-pads, and a short form like that is much
+# more likely to be a person's own text. `\b` is understood by both BSD grep (macOS) and GNU grep.
+id_pattern='\b(FG|F|B|G|V|I|M)-[0-9]{3,}\b'
 
 # The text actually being written, by tool shape. Anything unrecognised (a tool this hook was not
 # written for) leaves $content empty and $checked=0, which both rules treat as "nothing to see".
@@ -454,8 +484,10 @@ esac
 # ledger write in such a session with a message saying "write it under .dev-team/ instead" —
 # where it already was. Counting "<sub>/.dev-team/" as inside is safe: Rule 1 exists only to stop
 # plugin content landing on the project's own top-level files, and a file under the session's own
-# .dev-team/ folder is not one of those. It does NOT loosen Rule 2, which only ever matches the
-# exact top-level names (and .github/ and docs/ SECURITY.md), never anything under src/.
+# .dev-team/ folder is not one of those. This test has no effect on Rule 2's list of protected
+# files. That list is separate and, since a later fix, WIDER in a subfolder session: it protects
+# the session folder's own ledger names ("src/SECURITY.md" and so on) as well as the top-level
+# ones — see Rule 2 below.
 # $sub is quoted in the pattern so it is matched as plain text, never as a wildcard.
 in_devteam=0
 if [ "$escaped" -eq 0 ]; then
@@ -527,13 +559,75 @@ if [ "$checked" -eq 1 ] && [ "$run_active" -eq 1 ] && [ "$escaped" -eq 0 ]; then
   # the project, so it cannot be "the project's own top-level file" this rule exists to protect —
   # Rule 1 above still judges it by file name regardless.
   resolved_lc="$(printf '%s' "$resolved" | tr '[:upper:]' '[:lower:]')"
+  protected=0
   case "$resolved_lc" in
     project.md|features.md|security.md|verification.md|migration.md|handoff.md|verdict.json|.github/security.md|docs/security.md)
-      if printf '%s' "$content" | grep -Eq "$marker_pattern|$id_pattern"; then
-        deny "\"$norm_path\" is a project-level file with a dev-team ledger name, and the content being written to it looks like this plugin's own output (the dev-team marker or a record id). The suite writes only into .dev-team/. If this is the project's own file and you meant to write to it, do it yourself, or turn the guard off (guard: off in .dev-team/config.yml)."
-      fi
+      protected=1
       ;;
   esac
+
+  # In a session started in a subfolder ($sub non-empty, for example "src"), ALSO protect the
+  # seven ledger names sitting directly inside that subfolder: "src/project.md", "src/features.md",
+  # "src/security.md", "src/verification.md", "src/migration.md", "src/handoff.md" and
+  # "src/verdict.json".
+  #
+  # What went wrong without this: the hook already treats "src/.dev-team/" as the session's own
+  # plugin folder, and reads loop.lock/ and config.yml from it, because every skill writes
+  # ".dev-team/<name>" as a RELATIVE path, measured from the session folder. The same relative
+  # writing means that a stale instruction ("append the findings to SECURITY.md") lands on
+  # "src/SECURITY.md" — before v1.5.0 that was genuinely where a subfolder session's ledger went,
+  # and today it may be the package's own security policy or feature list. Rule 2 only matched the
+  # top folder's names, so that write was allowed even with "src/.dev-team/loop.lock/" present.
+  #
+  # Why ADDITIVE (both places) and not "the session folder instead of the top": the written
+  # documents (conventions.md, and /dev-team-move-ledgers, which uses `git rev-parse
+  # --show-toplevel`) say .dev-team/ lives at the top of the project, while the skills, by writing
+  # relative paths, use the session folder in practice. Which of the two is the intended home is an
+  # open question with the owner. Protecting BOTH is correct whichever way that is settled, and
+  # the cost is small: the rule still only fires during a run and only on content carrying the
+  # marker or a record id, so a person's own plain edit to "src/SECURITY.md" is never blocked, and
+  # `guard: off` still clears it.
+  #
+  # Deliberately NOT protected: "src/.github/security.md" and "src/docs/security.md". The top-level
+  # list includes .github/ and docs/ only because GitHub reads a repository's security policy from
+  # exactly three places — the repository top, its .github/ folder and its docs/ folder. Copies in
+  # a subfolder's .github/ or docs/ are not the published policy, and this plugin never wrote its
+  # ledgers there, so adding them would widen the rule without guarding against any real mistake.
+  # Also NOT protected: anything deeper, such as "src/deep/security.md" from a session in "src" —
+  # the plugin's relative writes never put a ledger there either.
+  #
+  # How the match is done: cut "<sub>/" off the front, then require what is left to be exactly one
+  # of the seven names. Because none of the seven names contains a "/", a deeper path like
+  # "deep/security.md" can never match. "$sub_lc" is QUOTED in both the prefix test and the cut, so
+  # it is taken as plain text: a subfolder literally named "s*" or "[1]" matches only a path that
+  # really starts with "s*/" or "[1]/", and never widens into a wildcard that would also catch
+  # "sx/security.md" or "1/security.md". It is lower-cased like $resolved_lc, so the comparison
+  # ignores case in the same way as the top-level list (see the comment above).
+  #
+  # What this still cannot do: it only knows the session folder the payload's `cwd` names. A
+  # session started at the top that writes "src/SECURITY.md" is not covered, because nothing in
+  # the call says "src" is anyone's plugin home. And outside git, $sub is empty (see "What this
+  # hook CANNOT do"), so the session folder is judged as the top and its names are covered by the
+  # top-level list anyway.
+  if [ "$protected" -eq 0 ] && [ -n "$sub" ]; then
+    sub_lc="$(printf '%s' "$sub" | tr '[:upper:]' '[:lower:]')"
+    case "$resolved_lc" in
+      "$sub_lc"/*)
+        in_sub="${resolved_lc#"$sub_lc"/}"
+        case "$in_sub" in
+          project.md|features.md|security.md|verification.md|migration.md|handoff.md|verdict.json)
+            protected=1
+            ;;
+        esac
+        ;;
+    esac
+  fi
+
+  if [ "$protected" -eq 1 ]; then
+    if printf '%s' "$content" | grep -Eq "$marker_pattern|$id_pattern"; then
+      deny "\"$norm_path\" is a project-level file with a dev-team ledger name, and the content being written to it looks like this plugin's own output (the dev-team marker or a record id). The suite writes only into .dev-team/. If this is the project's own file and you meant to write to it, do it yourself, or turn the guard off (guard: off in .dev-team/config.yml)."
+    fi
+  fi
 fi
 
 exit 0
