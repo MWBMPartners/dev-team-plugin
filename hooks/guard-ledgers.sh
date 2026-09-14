@@ -14,7 +14,8 @@
 #
 #   Rule 1 (Write only; on all the time unless `guard: off`) — a WRITE is refused when ALL three of
 #   these hold: (a) the new content carries the dev-team marker (`<!-- dev-team: ledger=` or
-#   `"dev-team": "ledger=`) on one of its first three lines; (b) the target's FILE NAME, with case
+#   `"dev-team": "ledger=`, or the legacy pre-v1.5.0 marker, which conventions.md still accepts as
+#   proof of ownership) on one of its first three lines; (b) the target's FILE NAME, with case
 #   ignored, is one of the seven ledger names plus README.md (PROJECT.md, FEATURES.md, SECURITY.md,
 #   VERIFICATION.md, MIGRATION.md, HANDOFF.md, verdict.json, README.md — this plugin writes a fixed,
 #   marker-bearing README.md of its own into .dev-team/, so Rule 1 has to recognise that name too,
@@ -52,7 +53,7 @@
 #   would have stopped the project owner editing their own top-level HANDOFF.md or FEATURES.md
 #   forever. `guard: off` in .dev-team/config.yml turns BOTH rules off, exactly like the Bash guard.
 #
-# Seven faults found by later readings of this file, all now fixed:
+# Nine faults found by later readings of this file, all now fixed:
 #   - The JSON half of the marker match used to require exactly one space after each colon, so
 #     compact JSON — `{"dev-team":"ledger=verdict schema=1.0"}`, with no spaces at all — was not
 #     recognised as the marker even though it is exactly the same valid content. It now accepts
@@ -115,23 +116,41 @@
 #     $escaped flag a runaway ".." sets) whenever it is still absolute after the cwd/PWD strip, so
 #     Rule 1 judges it by file name alone (as it does for any other escaped path) and Rule 2, which
 #     only ever protects this project's own top-level files, skips it entirely.
+#   - A session started in a SUBFOLDER of the repository was judged as if that subfolder were the
+#     project's top folder. So from "src", a Write or Edit putting a record id such as F-001 into
+#     the real top-level SECURITY.md — given as the absolute "<top>/SECURITY.md" or as
+#     "../SECURITY.md" — counted as outside the project and was allowed, and the top-level
+#     .dev-team/loop.lock/ was never seen. It also went wrong the other way: `guard: off` in the
+#     top-level .dev-team/config.yml was ignored, and the plugin's own correct Write to the
+#     absolute "<top>/.dev-team/SECURITY.md" was refused. The hook now asks git where the working
+#     folder sits inside the repository and judges paths, config and lock against the top folder
+#     (see "Path handling" below).
+#   - The legacy (pre-v1.5.0) marker was missing from the marker pattern, although conventions.md
+#     still accepts the legacy marker as proof of ownership. A Write of legacy-marked content to a
+#     top-level SECURITY.md passed Rule 1, and Rule 2 missed it too when it carried no record id.
+#     The legacy marker is now part of the pattern, so both rules recognise it.
 #
 # Path handling: Claude Code sends the session's working folder as the top-level `cwd` field on
-# every hook call. When `tool_input.file_path` is absolute, this script strips a leading `<cwd>/`
-# (falling back to the shell's own $PWD only if `cwd` is missing from the payload). What is left is
-# then resolved LEXICALLY, in pure bash: split on "/", drop every empty and "." piece, and for each
-# ".." remove the piece before it. This is text-only, on purpose — it does not touch the real
-# filesystem (no `realpath`, no `cd`), because the file being written often does not exist yet, and
+# every hook call (the shell's own $PWD is used only if `cwd` is missing from the payload). The
+# script first works out the repository's TOP folder with `git rev-parse --show-prefix`, which
+# names where the working folder sits below the top (for example "src/"); that part is cut off the
+# end of cwd's text. Outside git, or when that does not fit, the top folder is simply taken to be
+# cwd. An absolute `tool_input.file_path` then has a leading `<top>/` stripped; a relative one has
+# the subfolder part put in front of it, because a relative path is measured from the working
+# folder. What is left is then resolved LEXICALLY, in pure bash: split on "/", drop every empty and
+# "." piece, and for each ".." remove the piece before it. This is text-only, on purpose — it does
+# not touch the real filesystem (so a symbolic link is never followed — see "What this hook CANNOT
+# do") — no `realpath`, no `cd`, because the file being written often does not exist yet, and
 # `realpath`'s exact behaviour differs between macOS and Linux. If a ".." would remove a piece that
 # is not there (the path tries to climb above where it started), the path is treated as having left
 # the project: it counts as outside .dev-team/ for Rule 1, and it is not matched against any of
 # Rule 2's top-level names — but Rule 1 still checks such a path by its file name, since a marker-
 # bearing ledger-named file written anywhere outside the project is exactly as wrong as one written
 # inside it at the wrong spot. The same "has left the project" treatment now also applies to a path
-# that is still absolute (still starts with "/") after the cwd/PWD prefix strip below — see the
+# that is still absolute (still starts with "/") after the top-folder prefix strip below — see the
 # fault note above about "/.dev-team/SECURITY.md" for why that case needs the same flag. .dev-
 # team/config.yml and .dev-team/loop.lock/ are read relative to
-# `cwd` when it is present, unresolved — those two paths are always written by this plugin itself
+# the top folder, unresolved — those two paths are always written by this plugin itself
 # with no user-supplied segments, so there is nothing for them to walk past. Confirmed against
 # Claude Code's official hooks documentation
 # (https://code.claude.com/docs/en/hooks and .../hooks-guide, fetched 13 September 2026): the
@@ -147,8 +166,21 @@
 #   - It cannot see a `cat >>` or any other write run through Bash — only Write/Edit/MultiEdit.
 #   - It is a best-effort pattern match on the text being written, never a guarantee. A determined
 #     rewrite that avoids the marker and every id pattern will not be caught.
-#   - It cannot know the project's real root if the session's working folder is a subfolder of the
-#     project — it trusts `cwd` (or $PWD) as given.
+#   - It can only find the project's top folder through git. Outside a git repository, when git is
+#     not installed or refuses the repository, or when the working folder was reached through a
+#     link so that its text does not end in git's subfolder prefix, it still trusts `cwd` (or
+#     $PWD) as the top folder. A session started in a subfolder of such a project is then judged
+#     as if that subfolder were the top, which is the old, weaker behaviour.
+#   - It does not follow symbolic links. It judges a path by its text alone. If .dev-team/ itself,
+#     or a file inside it, is a link pointing back out to a project file (for example
+#     .dev-team/SECURITY.md linking to ../SECURITY.md), both rules see a .dev-team/ path and allow
+#     the write. Whether that write then lands on the linked project file depends on how Claude
+#     Code's Write and Edit treat links, which was not checked. This plugin never creates links, so
+#     this needs someone to have made one on purpose. Resolving links physically was considered and
+#     not done. A rule that refuses any linked .dev-team/ would block every ledger write in a
+#     project that links its .dev-team/ folder elsewhere on purpose. A full physical resolution has
+#     to cope with macOS reporting /private/var for /var, which the text comparison here cannot
+#     match.
 #   - Whether PreToolUse actually fires for a subagent's own Write call was not verified in this
 #     build session; if it does not, this hook still protects the lead session's own writes, and
 #     the written rule in conventions.md plus the scribe's post-write self-check carry the rest.
@@ -166,9 +198,48 @@ jqr() { printf '%s' "$payload" | jq -r "$1" 2>/dev/null; }
 # root — it is only what a caller who omits `cwd` from the payload gets judged against).
 cwd="$(jqr '.cwd // empty')"
 
-# Where .dev-team/config.yml and .dev-team/loop.lock/ are read from: relative to `cwd` when it
-# was sent, otherwise relative to whatever folder this script's caller happens to be in.
-rel() { if [ -n "$cwd" ]; then printf '%s/%s' "$cwd" "$1"; else printf '%s' "$1"; fi; }
+# Work out the project's TOP folder ($root), and where the session's working folder sits inside it
+# ($sub, for example "src/deep", or empty when the session started at the top).
+#
+# Why this is needed: a session can be started in a subfolder of the repository. This hook used to
+# take `cwd` itself as the top folder. From a subfolder that went wrong in both directions: a
+# harmful write to the real top-level SECURITY.md (given as an absolute path, or as
+# "../SECURITY.md") counted as "outside the project" and was let through, the top-level
+# .dev-team/loop.lock/ and .dev-team/config.yml were never found (so `guard: off` was ignored), and
+# the plugin's own correct write to the absolute <top>/.dev-team/SECURITY.md was wrongly refused.
+#
+# Why `git rev-parse --show-prefix` and NOT `--show-toplevel`: --show-toplevel gives the PHYSICAL
+# path with every link resolved. On macOS the temporary folders live at /var/..., which is really a
+# link to /private/var/..., so git answers /private/var/... while Claude Code sends file_path as
+# /var/.... The text comparison below would then never match. --show-prefix instead gives only the
+# part below the top folder ("src/deep/"), and we cut that off the END of cwd's own text, so the
+# top folder is written in exactly the same spelling as the file paths Claude Code sends.
+#
+# Fails open, to today's behaviour: with no git installed, a folder that is not in a repository, a
+# folder that does not exist, git refusing the repository (for example "dubious ownership"), or a
+# cwd whose text does not end in git's prefix (reached through a link, say), $root simply stays as
+# cwd and $sub stays empty. `git rev-parse` is local only — no network — and takes a few
+# milliseconds. A git submodule inside a bigger repository counts as its own project here, because
+# git reports the submodule's own top folder; that is the right answer for where its .dev-team/
+# folder would live. Refusing when git is unavailable was considered and rejected: this hook must
+# never block a person's normal work just because git is missing.
+base="${cwd:-$PWD}"
+root="$base"
+sub=""
+if command -v git >/dev/null 2>&1; then
+  prefix="$(git -C "$base" rev-parse --show-prefix 2>/dev/null)" || prefix=""
+  prefix="${prefix%/}"
+  if [ -n "$prefix" ]; then
+    case "$base" in
+      # Quoted, so the prefix is matched as plain text and never as a wildcard pattern.
+      */"$prefix") root="${base%/"$prefix"}"; sub="$prefix" ;;
+    esac
+  fi
+fi
+
+# Where .dev-team/config.yml and .dev-team/loop.lock/ are read from: always the top folder worked
+# out above, so a session started in a subfolder still sees the project's real lock and config.
+rel() { printf '%s/%s' "$root" "$1"; }
 
 config_file="$(rel .dev-team/config.yml)"
 guard_mode=""
@@ -182,17 +253,24 @@ file_path="$(jqr '.tool_input.file_path // empty')"
 # No file_path (or no tool_input at all) => nothing to check against => allow.
 [ -n "$file_path" ] || exit 0
 
-# Strip a leading "<cwd>/" (or "$PWD/" when `cwd` is absent from the payload). Quoting the pattern
-# operand keeps it literal — a path is never treated as a glob here. What is left, $norm_path, is
-# the path as the caller wrote it — still carrying any "." or ".." segments — kept around only for
-# the messages below, so a refusal quotes back what the caller actually typed.
-strip_prefix="${cwd:-$PWD}"
+# Turn file_path into a path measured from the project's TOP folder ($root_rel):
+#   - an absolute path under the top folder has "<top>/" cut off the front. This also covers
+#     "<cwd>/..." because the top folder is always the start of cwd;
+#   - any other absolute path is kept as it is, and is marked below as having left the project;
+#   - a relative path is measured from the session's working folder, so the subfolder part
+#     ($sub) goes in front of it. From "src", "SECURITY.md" really means "src/SECURITY.md" (not the
+#     top-level file) and "../SECURITY.md" really means the top-level file.
+# Quoting the pattern keeps it literal — a path is never treated as a wildcard pattern here.
+# $norm_path keeps the path exactly as the caller wrote it, only for the refusal messages below,
+# so a refusal quotes back what the caller actually typed.
 case "$file_path" in
-  "$strip_prefix"/*) norm_path="${file_path#"$strip_prefix"/}" ;;
-  *) norm_path="$file_path" ;;
+  "$root"/*) root_rel="${file_path#"$root"/}" ;;
+  /*) root_rel="$file_path" ;;
+  *) root_rel="${sub:+$sub/}$file_path" ;;
 esac
+norm_path="$file_path"
 
-# Resolve $norm_path lexically — see the "Path handling" header comment for why this has to be a
+# Resolve $root_rel lexically — see the "Path handling" header comment for why this has to be a
 # pure text operation and cannot call out to `realpath`. Sets two globals: $resolved (the path with
 # every "." and "sibling .." pair collapsed away) and $escaped (1 if a ".." ever tried to remove a
 # piece that was not there, meaning the path climbed above where it started and has left the
@@ -238,12 +316,11 @@ resolve_lexical() {
   # read as an echo option instead of being written out as the path text it actually is.
   resolved="$(IFS='/'; printf '%s' "${parts[*]:-}")"
 }
-resolve_lexical "$norm_path"
+resolve_lexical "$root_rel"
 
-# An absolute path that is STILL absolute after the "<cwd>/" (or "$PWD/") strip above named a
-# location outside the project entirely — the strip only removes that prefix when file_path
-# actually starts with it, so anything left starting with "/" was never under this project's
-# working folder to begin with. Before this fix, resolve_lexical would read that leading "/" as
+# An absolute path that is STILL absolute after the "<top>/" strip above named a location outside
+# the project entirely — the strip only removes that prefix when file_path actually starts with
+# it, so anything left starting with "/" was never under this project's top folder to begin with. Before this fix, resolve_lexical would read that leading "/" as
 # just another empty split piece (the same as a doubled slash) and quietly drop it, so
 # "/.dev-team/SECURITY.md" resolved to the plain text ".dev-team/SECURITY.md" and was wrongly
 # treated as living inside THIS project's own .dev-team/ folder — a folder at the filesystem root
@@ -252,7 +329,7 @@ resolve_lexical "$norm_path"
 # this case exactly the same "has left the project" treatment a runaway ".." already gets: Rule 1
 # still judges the file by name alone, and Rule 2 — which only ever protects this project's own
 # top-level files — skips it entirely.
-case "$norm_path" in
+case "$root_rel" in
   /*) escaped=1 ;;
 esac
 
@@ -272,7 +349,18 @@ deny() {
 # zero or more spaces (or tabs) on either side, so both the spaced and compact forms are caught.
 # The markdown half is left exactly as written on purpose — the scribe only ever writes it one way
 # (`<!-- dev-team: ledger=`), so there is no compact variant to worry about there.
-marker_pattern='<!-- dev-team: ledger=|"dev-team"[[:space:]]*:[[:space:]]*"ledger='
+#
+# The legacy (pre-v1.5.0) marker is also part of the pattern. conventions.md point 3 says a file
+# carrying the legacy marker is still accepted as proof that the plugin owns it, so a Write of
+# legacy-marked content to a top-level ledger name is exactly the same mistake and is refused the
+# same way (Rule 1), and so is legacy-marked text written to a top-level ledger during a run
+# (Rule 2). Leaving it out used to let both rules miss such a write whenever it carried no record
+# id. No correct plugin write is refused by this: the plugin moves a legacy file with `git mv` (a
+# Bash command this hook never sees) and only then writes the new marker inside .dev-team/.
+# Every line in this file that quotes the legacy marker's text must also contain the word
+# "legacy", or scripts/audit-ledger-paths.sh check F fails.
+legacy_marker='<!-- dev-team-schema:'   # legacy (pre-v1.5.0) ownership marker, still accepted — conventions.md point 3
+marker_pattern="<!-- dev-team: ledger=|$legacy_marker|\"dev-team\"[[:space:]]*:[[:space:]]*\"ledger="
 # A dev-team record id: FG-001, F-002, B-003, G-004, V-005, I-006, M-007.
 id_pattern='\b(FG|F|B|G|V|I|M)-[0-9]{3}\b'
 
