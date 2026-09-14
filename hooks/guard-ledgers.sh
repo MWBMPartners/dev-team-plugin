@@ -10,7 +10,8 @@
 # into .dev-team/, plus a person reading what they are about to commit.
 #
 # Two separate rules, both read from the tool call's own JSON (stdin), never from the filesystem
-# except .dev-team/config.yml and .dev-team/loop.lock/:
+# except .dev-team/config.yml and .dev-team/loop.lock/ (looked for at both the repository's top
+# folder and the session's working folder — see "Path handling"):
 #
 #   Rule 1 (Write only; on all the time unless `guard: off`) — a WRITE is refused when ALL three of
 #   these hold: (a) the new content carries the dev-team marker (`<!-- dev-team: ledger=` or
@@ -53,7 +54,7 @@
 #   would have stopped the project owner editing their own top-level HANDOFF.md or FEATURES.md
 #   forever. `guard: off` in .dev-team/config.yml turns BOTH rules off, exactly like the Bash guard.
 #
-# Nine faults found by later readings of this file, all now fixed:
+# Eleven faults found by later readings of this file, all now fixed:
 #   - The JSON half of the marker match used to require exactly one space after each colon, so
 #     compact JSON — `{"dev-team":"ledger=verdict schema=1.0"}`, with no spaces at all — was not
 #     recognised as the marker even though it is exactly the same valid content. It now accepts
@@ -123,8 +124,24 @@
 #     .dev-team/loop.lock/ was never seen. It also went wrong the other way: `guard: off` in the
 #     top-level .dev-team/config.yml was ignored, and the plugin's own correct Write to the
 #     absolute "<top>/.dev-team/SECURITY.md" was refused. The hook now asks git where the working
-#     folder sits inside the repository and judges paths, config and lock against the top folder
-#     (see "Path handling" below).
+#     folder sits inside the repository and judges paths against the top folder (see "Path
+#     handling" below).
+#   - The subfolder fix just above went too far the other way. It counted only the TOP folder's
+#     .dev-team/ as ".dev-team/" and read config.yml only from the top folder. But the plugin's
+#     skills write ".dev-team/<name>" relative to the session folder, so in a session started in
+#     "src" (a monorepo package, say) the plugin's own marker Write to "src/.dev-team/PROJECT.md",
+#     given as an absolute or a relative path, was refused, telling the caller to write it under
+#     .dev-team/ — where it already was. `guard: off` in "src/.dev-team/config.yml" (where
+#     /dev-team-config init puts it) was ignored, and the Bash guard, which reads config.yml
+#     relative to the session folder, disagreed with this hook about whether the guard was off.
+#     Now "<sub>/.dev-team/" counts as inside .dev-team/ as well; `guard:` is read from both the
+#     session folder's and the top folder's config.yml with "off" from either winning; and
+#     loop.lock/ in either place means a run is active. Harmful writes to the top-level files from
+#     a subfolder are still refused, and `guard: off` at the top is still honoured.
+#   - A cwd sent with a trailing slash, such as "<repo>/src/", did not end in git's subfolder
+#     prefix "src", so the top folder was never found and a harmful Edit to "<repo>/SECURITY.md"
+#     was allowed while the same payload with "<repo>/src" was refused. One trailing slash is now
+#     cut off the working folder (never off "/" itself) before that comparison.
 #   - The legacy (pre-v1.5.0) marker was missing from the marker pattern, although conventions.md
 #     still accepts the legacy marker as proof of ownership. A Write of legacy-marked content to a
 #     top-level SECURITY.md passed Rule 1, and Rule 2 missed it too when it carried no record id.
@@ -148,10 +165,11 @@
 # bearing ledger-named file written anywhere outside the project is exactly as wrong as one written
 # inside it at the wrong spot. The same "has left the project" treatment now also applies to a path
 # that is still absolute (still starts with "/") after the top-folder prefix strip below — see the
-# fault note above about "/.dev-team/SECURITY.md" for why that case needs the same flag. .dev-
-# team/config.yml and .dev-team/loop.lock/ are read relative to
-# the top folder, unresolved — those two paths are always written by this plugin itself
-# with no user-supplied segments, so there is nothing for them to walk past. Confirmed against
+# fault note above about "/.dev-team/SECURITY.md" for why that case needs the same flag. A
+# resolved path counts as inside .dev-team/ when it starts with ".dev-team/" or, in a subfolder
+# session, with "<sub>/.dev-team/". .dev-team/config.yml and .dev-team/loop.lock/ are read from
+# both the top folder and the session folder, unresolved — those paths are always written by this
+# plugin itself with no user-supplied segments, so there is nothing for them to walk past. Confirmed against
 # Claude Code's official hooks documentation
 # (https://code.claude.com/docs/en/hooks and .../hooks-guide, fetched 13 September 2026): the
 # top-level `cwd` field is shown in the documented PreToolUse example payload; `tool_input.
@@ -224,6 +242,17 @@ cwd="$(jqr '.cwd // empty')"
 # folder would live. Refusing when git is unavailable was considered and rejected: this hook must
 # never block a person's normal work just because git is missing.
 base="${cwd:-$PWD}"
+# Cut ONE trailing slash off the working folder (but never turn "/" itself into nothing). The
+# subfolder test just below asks whether the working folder's text ENDS in git's prefix ("src").
+# A cwd sent as "<repo>/src/" does not end in "src", so without this the top folder was never
+# found, "<repo>/SECURITY.md" was judged to be outside the project, and Rule 2 let a harmful
+# write through. Claude Code normally sends cwd with no trailing slash, so this is a corner case,
+# but it costs one line. Only one slash is removed: "<repo>/src//" is not a spelling any caller
+# produces, and stripping in a loop would add code for no real case.
+case "$base" in
+  /) ;;
+  */) base="${base%/}" ;;
+esac
 root="$base"
 sub=""
 if command -v git >/dev/null 2>&1; then
@@ -237,16 +266,41 @@ if command -v git >/dev/null 2>&1; then
   fi
 fi
 
-# Where .dev-team/config.yml and .dev-team/loop.lock/ are read from: always the top folder worked
-# out above, so a session started in a subfolder still sees the project's real lock and config.
-rel() { printf '%s/%s' "$root" "$1"; }
+# Where .dev-team/config.yml and .dev-team/loop.lock/ are read from: BOTH the top folder worked out
+# above AND the session's own working folder. When the session started at the top these are the
+# same place and nothing changes.
+#
+# Why both, and not only the top folder: fix round 3 moved these reads to the top folder only, so
+# that a subfolder session would see the project's real lock and config. But every skill in this
+# plugin writes ".dev-team/<name>" relative to the session folder, and /dev-team-config init
+# creates config.yml there too. So in a monorepo session started in "packages/app", the plugin's
+# own .dev-team/ folder is "packages/app/.dev-team/", and `guard: off` written there was ignored.
+# The Bash guard (hooks/guard-dev-team.sh) also still reads config.yml relative to the session
+# folder, so the two hooks disagreed about whether the guard was off. Reading both places makes
+# them agree.
+top_rel() { printf '%s/%s' "$root" "$1"; }
+cwd_rel() { printf '%s/%s' "$base" "$1"; }
 
-config_file="$(rel .dev-team/config.yml)"
-guard_mode=""
-[ -f "$config_file" ] && guard_mode="$(grep -Eo '^[[:space:]]*guard:[[:space:]]*(on|off|auto)' "$config_file" 2>/dev/null | grep -Eo '(on|off|auto)$' | head -1)"
+# Read the `guard:` setting from one config.yml; prints on, off, auto or nothing.
+read_guard() {
+  [ -f "$1" ] || return 0
+  grep -Eo '^[[:space:]]*guard:[[:space:]]*(on|off|auto)' "$1" 2>/dev/null | grep -Eo '(on|off|auto)$' | head -1
+}
+guard_top="$(read_guard "$(top_rel .dev-team/config.yml)")"
+guard_cwd="$(read_guard "$(cwd_rel .dev-team/config.yml)")"
 
-# `guard: off` disables both rules, repo-wide, no matter what else is set.
-[ "$guard_mode" = "off" ] && exit 0
+# `guard: off` in EITHER config.yml disables both rules, no matter what else is set. "off" wins
+# over "on" when the two files disagree, on purpose: `guard: off` is the escape hatch the refusal
+# messages tell a person to use, and it must work from whichever .dev-team/ they were pointed at.
+# Letting "on" win was rejected because it would leave a person unable to turn off a guard that is
+# wrongly blocking their own file without first finding a second config file they may not know is
+# there.
+[ "$guard_top" = "off" ] && exit 0
+[ "$guard_cwd" = "off" ] && exit 0
+guard_on=0
+if [ "$guard_top" = "on" ] || [ "$guard_cwd" = "on" ]; then
+  guard_on=1
+fi
 
 tool_name="$(jqr '.tool_name // empty')"
 file_path="$(jqr '.tool_input.file_path // empty')"
@@ -391,11 +445,28 @@ esac
 # case on a case-sensitive filesystem (most Linux CI runners), and refusing a write to something
 # that merely looks like ".DEV-TEAM/" is the safe direction to be wrong in, since the cost of a
 # wrongly-refused write is just "try the real path", not a ledger going to the wrong place.
+#
+# Two folders count as .dev-team/ here: the one at the top folder (".dev-team/...") and, when the
+# session started in a subfolder, the one inside that subfolder ("<sub>/.dev-team/...", for example
+# "src/.dev-team/PROJECT.md"). The second is needed because the plugin's skills write
+# ".dev-team/<name>" relative to the session folder, so from "src" the plugin's own correct write
+# lands in "src/.dev-team/". Fix round 3 counted only the top-level folder, which refused every
+# ledger write in such a session with a message saying "write it under .dev-team/ instead" —
+# where it already was. Counting "<sub>/.dev-team/" as inside is safe: Rule 1 exists only to stop
+# plugin content landing on the project's own top-level files, and a file under the session's own
+# .dev-team/ folder is not one of those. It does NOT loosen Rule 2, which only ever matches the
+# exact top-level names (and .github/ and docs/ SECURITY.md), never anything under src/.
+# $sub is quoted in the pattern so it is matched as plain text, never as a wildcard.
 in_devteam=0
 if [ "$escaped" -eq 0 ]; then
   case "$resolved" in
     .dev-team/*) in_devteam=1 ;;
   esac
+  if [ -n "$sub" ]; then
+    case "$resolved" in
+      "$sub"/.dev-team/*) in_devteam=1 ;;
+    esac
+  fi
 fi
 
 # --- Rule 1: a Write whose content carries the marker AND whose file name is one of the seven
@@ -426,8 +497,19 @@ fi
 
 # --- Rule 2: a top-level ledger name (or a GitHub security-policy location), written while a run
 #     is judged active, with content that looks like plugin output. ------------------------------
+#
+# loop.lock/ is looked for in BOTH places (the top folder's .dev-team/ and the session folder's
+# .dev-team/), and finding it in either one means a cycle is running. Why both: an autopilot cycle
+# started from a subfolder session creates its lock under that subfolder's .dev-team/, because the
+# skills write relative to the session folder, while a cycle started at the top creates it there.
+# Either way a run is really in progress. Treating "either" as active is the safe direction for this
+# rule: a wrongly-active gate only means a write carrying plugin-looking content to a top-level
+# ledger name gets refused, which a person can clear with `guard: off`; a wrongly-inactive gate
+# means a run's findings can land on the project's real SECURITY.md, which is the very failure this
+# hook exists to stop. Requiring the lock in one fixed place was rejected for that reason.
 run_active=0
-if [ -d "$(rel .dev-team/loop.lock)" ] || [ "$guard_mode" = "on" ] || [ -n "${DEV_TEAM_GUARD:-}" ]; then
+if [ -d "$(top_rel .dev-team/loop.lock)" ] || [ -d "$(cwd_rel .dev-team/loop.lock)" ] \
+  || [ "$guard_on" -eq 1 ] || [ -n "${DEV_TEAM_GUARD:-}" ]; then
   run_active=1
 fi
 
