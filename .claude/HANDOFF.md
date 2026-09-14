@@ -303,6 +303,21 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
             hook from a subfolder under bash 3.2 and 5. Read the move-ledgers rollback text carefully.
             Commit per builder with the review status. Then ONE more Codex review (gpt-5.6-sol if astra
             is still busy).
+        - **About 03:45 — fix round 3 finished and committed** (five commits: hook; move-ledgers;
+          rules, docs, audit and schema; tests; the verification-record fix), pushed, #41 updated.
+          - The lead reran every check before committing (all pass, including bats) and probed the
+            hook from a subfolder by hand: 14 of 14 correct under bash 3.2 and 5.
+          - Two lead-caught fixes:
+            - the verification record contained a literal dated model id that failed audit-model-ids,
+              now replaced with a placeholder. Lesson: run the audits before committing records;
+            - README line 364 still described the rollback as `git reset --hard`, now replaced with
+              exact text by a Haiku builder.
+          - Deliberate cost of #1: CueRCode and Go2My.Link's unmarked PROJECT/FEATURES/SECURITY
+            ledgers now sort as "mixed" and need their marker added by hand before
+            /dev-team-move-ledgers will move them.
+          - **Next:** ONE Codex review (round 4) of the whole branch, focused on round 3's fixes but
+            reviewing everything. If gpt-6-astra is still at capacity, use `-m gpt-5.6-sol`. Watch
+            the allowance: one run.
         - **02:40 — plan saved and posted.** `.claude/plans/orchestrator-v2/plan.md` and
           `plan-critique.md` are committed (2d58278, all checks OK, tail matches the returned text
           byte for byte, secret scan clean), and #46 has a summary. The plan is DRAFT until the owner
