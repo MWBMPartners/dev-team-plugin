@@ -391,6 +391,39 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
           - **Codex retry:** ONE run booked for 12:40 on 14 September (CronCreate, this session only). Output
             goes to `codex-review-4c.md` / `.log`. Before it starts: no fix round may be mid-edit, and the
             prompt header must list any new commits. If this session was closed, start it by hand after 12:35.
+        - **About 08:15 — stand-in check of fix round 4 DONE** (`wf_f635152a-33a`). Record:
+          `.claude/plans/ledger-file-clashes/standin-verify-fix-round-4.md`.
+          - Fixes 1–4, 6 and 7 are confirmed fixed. Fix 5 is only partly fixed: an EMPTY verdict.json still
+            exits 1, because `jq empty` accepts empty input.
+          - All three Codex leads were upheld, plus three new findings. The refuter confirmed or partly
+            confirmed all six:
+            - **B (medium):** in a subfolder session, Rule 2 guards only the git top's names, not
+              `<sub>/SECURITY.md` etc. Yet round 4 treats `<sub>/.dev-team/` as the plugin's home, and
+              the skills write relative paths. The underlying problem is a three-way disagreement: the
+              documents say the git top, the skills effectively use the session folder, and the hook
+              mixes both.
+            - **A (low):** the id pattern `[0-9]{3}\b` misses F-1000. Fix: `{3,}`, matching the schema.
+            - **C (low):** the verdict schema accepts FAIL with no cause. Add a 4th allOf rule plus fixtures.
+            - **N1 (low):** the by-hand recovery text lacks `-f`. A FULLY stamped moved file needs it too,
+              since the index holds git mv's copy until step 9's `git add`.
+            - **N2 (low):** empty file or `{} {}` → use `jq -s -e 'length == 1 and (.[0] | type == "object")'`,
+              exit 2.
+            - **N3 (low):** the hygiene patterns miss `${MOVE_LEDGERS_MD}`, cp/mv onto it, `( cd "$REPO_ROOT"
+              && write )`, sed -i, and git -C. The descriptions over-claim.
+          - **Lead's decision on B (additive, no owner wait):** Rule 2 ALSO guards the session folder's own
+            ledger names (not `<sub>/.github` or `<sub>/docs`). That only adds protection, so it is right
+            whichever location the owner picks. **Owner question (asked, not blocking):** should a subfolder
+            session's `.dev-team/` live in the subfolder (what skills do today) or at the git top (what
+            conventions.md and /dev-team-move-ledgers say)? The lead suggests the subfolder, and
+            /dev-team-move-ledgers then also looks there. The documents are not changed on that point until
+            the owner answers.
+          - **Fix round 5 running** (`fix-round-5-standin-findings`). Stage 1, side by side on separate files:
+            hook A+B (Opus); schema, fixtures and check-verdict C+N2 (Sonnet); move-ledgers N1 plus Rule 2
+            and id-width wording in docs and CHANGELOG (Sonnet). Stage 2: tests for everything, plus N3
+            (Sonnet). **When it reports:** rerun every check, probe the hook from a subfolder yourself
+            (session-folder SECURITY.md with F-001 and lock → refused; F-1000 → refused; `src/deep/` and
+            `src/.github/` → allowed), commit per builder, push, update #41, update codex-exec-prompt-4.md's
+            header. All of that must be finished before the 12:40 Codex retry starts.
         - **03:29 — Codex review round 4 did NOT happen.** It started on gpt-5.6-sol (high effort,
           read-only) and stopped at once: "You've hit your usage limit … try again at 7:33 AM". No
           output was written.
