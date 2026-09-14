@@ -8,7 +8,7 @@ The documentarian is spawned as the **`sonnet-scribe`** agent (Sonnet tier; mode
 
 ## PROJECT.md structure
 
-The documentarian maintains this file at `.dev-team/PROJECT.md`. Every file the dev-team suite writes for itself lives in `.dev-team/` and carries the dev-team marker on line 2; a file at that path without the marker is never written to — the run stops and asks. See `dev-team-orchestrator/references/conventions.md`, "Where the plugin writes, and the ownership rule".
+The documentarian maintains this file at `.dev-team/PROJECT.md`. Every record file the dev-team suite writes for itself lives in `.dev-team/` and carries the dev-team marker on line 2 (`verdict.json` carries it as a field); a record file at that path without the marker is never written to — the run stops and asks. See `dev-team-orchestrator/references/conventions.md`, "Where the plugin writes, and the ownership rule".
 
 ```markdown
 # [Project name]

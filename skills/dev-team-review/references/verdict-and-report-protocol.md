@@ -2,7 +2,7 @@
 
 How the verifier results become a trustworthy verdict and a `.dev-team/VERIFICATION.md` report — and how failures hand off to remediation if the user opted in. The report is a **standalone, independent artifact**: it is not written into the `.dev-team/PROJECT.md` whose claims it judges (only that file's Current-status line gets the headline verdict).
 
-The documentarian writes `.dev-team/VERIFICATION.md` and `.dev-team/verdict.json`. Every file the dev-team suite writes for itself lives in `.dev-team/` and carries the dev-team marker on line 2; a file at that path without the marker is never written to — the run stops and asks. See `dev-team-orchestrator/references/conventions.md`, "Where the plugin writes, and the ownership rule".
+The documentarian writes `.dev-team/VERIFICATION.md` and `.dev-team/verdict.json`. Every record file the dev-team suite writes for itself lives in `.dev-team/` and carries the dev-team marker on line 2 (`verdict.json` carries it as a field); a record file at that path without the marker is never written to — the run stops and asks. See `dev-team-orchestrator/references/conventions.md`, "Where the plugin writes, and the ownership rule".
 
 ## Per-claim verdicts (from the verifiers)
 
@@ -87,6 +87,8 @@ Alongside the markdown report, emit a machine-readable **`.dev-team/verdict.json
 ```
 
 This example is deliberately real, valid JSON with real enum values rather than a `PASS | PASS_WITH_GAPS | FAIL`-style placeholder, so a builder can copy it as a starting fixture and it will pass `schemas/verdict.schema.json` as it stands — see that file's `required` list and `additionalProperties: false` for exactly which fields a real `verdict.json` must and must not carry.
+
+A CI gate should run both `check-jsonschema --schemafile schemas/verdict.schema.json .dev-team/verdict.json` (the shape, plus the impossible-combination rules described in that file) and `scripts/check-verdict.sh .dev-team/verdict.json` (the counting rules JSON Schema cannot express — the claims list matching `checked`, the five counts adding up, each count matching its verdict word, and unique claim ids). The documentarian runs both after writing `verdict.json`, alongside the marker self-check (`conventions.md`, "Where the plugin writes, and the ownership rule", point 9).
 
 Propose wiring `dev-team-review --depth quick` (or a saved invocation) into CI as a gate that fails the build on a FAIL verdict — the verification analogue of the security skill's CI hardening.
 

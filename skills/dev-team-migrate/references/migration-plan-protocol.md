@@ -118,11 +118,11 @@ Roll the per-stage risk ratings up into an overall migration risk, and call out 
 
 ## Output of `mode=plan` — `.dev-team/MIGRATION.md`
 
-The documentarian writes (or updates) this file at `.dev-team/MIGRATION.md`. Every file the
-dev-team suite writes for itself lives in `.dev-team/` and carries the dev-team marker on line 2; a
-file at that path without the marker is never written to — the run stops and asks. See
-`dev-team-orchestrator/references/conventions.md`, "Where the plugin writes, and the ownership
-rule". It is this skill's own owned artifact — same schema-versioning and "Current status stays
+The documentarian writes (or updates) this file at `.dev-team/MIGRATION.md`. Every record file the
+dev-team suite writes for itself lives in `.dev-team/` and carries the dev-team marker on line 2
+(`verdict.json` carries it as a field); a record file at that path without the marker is never
+written to — the run stops and asks. See `dev-team-orchestrator/references/conventions.md`, "Where
+the plugin writes, and the ownership rule". It is this skill's own owned artifact — same schema-versioning and "Current status stays
 overwritten, not appended" discipline as `.dev-team/PROJECT.md`/`.dev-team/SECURITY.md`
 (`dev-team-orchestrator/references/documentarian-protocol.md`; `conventions.md`'s "Schema
 versioning").

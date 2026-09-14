@@ -49,10 +49,10 @@ Within the in-scope set, rank by **importance first**, then favor lower effort a
 
 ## FEATURES.md structure
 
-The documentarian writes this at `.dev-team/FEATURES.md`. Every file the dev-team suite writes for itself
-lives in `.dev-team/` and carries the dev-team marker on line 2; a file at that path without the marker is
-never written to — the run stops and asks. See `dev-team-orchestrator/references/conventions.md`, "Where
-the plugin writes, and the ownership rule".
+The documentarian writes this at `.dev-team/FEATURES.md`. Every record file the dev-team suite writes for
+itself lives in `.dev-team/` and carries the dev-team marker on line 2 (`verdict.json` carries it as a
+field); a record file at that path without the marker is never written to — the run stops and asks. See
+`dev-team-orchestrator/references/conventions.md`, "Where the plugin writes, and the ownership rule".
 
 ```markdown
 # Feature Gap Ledger

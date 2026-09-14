@@ -3,7 +3,7 @@
   "$id": "https://github.com/MWBMPartners/dev-team-plugin/schemas/verdict.schema.json",
   "title": "dev-team verdict.json",
   "description": "Shape of .dev-team/verdict.json, the machine-readable summary the dev-team-review skill writes alongside its human-readable .dev-team/VERIFICATION.md report (see skills/dev-team-review/references/verdict-and-report-protocol.md, 'VERIFICATION.md structure'). It exists so a CI step can gate a build on the review's outcome (exit non-zero on a FAIL verdict) without having to parse the markdown report. This file is JSON, which has no comment syntax of its own, so every field's reason for existing and who reads it is recorded here in its 'description' instead of in '//' comments that would make the file invalid JSON.",
-  "$comment": "File: schemas/verdict.schema.json. Validates tests/fixtures/verdict.sample.json (see tests/scripts.bats) and is meant to be run in CI against every verdict.json a dev-team-review run produces, using check-jsonschema (pip install check-jsonschema; see .github/workflows/plugin-audit.yml). Written for issue #41 (moving dev-team's own files into .dev-team/), which is also why the 'dev-team' marker field below exists on this ledger the same way it exists on every markdown one. Note on 'additionalProperties: false' just below: it is set on purpose, so that a field added under a new or misspelled name (e.g. 'verified_count' instead of 'verified') fails this check loudly and immediately, in CI, rather than being silently accepted and only noticed much later by a person reading the JSON by eye. A genuinely new field is added here, with its own description, in the same change that starts emitting it — this schema is not meant to be a ceiling on the format, only a guard against silent drift.",
+  "$comment": "File: schemas/verdict.schema.json. Validates tests/fixtures/verdict.sample.json (see tests/scripts.bats) and is meant to be run in CI against every verdict.json a dev-team-review run produces, using check-jsonschema (pip install check-jsonschema; see .github/workflows/plugin-audit.yml). Written for issue #41 (moving dev-team's own files into .dev-team/), which is also why the 'dev-team' marker field below exists on this ledger the same way it exists on every markdown one. Note on 'additionalProperties: false' just below: it is set on purpose, so that a field added under a new or misspelled name (e.g. 'verified_count' instead of 'verified') fails this check loudly and immediately, in CI, rather than being silently accepted and only noticed much later by a person reading the JSON by eye. A genuinely new field is added here, with its own description, in the same change that starts emitting it — this schema is not meant to be a ceiling on the format, only a guard against silent drift. The three 'allOf' rules below only reject verdict shapes that verdict-and-report-protocol.md's 'Overall verdict rule' already calls impossible (e.g. overall PASS while the integration check failed) — they are not a new, stricter format, just this schema catching a self-contradictory file that the old schema let through. Rules that JSON Schema cannot express — the claims list length matching 'checked', the five counts adding up to 'checked', each count matching the number of claims carrying that verdict, and claim ids being unique (JSON Schema's 'uniqueItems' compares whole objects, not one field of them) — are checked by scripts/check-verdict.sh, which must be run alongside this schema, not instead of it.",
   "type": "object",
   "required": [
     "dev-team",
@@ -30,7 +30,7 @@
     "checked": {
       "type": "integer",
       "minimum": 0,
-      "description": "How many claims this review pass actually looked at. Read alongside 'claims' (whose length should normally equal this number) as a cross-check that nothing was silently dropped between counting and listing."
+      "description": "How many claims this review pass actually looked at. Read alongside 'claims' (whose length must equal this number, checked by scripts/check-verdict.sh) as a cross-check that nothing was silently dropped between counting and listing."
     },
     "verified": {
       "type": "integer",
@@ -63,6 +63,7 @@
     },
     "regressions": {
       "type": "array",
+      "uniqueItems": true,
       "description": "IDs of claims that were VERIFIED in the previous VERIFICATION.md report for this project but are failing again now (see verdict-and-report-protocol.md, 'Regression delta'). Optional: a first-ever review for a project has no prior report to compare against, so there is nothing to list. An empty array means the comparison ran and found no regressions, which is a different, stronger statement than the field being absent.",
       "items": {
         "type": "string",
@@ -77,7 +78,7 @@
     },
     "claims": {
       "type": "array",
-      "description": "One entry per claim this review pass checked — the machine-readable form of the 'Per-claim results' table in VERIFICATION.md. Every id counted in 'checked' above should appear exactly once here.",
+      "description": "One entry per claim this review pass checked — the machine-readable form of the 'Per-claim results' table in VERIFICATION.md. Every id counted in 'checked' above must appear exactly once here (checked by scripts/check-verdict.sh).",
       "items": {
         "type": "object",
         "required": ["id", "verdict", "severity", "confidence"],
@@ -94,7 +95,7 @@
           },
           "severity": {
             "enum": ["critical", "high", "medium", "low", "n/a"],
-            "description": "How much it would matter if this claim were wrong — not how bad the verdict already is. 'n/a' is for claims (for example a fully VERIFIED, non-critical one) where severity was never a live question. A FAILED or DRIFTED claim at 'critical' severity is what forces the overall verdict to FAIL."
+            "description": "How much it would matter if this claim were wrong — not how bad the verdict already is. 'n/a' is for claims (for example a fully VERIFIED, non-critical one) where severity was never a live question. A FAILED claim at 'critical' severity forces the overall verdict to FAIL. A critical DRIFTED or UNVERIFIABLE claim does not force FAIL, but it does rule out PASS, leaving PASS_WITH_GAPS (see verdict-and-report-protocol.md, 'Overall verdict rule', and the sample fixture's V-003)."
           },
           "confidence": {
             "enum": ["high", "medium", "low"],
@@ -103,5 +104,62 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "$comment": "A failed clean-room integration check always makes the overall verdict FAIL, whatever the claim counts say. See verdict-and-report-protocol.md, 'Overall verdict rule'.",
+      "if": {
+        "properties": { "integration": { "const": "fail" } },
+        "required": ["integration"]
+      },
+      "then": {
+        "properties": { "overall": { "const": "FAIL" } }
+      }
+    },
+    {
+      "$comment": "Any claim that is both FAILED and critical makes the overall verdict FAIL. A critical DRIFTED claim does not: the protocol allows PASS_WITH_GAPS for that (see the 'severity' description above and the sample fixture's V-003).",
+      "if": {
+        "properties": {
+          "claims": {
+            "contains": {
+              "properties": {
+                "verdict": { "const": "FAILED" },
+                "severity": { "const": "critical" }
+              },
+              "required": ["verdict", "severity"]
+            }
+          }
+        },
+        "required": ["claims"]
+      },
+      "then": {
+        "properties": { "overall": { "const": "FAIL" } }
+      }
+    },
+    {
+      "$comment": "PASS means nothing FAILED, nothing HOLLOW, integration passed, and no critical claim is DRIFTED or UNVERIFIABLE.",
+      "if": {
+        "properties": { "overall": { "const": "PASS" } },
+        "required": ["overall"]
+      },
+      "then": {
+        "properties": {
+          "failed": { "const": 0 },
+          "hollow": { "const": 0 },
+          "integration": { "const": "pass" },
+          "claims": {
+            "not": {
+              "contains": {
+                "properties": {
+                  "severity": { "const": "critical" },
+                  "verdict": { "enum": ["DRIFTED", "UNVERIFIABLE"] }
+                },
+                "required": ["verdict", "severity"]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

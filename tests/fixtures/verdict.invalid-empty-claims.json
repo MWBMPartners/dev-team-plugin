@@ -1,0 +1,14 @@
+{
+  "dev-team": "ledger=verdict schema=1.0",
+  "overall": "PASS_WITH_GAPS",
+  "checked": 4,
+  "verified": 2,
+  "failed": 0,
+  "drifted": 1,
+  "hollow": 1,
+  "unverifiable": 0,
+  "integration": "pass",
+  "regressions": [],
+  "improvement_findings": 1,
+  "claims": []
+}

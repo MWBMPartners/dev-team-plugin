@@ -49,7 +49,7 @@ The rule for any dev-team state file: a consumer tolerates a **matching major ve
 
 Any skill, agent or command file that needs to state this rule briefly uses exactly this sentence — copied byte for byte, pointer included — and then relies on this section for the detail:
 
-> Every file the dev-team suite writes for itself lives in `.dev-team/` and carries the dev-team marker on line 2; a file at that path without the marker is never written to — the run stops and asks. See `dev-team-orchestrator/references/conventions.md`, "Where the plugin writes, and the ownership rule".
+> Every record file the dev-team suite writes for itself lives in `.dev-team/` and carries the dev-team marker on line 2 (`verdict.json` carries it as a field); a record file at that path without the marker is never written to — the run stops and asks. See `dev-team-orchestrator/references/conventions.md`, "Where the plugin writes, and the ownership rule".
 
 The nine points below say what that means, why it is this way, what was rejected, and what the enforcement cannot do.
 
@@ -78,7 +78,7 @@ The nine points below say what that means, why it is this way, what was rejected
    - Where the marker counts: a writer always puts it on line 2. A reader deciding ownership looks only in the first three lines, because the plugin's own documentation quotes marker lines further down inside examples, and a file that merely quotes the marker is not a ledger.
    - *Why a marker, and not a judgement from the file's contents:* content that "looks like ours" is exactly how findings came to be appended to a project's public security policy. The shape of a file is never proof; only the marker is.
 
-4. **The ownership rule — read before you write.** Before creating, overwriting or appending to any file in the Shared artifacts table, the writer reads the target path first. There are three cases and no fourth:
+4. **The ownership rule — read before you write.** Before creating, overwriting or appending to one of the plugin's record files — the six markdown ledgers (`.dev-team/PROJECT.md`, `.dev-team/FEATURES.md`, `.dev-team/SECURITY.md`, `.dev-team/VERIFICATION.md`, `.dev-team/MIGRATION.md`, `.dev-team/HANDOFF.md`), `.dev-team/verdict.json`, or `.dev-team/README.md` — the writer reads the target path first. There are three cases and no fourth:
    - **File absent** → create it, with the marker on line 2 (for `verdict.json`, the `"dev-team"` field).
    - **File present, marker present** (either form) → it is ours; write it. If it carries the legacy marker, replace it with the new form in the same write.
    - **File present, no marker** → write nothing. An empty file counts as present without a marker, because a person may have created it on purpose. Stop and ask, with exactly this prompt (fill in the angle brackets):
@@ -91,6 +91,8 @@ The nine points below say what that means, why it is this way, what was rejected
    - **There is no third branch.** No "it looks like ours, carry on", and no "it is probably the project's, so write next to it under another name". Either guess can damage a file the plugin does not own, and nobody would notice until much later.
    - **Unattended autopilot cycle** (nobody there to answer): write nothing, set `state: "BLOCKED"` with `blocked.reason` `ledger-ownership`, and make the report name the file, show its first three lines, and point the user at `/dev-team-move-ledgers`. The loop stops rather than guessing.
    - **Dry-run:** the check still runs, but nothing is stamped, moved, created or committed (dry-run makes no file or git changes); the report says which question would be asked.
+   - **Files this rule does not cover, and why.** `.dev-team/autopilot.json` keeps its own `"schema"` field and only the autopilot conductor writes it (point 3). `.dev-team/config.yml` is written only by `/dev-team-config init` or when a declined pointer sentence is recorded (point 8). `.dev-team/loop.lock/` is a folder that exists only while a cycle runs (`dev-team-autopilot/references/loop-runtime.md`). `.dev-team/.gitignore` holds exactly one line and is created once (point 7). None of these can carry a line-2 marker. JSON has no comment syntax, and a second line would break the one-line `.gitignore`, so applying the marker cases to them would corrupt them or stop the run for no reason. GitHub/GitLab issues are not files at all. *Earlier wording:* this rule used to say "any file in the Shared artifacts table", which read literally included all of these.
+   - For `.dev-team/README.md`, a marked file that already exists is left as it is (point 7) — the "file present, marker present" case above never rewrites it.
 
 5. **Files from before v1.5.0 — the lookup order.** A reader looks for `.dev-team/<name>` first. Only if that is absent does it look in the legacy root location, at the top-level `<name>`.
    - **Legacy root file with a marker** (either form) → it is ours. A run that writes ledgers `git mv`s it into `.dev-team/`, rewrites the marker to the new form, and commits that as `dev-team: move <name> into .dev-team/ (v1.5.0)`, before any other work.

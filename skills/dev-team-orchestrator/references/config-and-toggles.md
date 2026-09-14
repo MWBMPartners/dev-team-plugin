@@ -53,7 +53,9 @@ git:
 features:            # enable/disable behaviours repo-wide (on|off; env var can override per-session)
   update-notifier: on    # SessionStart update check      (per-session override: DEV_TEAM_NO_UPDATE_CHECK)
   branch-notifier: on    # SessionStart gone-branch notice (per-session override: DEV_TEAM_NO_BRANCH_CHECK)
-  guard: auto            # on | off | auto  (auto = active during a run; DEV_TEAM_GUARD forces on)
+  guard: auto            # on | off | auto. auto: the Bash guard is active only during a run (.dev-team/autopilot.json present);
+                         #   the ledger guard's Rule 1 is ALWAYS active, and its Rule 2 only while .dev-team/loop.lock/ exists.
+                         #   DEV_TEAM_GUARD forces both hooks on; off turns both off. Details: the guard section below.
   notifications: on      # autopilot gate/blocker/done notifications (v1.2.0)
   telemetry: on          # run-end telemetry + cost estimate         (v1.2.0)
   dry-run: off           # default plan-preview for building skills  (v1.2.0)

@@ -33,9 +33,13 @@
 #     prefix. Anchors get typed quickly by hand and are exactly the kind of reference that is easy
 #     to leave stale when a path changes everywhere else in a sentence.
 #
-#   E (negative) the exact legacy phrases this project used, before this change, to describe where
-#     a ledger lived: "stable repo-root", "at the repo root", "Check the repo root", "from repo
-#     root". A survivor of one of these phrases is a paragraph nobody finished editing.
+#   E (negative) the exact legacy phrases this project used before v1.5.0 ("stable repo-root", "at
+#     the repo root", "Check the repo root", "from repo root") on a line where that line, or the
+#     line just before or after it, still names a ledger with no .dev-team/ prefix. Why the
+#     neighbouring lines: check C already covers a phrase and a bare name on the same line, and a
+#     wrapped sentence often puts the name on the line above or below. Earlier version: E flagged
+#     the phrase on its own, which rejected unrelated sentences such as one about config files
+#     living at the repo root. What it cannot do: a bare name two or more lines away passes.
 #
 #   F (negative) the pre-v1.5.0 marker text "<!-- dev-team-schema:" appearing anywhere that is not
 #     explaining the back-compat rule for it. The marker form itself is still legitimately mentioned
@@ -43,6 +47,15 @@
 #     dev-team-move-ledgers.md) — this check only objects to a bare reappearance with no
 #     explanation, which would mean a file is being treated as current when it is describing the
 #     retired form.
+#
+#   G (negative) README.md only: a skill description line (one starting **Purpose.**, **Modes.**,
+#     **Artifacts.** or **Cold-resume.**) that still names a ledger with no .dev-team/ prefix once
+#     every .dev-team/<name> mention is removed. Those lines tell a reader where each skill reads
+#     and writes, so a bare name there is a live instruction, not an explanation. Limited to these
+#     lines on purpose: a broader verb-based check was tried and flagged about a dozen harmless
+#     lines elsewhere, and a name already qualified earlier in the very same line (a common style in
+#     this README) is not the same fault. What it cannot do: a stale bare name in any other README
+#     paragraph passes, and it does not look one line back the way check E does.
 #
 # What this script CANNOT do: it checks for the exact phrases and patterns listed above, and only in
 # the plugin's OWN files — skills/, commands/, agents/, hooks/, README.md, CONTRIBUTING.md — never a
@@ -166,10 +179,19 @@ scan_negative "D" \
 # ---------------------------------------------------------------------------
 # E) the exact legacy phrases this project used, before v1.5.0, to describe the old location.
 # ---------------------------------------------------------------------------
-scan_negative "E" \
-  'stable repo-root|at the repo root|Check the repo root|from repo root' \
-  'legacy root' \
-  "still uses a legacy repo-root phrase"
+while IFS= read -r hit; do
+  [ -n "$hit" ] || continue
+  path="${hit%%:*}"
+  rest="${hit#*:}"
+  lineno="${rest%%:*}"
+  content="${rest#*:}"
+  printf '%s' "$content" | grep -qi 'legacy root' && continue
+  start=$((lineno > 1 ? lineno - 1 : 1))
+  window="$(sed -n "${start},$((lineno + 1))p" "$path" | sed -E 's#\.dev-team/(PROJECT|FEATURES|SECURITY|VERIFICATION|MIGRATION|HANDOFF)\.md##g; s#\.dev-team/verdict\.json##g')"
+  if printf '%s' "$window" | grep -qE "$LEDGER_NAME_RE"; then
+    note "E: $path:$lineno still uses a legacy repo-root phrase next to a bare ledger name: $content"
+  fi
+done < <(grep -rnE 'stable repo-root|at the repo root|Check the repo root|from repo root' "${SCOPE[@]}" 2>/dev/null)
 
 # ---------------------------------------------------------------------------
 # F) the pre-v1.5.0 "<!-- dev-team-schema:" marker text, outside a line that explains it as legacy.
@@ -178,6 +200,23 @@ scan_negative "F" \
   '<!-- dev-team-schema:' \
   'legacy' \
   "uses the old dev-team-schema marker outside a legacy explanation"
+
+# ---------------------------------------------------------------------------
+# G) README.md only: a skill description line (**Purpose.**/**Modes.**/**Artifacts.**/
+#    **Cold-resume.**) that still names a ledger with no .dev-team/ prefix once every correct
+#    .dev-team/<name> mention on that same line has been stripped out. See the header comment
+#    above for why this is narrower than checks C/D/E.
+# ---------------------------------------------------------------------------
+while IFS= read -r hit; do
+  [ -n "$hit" ] || continue
+  lineno="${hit%%:*}"
+  content="${hit#*:}"
+  printf '%s' "$content" | grep -qi 'legacy root' && continue
+  stripped="$(printf '%s' "$content" | sed -E 's#\.dev-team/(PROJECT|FEATURES|SECURITY|VERIFICATION|MIGRATION|HANDOFF)\.md##g; s#\.dev-team/verdict\.json##g')"
+  if printf '%s' "$stripped" | grep -qE "$LEDGER_NAME_RE"; then
+    note "G: README.md:$lineno a skill description names a ledger without the .dev-team/ prefix: $content"
+  fi
+done < <(grep -nE '^\*\*(Purpose|Modes|Artifacts|Cold-resume)\.\*\*' README.md 2>/dev/null)
 
 [ "$fail" -eq 0 ] && echo "LEDGER-PATHS OK"
 exit "$fail"
