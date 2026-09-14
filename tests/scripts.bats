@@ -4,9 +4,22 @@
 #
 # Every test that needs an isolated ".dev-team/config.yml" or a directory with no
 # ".dev-team/autopilot.json" runs from a fresh per-test scratch dir ($SCRATCH), never from
-# $REPO_ROOT, so tests never leave stray files behind in this actual repo. The tests that DO
-# touch $REPO_ROOT (audit-model-ids.sh's and audit-ledger-paths.sh's injected-failure cases)
-# always clean up in teardown, even if an assertion fails.
+# $REPO_ROOT. No test in this file writes to, or deletes anything from, $REPO_ROOT — see the
+# "scripts.bats: no test deletes anything inside the real repository" test near the bottom, which
+# greps this very file for exactly that.
+#
+# Fault fixed (issue #41, Codex round 3, finding 11): this file used to inject failures straight
+# into the real repository — writing a dated-model-id file under tests/, creating a real
+# ".claude/agents/" directory, writing a fixture under skills/dev-team-orchestrator/references/ —
+# and teardown() ran "rm -rf $REPO_ROOT/.claude/agents" unconditionally after EVERY test, whether
+# or not that test had anything to do with it. A contributor who keeps their own ".claude/agents/"
+# folder in this checkout (nothing stops that; ".claude/" is only partly tracked) would have had it
+# silently deleted the first time they ran the suite. The fix is "make_tree" below: it copies the
+# whole repository (minus .git) into $SCRATCH/tree once per test that needs to inject a fault, and
+# every one of those tests now runs the script being tested against the COPY, never the real tree.
+# Both audit scripts "cd" to their own script's parent directory before doing anything else, so
+# running the copy's script audits the copy — the real repository is never touched, and there is
+# nothing to clean up afterward beyond the normal $SCRATCH removal every test already does.
 #
 # The guard-ledgers stderr-silence tests below use "run --separate-stderr", a bats-core flag added
 # in 1.5.0 (it splits stdout and stderr into $output and $stderr instead of merging them, which
@@ -20,15 +33,36 @@ bats_require_minimum_version 1.5.0
 setup() {
   REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
   SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/dev-team-bats.XXXXXX")"
+  # Set here, not as a bare top-level assignment further down, because bats sources this whole file
+  # ONCE before calling setup() for the first test — a top-level "MOVE_LEDGERS_MD=$REPO_ROOT/..."
+  # would see $REPO_ROOT still unset at that point and silently bake in an empty prefix.
+  MOVE_LEDGERS_MD="$REPO_ROOT/commands/dev-team-move-ledgers.md"
 }
 
 teardown() {
+  # Only ever removes $SCRATCH, this test's own private throwaway directory — never a path under
+  # $REPO_ROOT. The three "rm -f"/"rm -rf $REPO_ROOT/..." lines that used to live here were removed
+  # for finding 11 above: they deleted real repository paths (including a contributor's own
+  # ".claude/agents/", if they happened to have one) on every single test, not just the ones that
+  # had created something to clean up.
   [ -n "${SCRATCH:-}" ] && rm -rf "$SCRATCH"
-  # Belt-and-braces: guarantee these known scratch artifacts never survive a failed assertion in
-  # the audit-model-ids.sh / audit-ledger-paths.sh injected-failure tests below.
-  rm -f "$REPO_ROOT/tests/.tmp-audit-dated-id.md"
-  rm -rf "$REPO_ROOT/.claude/agents"
-  rm -f "$REPO_ROOT/skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
+}
+
+# Copies this repository (without .git) into $SCRATCH/tree, so a test that needs to inject a fault
+# — a dated model id, a fake ".claude/agents/" dir, a stale ledger-path sentence — can hand it to
+# the script being tested WITHOUT touching the real working tree at all. Both scripts.audit-*.sh
+# "cd" to their own script's parent directory before doing anything else, so running the COPY's
+# script audits the copy; the real repository is read once (to make the copy) and never written to
+# or deleted from. This replaces an earlier design that wrote fixed-name files straight into
+# $REPO_ROOT and relied on teardown() to "rm -rf" them back out again — which is exactly the design
+# finding 11 above found unsafe. Uses "tar" (excluding .git, which can be large and is never read by
+# either audit script) because it behaves the same way on macOS's bundled bsdtar and on Ubuntu's GNU
+# tar, unlike "cp -r" flag support. The copy also picks up untracked files such as
+# orchestrator_prompt.md, which matches what the real audit scripts see when run directly.
+make_tree() {
+  TREE="$SCRATCH/tree"
+  mkdir -p "$TREE"
+  ( cd "$REPO_ROOT" && tar --exclude=.git -cf - . ) | ( cd "$TREE" && tar -xf - )
 }
 
 # Run guard-dev-team.sh with $2 piped to stdin, cwd'd into $1 (guard reads
@@ -58,21 +92,21 @@ run_ledger_guard() {
 }
 
 @test "audit-model-ids: fails on a dated model id outside the roster" {
-  # audit-model-ids.sh cd's to its own script's parent dir, so it always audits THIS repo
-  # regardless of caller cwd — the injected file must live inside the real tree; removed
-  # immediately after (and again in teardown as a safety net).
-  echo "claude-opus-4-8" > "$REPO_ROOT/tests/.tmp-audit-dated-id.md"
-  run bash "$REPO_ROOT/scripts/audit-model-ids.sh"
-  rm -f "$REPO_ROOT/tests/.tmp-audit-dated-id.md"
+  # audit-model-ids.sh cd's to its own script's parent dir, so it always audits whatever tree it is
+  # run from — here, a throwaway COPY of the repo (see make_tree() above and finding 11), so the
+  # injected file never touches the real working tree and there is nothing to remove afterward.
+  make_tree
+  echo "claude-opus-4-8" > "$TREE/tests/.tmp-audit-dated-id.md"
+  run bash "$TREE/scripts/audit-model-ids.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"AUDIT FAIL"* ]]
   [[ "$output" == *"dated model id"* ]]
 }
 
 @test "audit-model-ids: fails when a .claude/agents/ dir exists" {
-  mkdir -p "$REPO_ROOT/.claude/agents"
-  run bash "$REPO_ROOT/scripts/audit-model-ids.sh"
-  rm -rf "$REPO_ROOT/.claude/agents"
+  make_tree
+  mkdir -p "$TREE/.claude/agents"
+  run bash "$TREE/scripts/audit-model-ids.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *".claude/agents/ exists"* ]]
 }
@@ -80,11 +114,13 @@ run_ledger_guard() {
 # ---------------------------------------------------------------------------
 # scripts/audit-ledger-paths.sh
 # ---------------------------------------------------------------------------
-# Same belt-and-braces cleanup discipline as the audit-model-ids.sh cases above: the injected
-# file is removed immediately after the assertions, and again in teardown() in case an assertion
-# fails first and the immediate "rm" line is never reached.
+# Every test below that injects a fault runs make_tree() first and writes the fixture, and runs the
+# script, inside $SCRATCH/tree — never inside $REPO_ROOT (finding 11 above). There is nothing to
+# remove afterward: $SCRATCH (and the copy inside it) is deleted by teardown() like any other test's
+# scratch directory.
 
 @test "audit-ledger-paths: passes on the clean repo" {
+  # Read-only: runs the real script against the real tree, exactly as CI does.
   run bash "$REPO_ROOT/scripts/audit-ledger-paths.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"LEDGER-PATHS OK"* ]]
@@ -100,43 +136,227 @@ run_ledger_guard() {
 TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
 
 @test "audit-ledger-paths: check C fires alone on a \"sibling to\" sentence naming a bare ledger" {
-  # The script cd's to its own script's parent dir, so it always audits THIS repo regardless of
-  # caller cwd — the injected file must live inside the real tree, under skills/ (in scope).
+  # The script cd's to its own script's parent dir, so it audits whatever tree it is run from —
+  # here, the throwaway copy under $TREE, with the fixture written under its skills/ (in scope).
+  make_tree
   printf '%s\n' 'Put `HANDOFF.md` sibling to package.json.' \
-    > "$REPO_ROOT/$TMP_LEDGER_AUDIT"
-  run bash "$REPO_ROOT/scripts/audit-ledger-paths.sh"
-  rm -f "$REPO_ROOT/$TMP_LEDGER_AUDIT"
+    > "$TREE/$TMP_LEDGER_AUDIT"
+  run bash "$TREE/scripts/audit-ledger-paths.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"LEDGER-PATHS FAIL: C:"* ]]
   [[ "$output" != *"LEDGER-PATHS FAIL: E:"* ]]
 }
 
 @test "audit-ledger-paths: check D fires alone on a ledger anchor with no .dev-team/ prefix" {
+  make_tree
   printf '%s\n' 'See `SECURITY.md#Findings` for the full register.' \
-    > "$REPO_ROOT/$TMP_LEDGER_AUDIT"
-  run bash "$REPO_ROOT/scripts/audit-ledger-paths.sh"
-  rm -f "$REPO_ROOT/$TMP_LEDGER_AUDIT"
+    > "$TREE/$TMP_LEDGER_AUDIT"
+  run bash "$TREE/scripts/audit-ledger-paths.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"LEDGER-PATHS FAIL: D:"* ]]
 }
 
-@test "audit-ledger-paths: check E fires alone on a legacy repo-root phrase with no ledger name on the line" {
+# Finding 10 (Codex review round 3): check E used to fire on the legacy repo-root phrases ("at the
+# repo root", and the three siblings in the script's header comment) ALONE, with no test at all for
+# whether a ledger was actually being talked about. That rejected ordinary, unrelated sentences —
+# for example this exact one, about config files, which has nothing to do with any dev-team ledger —
+# just because it happened to contain the words "at the repo root". The two tests below replace the
+# single old one (which used to assert that this harmless sentence FAILED the audit — see the
+# builder's report for issue #41, finding 10, for why that was backwards) and pin the fixed
+# behaviour: check E now only fires when a bare ledger name shows up on the SAME line as the phrase,
+# or the line immediately before or after it (a wrapped sentence often puts the name on the line
+# above), once every correct ".dev-team/<name>" mention has been stripped away first.
+
+@test "audit-ledger-paths: check E ignores a repo-root phrase with no ledger name nearby" {
+  make_tree
   printf '%s\n' 'Config files used to live at the repo root before this project reorganised its layout.' \
-    > "$REPO_ROOT/$TMP_LEDGER_AUDIT"
-  run bash "$REPO_ROOT/scripts/audit-ledger-paths.sh"
-  rm -f "$REPO_ROOT/$TMP_LEDGER_AUDIT"
+    > "$TREE/$TMP_LEDGER_AUDIT"
+  run bash "$TREE/scripts/audit-ledger-paths.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"LEDGER-PATHS OK"* ]]
+}
+
+@test "audit-ledger-paths: check E fires alone when a bare ledger name is on the line before the legacy phrase" {
+  make_tree
+  printf '%s\n%s\n' 'The documentarian keeps `PROJECT.md`' 'at the repo root.' \
+    > "$TREE/$TMP_LEDGER_AUDIT"
+  run bash "$TREE/scripts/audit-ledger-paths.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"LEDGER-PATHS FAIL: E:"* ]]
   [[ "$output" != *"LEDGER-PATHS FAIL: C:"* ]]
 }
 
 @test "audit-ledger-paths: check F fires alone on the old marker text with no \"legacy\" nearby" {
+  make_tree
   printf '%s\n' 'This file still uses <!-- dev-team-schema: 1.0 --> in one place.' \
-    > "$REPO_ROOT/$TMP_LEDGER_AUDIT"
-  run bash "$REPO_ROOT/scripts/audit-ledger-paths.sh"
-  rm -f "$REPO_ROOT/$TMP_LEDGER_AUDIT"
+    > "$TREE/$TMP_LEDGER_AUDIT"
+  run bash "$TREE/scripts/audit-ledger-paths.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"LEDGER-PATHS FAIL: F:"* ]]
+}
+
+# ---------------------------------------------------------------------------
+# commands/dev-team-move-ledgers.md — text checks (issue #41, Codex round 3, findings 1-4)
+# ---------------------------------------------------------------------------
+# This command's own file is instructions for the model to follow, not a script — nothing here
+# "runs" in the ordinary sense, so most of these are text checks confirming the file's wording still
+# says what the fix required. A handful are instead checks on the real git behaviour those
+# instructions rely on, each built in its own throwaway repo under $SCRATCH (removed by teardown()
+# like any other test's scratch directory — never $REPO_ROOT).
+
+@test "move-ledgers: the mixed group (d) is checked before the look-alike group (b)" {
+  # Finding 1: (d) — the "mixed, needs a person" group — used to be checked after (b), so a real
+  # product document with the plugin's own records appended to it could match (b)'s shape test on
+  # its FIRST record and be offered for moving and stamping whole, before the mixed test ever ran.
+  d=$(grep -n '^\*\*(d) Mixed' "$MOVE_LEDGERS_MD" | cut -d: -f1)
+  b=$(grep -n '^\*\*(b) Looks like ours' "$MOVE_LEDGERS_MD" | cut -d: -f1)
+  [ -n "$d" ]
+  [ -n "$b" ]
+  [ "$d" -lt "$b" ]
+}
+
+@test "move-ledgers: (d) no longer says only 'Checked before (c)'" {
+  run grep -c 'Checked before (c)\.' "$MOVE_LEDGERS_MD"
+  [ "$output" = "0" ]
+}
+
+@test "move-ledgers: (d) report uses the two-way wording" {
+  # Finding 1: a (d) file might be an old ledger with no marker, or a document with records added —
+  # the command cannot tell which, so it reports both possibilities instead of only one.
+  run grep -c 'needs a person to cut it by hand' "$MOVE_LEDGERS_MD"
+  [ "$output" = "0" ]
+  grep -q 'either an old dev-team ledger with no marker' "$MOVE_LEDGERS_MD"
+}
+
+@test "move-ledgers: the preflight checks that each source file is tracked" {
+  # Finding 2: a legacy root file that git ignores looks clean to "git status" but "git mv" fails on
+  # it (exit 128) partway through the move, after other files have already moved.
+  run grep -c 'git ls-files --error-unmatch' "$MOVE_LEDGERS_MD"
+  [ "$output" -ge 1 ]
+}
+
+@test "move-ledgers: rollback covers steps 4 to 9, not only 8 or 9" {
+  run grep -c 'If step 8 or 9 fails' "$MOVE_LEDGERS_MD"
+  [ "$output" = "0" ]
+  run grep -c 'If any step from 4 to 9 fails' "$MOVE_LEDGERS_MD"
+  [ "$output" -ge 1 ]
+}
+
+@test "move-ledgers: rollback never uses git reset --hard except to explain why not" {
+  # Finding 3: "git reset --hard" can destroy an edit some OTHER program made to the working tree
+  # while this command's questions were being asked. Every remaining mention of it must be inside a
+  # sentence explaining that it was rejected, never live instructions.
+  run bash -c "grep -n 'reset --hard' '$MOVE_LEDGERS_MD' | grep -v -i 'rejected'"
+  [ -z "$output" ]
+}
+
+@test "move-ledgers: working tree is checked again after the questions" {
+  run grep -c 'changed while the questions were being asked' "$MOVE_LEDGERS_MD"
+  [ "$output" -ge 1 ]
+}
+
+@test "move-ledgers: ignore check names config.yml" {
+  # Finding 4: a declined pointer sentence writes .dev-team/config.yml, which can itself be
+  # git-ignored — the same "git mv can't move an ignored file" problem as finding 2, but for a
+  # created file instead of a moved one.
+  run bash -c "grep -n 'check-ignore' '$MOVE_LEDGERS_MD' | grep -c 'config.yml'"
+  [ "$output" -ge 1 ]
+}
+
+@test "move-ledgers: ignore check skips already-tracked paths" {
+  # A file that is already tracked by git still accepts "git add" even when it matches an ignore
+  # pattern (see the "git: ignored untracked config.yml is refused..." test below) — refusing it
+  # anyway would be wrong.
+  run grep -c 'already tracked' "$MOVE_LEDGERS_MD"
+  [ "$output" -ge 1 ]
+}
+
+@test "git: an ignored legacy root file passes the clean check but is not tracked" {
+  # Proves the fact finding 2's fix depends on: "git status --porcelain" does not list an ignored
+  # file at all, so the command's clean-tree check cannot see it — but "git mv" (and "git
+  # ls-files --error-unmatch") fails on it, because git was never tracking it to begin with.
+  repo="$SCRATCH/repo"
+  mkdir -p "$repo"
+  ( cd "$repo" && git init -q && git config user.email t@t.example && git config user.name t \
+    && printf '/SECURITY.md\n' > .gitignore && git add .gitignore && git commit -qm i \
+    && echo x > SECURITY.md )
+  [ -z "$(cd "$repo" && git status --porcelain)" ]
+  run bash -c "cd '$repo' && git ls-files --error-unmatch -- SECURITY.md"
+  [ "$status" -ne 0 ]
+}
+
+@test "git: the documented restore leaves other programs' edits alone" {
+  # Proves finding 3's replacement for "git reset --hard": restoring only the LISTED paths this
+  # command itself touched undoes the rename and the staged edit, but leaves a foreign edit to
+  # app.js (made by some other program while the command's questions were being asked) untouched.
+  repo="$SCRATCH/repo"
+  mkdir -p "$repo"
+  ( cd "$repo" && git init -q && git config user.email t@t.example && git config user.name t \
+    && printf 'v1\n' > FEATURES.md && printf 'app v1' > app.js && printf '{"orig":true}' > ap.json \
+    && git add FEATURES.md app.js ap.json && git commit -qm base )
+  H0="$(cd "$repo" && git rev-parse HEAD)"
+  ( cd "$repo" \
+    && echo foreign > app.js \
+    && mkdir .dev-team \
+    && git mv FEATURES.md .dev-team/FEATURES.md \
+    && echo '{}' > ap.json && git add ap.json \
+    && printf 'loop.lock/\n' > .dev-team/.gitignore && git add .dev-team/.gitignore \
+    && git restore --source="$H0" --staged --worktree -- FEATURES.md .dev-team/FEATURES.md ap.json \
+    && git rm -q --cached --ignore-unmatch -- .dev-team/.gitignore \
+    && rm -f -- .dev-team/.gitignore \
+    && rmdir .dev-team 2>/dev/null )
+  [ "$(cat "$repo/app.js")" = foreign ]
+  [ -f "$repo/FEATURES.md" ]
+  [ ! -e "$repo/.dev-team" ]
+  [ "$(cd "$repo" && git status --porcelain --untracked-files=all)" = " M app.js" ]
+}
+
+@test "git: ignored untracked config.yml is refused by git add, tracked one is not" {
+  # Proves the two facts finding 4's "skip already-tracked paths" rule depends on: an untracked file
+  # matching an ignore pattern is refused by "git add" (so it must be checked before it is written),
+  # but once the same path is already tracked, "git add" on a later edit works normally — refusing
+  # it there would be wrong.
+  repo="$SCRATCH/repo"
+  mkdir -p "$repo/.dev-team"
+  ( cd "$repo" && git init -q && git config user.email t@t.example && git config user.name t \
+    && printf '.dev-team/config.yml\n' > .gitignore && git add .gitignore && git commit -qm i )
+  echo a > "$repo/.dev-team/config.yml"
+  run bash -c "cd '$repo' && git check-ignore -q --no-index .dev-team/config.yml"
+  [ "$status" -eq 0 ]
+  run bash -c "cd '$repo' && git add .dev-team/config.yml"
+  [ "$status" -ne 0 ]
+  ( cd "$repo" && git add -f .dev-team/config.yml && git commit -qm add-config )
+  echo b >> "$repo/.dev-team/config.yml"
+  run bash -c "cd '$repo' && git add .dev-team/config.yml"
+  [ "$status" -eq 0 ]
+}
+
+# ---------------------------------------------------------------------------
+# conventions.md — the canonical ownership sentence (issue #41, Codex round 3, finding 8)
+# ---------------------------------------------------------------------------
+
+@test "conventions: the canonical ownership sentence is identical in every file that quotes it" {
+  # Finding 8: this sentence used to say "Every file the dev-team suite writes for itself..." (too
+  # broad — it read as covering autopilot.json, config.yml, loop.lock/ and .gitignore too, none of
+  # which can carry a line-2 marker) and conventions.md's own rule said "any file in the Shared
+  # artifacts table". Both are narrowed to name exactly the plugin's record files, copied
+  # byte-for-byte into every file that quotes the sentence.
+  S='Every record file the dev-team suite writes for itself lives in `.dev-team/` and carries the dev-team marker on line 2 (`verdict.json` carries it as a field); a record file at that path without the marker is never written to — the run stops and asks. See `dev-team-orchestrator/references/conventions.md`, "Where the plugin writes, and the ownership rule".'
+  count="$(grep -rlF "$S" "$REPO_ROOT/agents" "$REPO_ROOT/commands" "$REPO_ROOT/skills" 2>/dev/null | wc -l | tr -d ' ')"
+  [ "$count" -eq 7 ]
+
+  run grep -rF 'Every file the dev-team suite writes for itself' \
+    "$REPO_ROOT/agents" "$REPO_ROOT/commands" "$REPO_ROOT/skills" "$REPO_ROOT/README.md"
+  [ "$status" -eq 1 ]
+
+  # The old, broader rule wording ("any file in the Shared artifacts table") is allowed to survive
+  # in exactly one place: an "*Earlier wording:*" footnote in conventions.md that quotes it on
+  # purpose, to explain to a future reader why the rule was narrowed (the fix itself calls for this
+  # footnote). Asserting the phrase is entirely absent would fail against that deliberate footnote,
+  # so instead this asserts every occurrence (if any) carries the footnote marker on the same line —
+  # i.e. it is only ever quoted as history, never read as a live instruction.
+  run bash -c "grep -rF 'any file in the Shared artifacts table' '$REPO_ROOT/skills/dev-team-orchestrator/references/conventions.md' | grep -v 'Earlier wording'"
+  [ -z "$output" ]
 }
 
 # ---------------------------------------------------------------------------
@@ -433,6 +653,129 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
 }
 
 # ---------------------------------------------------------------------------
+# hooks/guard-ledgers.sh — a session started in a SUBFOLDER of the repository
+# (issue #41, Codex round 3, finding 5)
+# ---------------------------------------------------------------------------
+# Fault found by review: the hook used to take the payload's "cwd" AS the project's top folder. From
+# a subfolder that went wrong in both directions: a harmful write to the real top-level SECURITY.md
+# (given as an absolute path, or as "../SECURITY.md") counted as "outside the project" and was let
+# through, the top-level .dev-team/loop.lock/ and .dev-team/config.yml were never found (so
+# "guard: off" was ignored), and the plugin's own correct write to the absolute
+# "<top>/.dev-team/SECURITY.md" was wrongly refused. The hook now asks git
+# ("rev-parse --show-prefix") where the working folder sits inside the repository, and judges paths,
+# config and the lock against the TOP folder it works out from that. Each test below creates its own
+# throwaway git repository under $SCRATCH (removed by teardown() like any other scratch dir — never
+# $REPO_ROOT) with a "src" subfolder, and passes "cwd" pointing at that subfolder in the payload,
+# exactly as Claude Code would for a session started there.
+
+@test "guard-ledgers: a session started in a subfolder still sees the top-level lock and protects the top-level SECURITY.md (absolute path)" {
+  git init -q "$SCRATCH"
+  s="$(cd "$SCRATCH" && pwd)"
+  mkdir -p "$s/src" "$s/.dev-team/loop.lock"
+  run run_ledger_guard "$s/src" '{"cwd":"'"$s"'/src","tool_name":"Edit","tool_input":{"file_path":"'"$s"'/SECURITY.md","new_string":"F-001 fixed"}}'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"dev-team guard"* ]]
+}
+
+@test "guard-ledgers: a session started in a subfolder still protects the top-level SECURITY.md via a relative \"../\" path" {
+  git init -q "$SCRATCH"
+  s="$(cd "$SCRATCH" && pwd)"
+  mkdir -p "$s/src" "$s/.dev-team/loop.lock"
+  run run_ledger_guard "$s/src" '{"cwd":"'"$s"'/src","tool_name":"Edit","tool_input":{"file_path":"../SECURITY.md","new_string":"F-001 fixed"}}'
+  [ "$status" -eq 2 ]
+}
+
+@test "guard-ledgers: the plugin's own absolute .dev-team write from a subfolder is allowed" {
+  git init -q "$SCRATCH"
+  s="$(cd "$SCRATCH" && pwd)"
+  mkdir -p "$s/src"
+  run run_ledger_guard "$s/src" '{"cwd":"'"$s"'/src","tool_name":"Write","tool_input":{"file_path":"'"$s"'/.dev-team/SECURITY.md","content":"# x\n<!-- dev-team: ledger=security schema=1.0 -->\n"}}'
+  [ "$status" -eq 0 ]
+}
+
+@test "guard-ledgers: the plugin's own relative \"../.dev-team/\" write from a subfolder is allowed" {
+  git init -q "$SCRATCH"
+  s="$(cd "$SCRATCH" && pwd)"
+  mkdir -p "$s/src"
+  run run_ledger_guard "$s/src" '{"cwd":"'"$s"'/src","tool_name":"Write","tool_input":{"file_path":"../.dev-team/FEATURES.md","content":"# x\n<!-- dev-team: ledger=features schema=1.0 -->\n"}}'
+  [ "$status" -eq 0 ]
+}
+
+@test "guard-ledgers: guard: off at the top level is honoured from a subfolder" {
+  git init -q "$SCRATCH"
+  s="$(cd "$SCRATCH" && pwd)"
+  mkdir -p "$s/src" "$s/.dev-team"
+  printf 'guard: off\n' > "$s/.dev-team/config.yml"
+  run run_ledger_guard "$s/src" '{"cwd":"'"$s"'/src","tool_name":"Write","tool_input":{"file_path":"../SECURITY.md","content":"# x\n<!-- dev-team: ledger=security schema=1.0 -->\n"}}'
+  [ "$status" -eq 0 ]
+}
+
+@test "guard-ledgers: a relative ledger name from a subfolder is not the top-level file" {
+  git init -q "$SCRATCH"
+  s="$(cd "$SCRATCH" && pwd)"
+  mkdir -p "$s/src" "$s/.dev-team/loop.lock"
+  run run_ledger_guard "$s/src" '{"cwd":"'"$s"'/src","tool_name":"Edit","tool_input":{"file_path":"SECURITY.md","new_string":"F-001"}}'
+  [ "$status" -eq 0 ]
+}
+
+@test "guard-ledgers: outside git the hook falls back to cwd as the top folder (documented limit)" {
+  # Deliberately no "git init" — this pins the documented remaining limit (see the hook's "What
+  # this hook CANNOT do" list): outside a git repository, a session started in a subfolder is still
+  # judged as if that subfolder were the top, so the top-level lock is never seen and this write is
+  # wrongly allowed. Guarded against $SCRATCH itself sitting inside some OTHER git repository on the
+  # machine running the test (which would make "git -C $SCRATCH rev-parse" succeed and this test
+  # meaningless) by skipping in that case rather than silently passing for the wrong reason.
+  s="$SCRATCH"
+  if git -C "$s" rev-parse >/dev/null 2>&1; then
+    skip "\$SCRATCH is unexpectedly inside a git repository on this machine"
+  fi
+  mkdir -p "$s/.dev-team/loop.lock" "$s/src"
+  run run_ledger_guard "$s/src" '{"cwd":"'"$s"'/src","tool_name":"Edit","tool_input":{"file_path":"'"$s"'/SECURITY.md","new_string":"F-001 fixed"}}'
+  [ "$status" -eq 0 ]
+}
+
+@test "guard-ledgers: the subfolder fix also works from two levels deep" {
+  git init -q "$SCRATCH"
+  s="$(cd "$SCRATCH" && pwd)"
+  mkdir -p "$s/src/deep" "$s/.dev-team/loop.lock"
+  run run_ledger_guard "$s/src/deep" '{"cwd":"'"$s"'/src/deep","tool_name":"Edit","tool_input":{"file_path":"../../SECURITY.md","new_string":"F-001 fixed"}}'
+  [ "$status" -eq 2 ]
+}
+
+# ---------------------------------------------------------------------------
+# hooks/guard-ledgers.sh — the legacy (pre-v1.5.0) marker
+# (issue #41, Codex round 3, finding 7)
+# ---------------------------------------------------------------------------
+# Fault found by review: conventions.md still accepts the legacy marker,
+# "<!-- dev-team-schema: 1.0 -->", as proof that the plugin owns a file (point 3) — but the hook's
+# marker pattern only recognised the CURRENT marker forms, so a Write (or, mid-cycle, an Edit)
+# carrying only the legacy marker to a top-level ledger name passed straight through both rules. The
+# pattern now includes the legacy marker too.
+
+@test "guard-ledgers: the legacy marker on a top-level SECURITY.md Write is denied" {
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":"SECURITY.md","content":"# S\n<!-- dev-team-schema: 1.0 -->\nline3"}}'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"dev-team guard"* ]]
+}
+
+@test "guard-ledgers: the same legacy-marker content is allowed at .dev-team/SECURITY.md" {
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":".dev-team/SECURITY.md","content":"# S\n<!-- dev-team-schema: 1.0 -->\nline3"}}'
+  [ "$status" -eq 0 ]
+}
+
+@test "guard-ledgers: the legacy marker on line 10 only does not trip the first-three-lines check" {
+  content="1\n2\n3\n4\n5\n6\n7\n8\n9\n<!-- dev-team-schema: 1.0 -->"
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Write","tool_input":{"file_path":"FEATURES.md","content":"'"$content"'"}}'
+  [ "$status" -eq 0 ]
+}
+
+@test "guard-ledgers: an Edit adding the legacy marker to top-level FEATURES.md mid-cycle is denied" {
+  mkdir -p "$SCRATCH/.dev-team/loop.lock"
+  run run_ledger_guard "$SCRATCH" '{"tool_name":"Edit","tool_input":{"file_path":"FEATURES.md","new_string":"<!-- dev-team-schema: 1.0 -->"}}'
+  [ "$status" -eq 2 ]
+}
+
+# ---------------------------------------------------------------------------
 # hooks/guard-ledgers.sh — Rule 2 (top-level ledger names, active-run gate)
 # ---------------------------------------------------------------------------
 # This replaces the plan's first draft, which gated Rule 2 on ".dev-team/autopilot.json exists" —
@@ -600,6 +943,118 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
 }
 
 # ---------------------------------------------------------------------------
+# schemas/verdict.schema.json — the three protocol-invariant "allOf" rules, and
+# scripts/check-verdict.sh — the invariants JSON Schema itself cannot express
+# (issue #41, Codex round 3, findings 12 and 13)
+# ---------------------------------------------------------------------------
+# Before this fix the schema accepted verdict shapes verdict-and-report-protocol.md's own "Overall
+# verdict rule" already calls impossible — e.g. overall PASS while the integration check failed, or
+# overall PASS with a critical FAILED claim. The three fixtures below (already validated by hand
+# against both tools — see the builder's report for issue #41, finding 12) each break exactly one of
+# the three new "allOf" rules; the schema tests skip (never fail) when check-jsonschema is not
+# installed, matching the pattern the two tests above already use. check-verdict.sh checks four
+# further invariants no JSON Schema "if/then" can express at all (counting across the claims array,
+# comparing one claim's field against another) — those tests skip when "jq" is missing, since the
+# script itself needs it to run.
+
+@test "verdict-schema: PASS with failed integration is rejected" {
+  command -v check-jsonschema >/dev/null 2>&1 || skip "check-jsonschema not installed"
+  run check-jsonschema --schemafile "$REPO_ROOT/schemas/verdict.schema.json" "$REPO_ROOT/tests/fixtures/verdict.invalid-pass-with-failed-integration.json"
+  [ "$status" -ne 0 ]
+}
+
+@test "verdict-schema: PASS_WITH_GAPS with failed integration is rejected" {
+  command -v check-jsonschema >/dev/null 2>&1 || skip "check-jsonschema not installed"
+  run check-jsonschema --schemafile "$REPO_ROOT/schemas/verdict.schema.json" "$REPO_ROOT/tests/fixtures/verdict.invalid-integration-fail-not-fail.json"
+  [ "$status" -ne 0 ]
+}
+
+@test "verdict-schema: PASS_WITH_GAPS with a critical FAILED claim is rejected" {
+  command -v check-jsonschema >/dev/null 2>&1 || skip "check-jsonschema not installed"
+  run check-jsonschema --schemafile "$REPO_ROOT/schemas/verdict.schema.json" "$REPO_ROOT/tests/fixtures/verdict.invalid-critical-failed-not-fail.json"
+  [ "$status" -ne 0 ]
+}
+
+@test "verdict-schema: overall PASS with a critical DRIFTED claim is rejected" {
+  command -v check-jsonschema >/dev/null 2>&1 || skip "check-jsonschema not installed"
+  run check-jsonschema --schemafile "$REPO_ROOT/schemas/verdict.schema.json" "$REPO_ROOT/tests/fixtures/verdict.invalid-pass-with-critical-drifted.json"
+  [ "$status" -ne 0 ]
+}
+
+@test "verdict-schema: FAIL with a critical FAILED claim validates" {
+  command -v check-jsonschema >/dev/null 2>&1 || skip "check-jsonschema not installed"
+  run check-jsonschema --schemafile "$REPO_ROOT/schemas/verdict.schema.json" "$REPO_ROOT/tests/fixtures/verdict.valid-fail-critical-failed.json"
+  [ "$status" -eq 0 ]
+}
+
+@test "verdict-schema: the protocol's own JSON example is valid" {
+  command -v check-jsonschema >/dev/null 2>&1 || skip "check-jsonschema not installed"
+  sed -n '/^```json$/,/^```$/p' "$REPO_ROOT/skills/dev-team-review/references/verdict-and-report-protocol.md" \
+    | sed '1d;$d' > "$SCRATCH/proto.json"
+  run check-jsonschema --schemafile "$REPO_ROOT/schemas/verdict.schema.json" "$SCRATCH/proto.json"
+  [ "$status" -eq 0 ]
+  run bash "$REPO_ROOT/scripts/check-verdict.sh" "$SCRATCH/proto.json"
+  [ "$status" -eq 0 ]
+}
+
+@test "verdict-schema: finding 13's wrong severity wording is gone" {
+  # The schema used to say "A FAILED or DRIFTED claim at 'critical' severity is what forces the
+  # overall verdict to FAIL" — wrong: the protocol, and the sample fixture's own V-003, treat a
+  # critical DRIFTED claim as PASS_WITH_GAPS, not FAIL.
+  run grep -F "FAILED or DRIFTED claim at" "$REPO_ROOT/schemas/verdict.schema.json"
+  [ "$status" -eq 1 ]
+}
+
+@test "check-verdict: the sample fixture passes" {
+  command -v jq >/dev/null 2>&1 || skip "jq not installed"
+  run bash "$REPO_ROOT/scripts/check-verdict.sh" "$REPO_ROOT/tests/fixtures/verdict.sample.json"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"VERDICT-CHECK OK"* ]]
+}
+
+@test "check-verdict: a checked/claims-length mismatch is rejected" {
+  command -v jq >/dev/null 2>&1 || skip "jq not installed"
+  run bash "$REPO_ROOT/scripts/check-verdict.sh" "$REPO_ROOT/tests/fixtures/verdict.invalid-checked-mismatch.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"claims list length"* ]]
+}
+
+@test "check-verdict: a count that does not add up to checked is rejected" {
+  command -v jq >/dev/null 2>&1 || skip "jq not installed"
+  run bash "$REPO_ROOT/scripts/check-verdict.sh" "$REPO_ROOT/tests/fixtures/verdict.invalid-count-mismatch.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"do not add up"* ]]
+}
+
+@test "check-verdict: a duplicate claim id is rejected" {
+  command -v jq >/dev/null 2>&1 || skip "jq not installed"
+  run bash "$REPO_ROOT/scripts/check-verdict.sh" "$REPO_ROOT/tests/fixtures/verdict.invalid-duplicate-id.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"not unique"* ]]
+}
+
+@test "check-verdict: an empty claims list is rejected" {
+  command -v jq >/dev/null 2>&1 || skip "jq not installed"
+  run bash "$REPO_ROOT/scripts/check-verdict.sh" "$REPO_ROOT/tests/fixtures/verdict.invalid-empty-claims.json"
+  [ "$status" -eq 1 ]
+}
+
+@test "check-verdict: a missing file is refused, not passed" {
+  run bash "$REPO_ROOT/scripts/check-verdict.sh" "$SCRATCH/does-not-exist.json"
+  [ "$status" -eq 2 ]
+}
+
+@test "check-verdict: missing jq is refused, not passed" {
+  # A throwaway directory containing only a symlink to bash — nothing else — put on PATH, so
+  # "command -v jq" inside check-verdict.sh finds nothing, while bash itself is still runnable.
+  mkdir -p "$SCRATCH/nojq"
+  ln -s "$(command -v bash)" "$SCRATCH/nojq/bash"
+  run env PATH="$SCRATCH/nojq" bash "$REPO_ROOT/scripts/check-verdict.sh" "$REPO_ROOT/tests/fixtures/verdict.sample.json"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"jq"* ]]
+}
+
+# ---------------------------------------------------------------------------
 # scripts/branch-hygiene.sh
 # ---------------------------------------------------------------------------
 
@@ -612,4 +1067,26 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
   [[ "$output" == *"merged-safe-to-delete:"* ]]
   [[ "$output" == *"skipped:"* ]]
   [ "$before" = "$after" ]
+}
+
+# ---------------------------------------------------------------------------
+# this file's own hygiene (issue #41, Codex round 3, finding 11)
+# ---------------------------------------------------------------------------
+# Pins the fix for finding 11: no test in this file may delete anything under $REPO_ROOT, or write a
+# file directly into it. This is what makes make_tree() (near the top of this file) load-bearing
+# rather than optional — a future test added carelessly, in the old style, would delete or overwrite
+# a real path in this repository on every run, including a contributor's own untracked files. Both
+# patterns are split with string concatenation / a mid-word escape so that this test's OWN source
+# lines are never mistaken for what it is checking for.
+
+@test "scripts.bats: no test deletes anything inside the real repository" {
+  pat='rm -[rf]+ "\$REPO''_ROOT'
+  run grep -nE "$pat" "$BATS_TEST_FILENAME"
+  [ "$status" -eq 1 ]
+}
+
+@test "scripts.bats: no test writes a file directly into the real repository" {
+  pat='> "\$REPO''_ROOT/'
+  run grep -nE "$pat" "$BATS_TEST_FILENAME"
+  [ "$status" -eq 1 ]
 }
