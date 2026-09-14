@@ -6,7 +6,9 @@
             Rewritten as work happens, not tidied at the end. See .claude/CLAUDE.md section 2.
 -->
 
-**Last updated:** 13 September 2026. Analysis and plan finished and reviewed; build about to start.
+**Last updated:** 14 September 2026, about 04:10. Fix round 4 committed and pushed (960ef64, 6f9d1ab, 8be396b);
+waiting for Codex review round 4 (booked 07:38). Newest entries in "What to do next" are near the top of that list,
+starting with "Fix round 4 DONE".
 **Working branch:** `claude/ledger-file-clashes` (made from `main`; `alpha` is fully contained in
 `main`, so this branch can later go to `alpha` in one pull request). Pushed to GitHub.
 **Issue:** [#41](https://github.com/MWBMPartners/dev-team-plugin/issues/41)
@@ -323,6 +325,33 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
           commit per builder. The Codex retry at 07:38 must not start while fix round 4 is mid-edit.
           If it fires first, wait for the commits, and update `codex-exec-prompt-4.md`'s "what is new"
           header to include rounds 3 and 4.
+        - **About 04:10 — Fix round 4 DONE, committed and pushed** (`wf_85b8f0ab-fe0`):
+          - 960ef64 hook: a session's own `<subfolder>/.dev-team/` counts as inside; `guard:` read from
+            both configs ("off" wins, "on" in either); loop.lock in either place; one trailing slash
+            stripped.
+          - 6f9d1ab move-ledgers: rollback is per path, gated on `git cat-file -e <H0>:<path>`: restore if
+            it was in H0, otherwise `git rm -qf --cached --ignore-unmatch` + `rm -f`. A failed git mv adds
+            nothing to the list. A half-failed write clears its recorded id. The by-hand recovery text
+            deliberately omits `-f`, so a person cannot discard someone else's staged work.
+          - 8be396b tests + `check-verdict.sh` (invalid JSON now exits 2). Broadened "never touches repo"
+            patterns, and 16 new tests.
+          - **Lead's checks before committing:**
+            - audit-ledger-paths, audit-model-ids and smoke all OK;
+            - shellcheck clean;
+            - bats **121 of 121**;
+            - no "dev-template";
+            - check-verdict gives exit 2 on `{not json`;
+            - 7 hand probes of the hook from a subfolder, all correct under bash 3.2 and 5: its own abs/rel
+              `.dev-team/` write allowed; `../SECURITY.md` and the `src/.dev-team/../SECURITY.md` trick
+              refused; `guard: off` in the subfolder honoured; trailing slash plus top-level lock refused;
+              a person's own notes.md allowed.
+          - #41 updated. **Not reviewed by a second system** — fix rounds 3 and 4 both wait for Codex.
+          - `codex-exec-prompt-4.md` header now lists fix round 4's commits and 121 tests.
+          - **Next:** at 07:38, run ONE `codex exec -m gpt-5.6-sol -c model_reasoning_effort='"high"' -s
+            read-only -C <repo> -o <scratchpad>/codex-review-4.md - < codex-exec-prompt-4.md`. Confirm
+            the banner and that there is no limit error before telling #41. Verify each finding against the
+            files, fix, and review again. Until then, nothing else on #41 needs doing. Orchestrator (#46)
+            waits for the owner's D1–D4.
         - **03:29 — Codex review round 4 did NOT happen.** It started on gpt-5.6-sol (high effort,
           read-only) and stopped at once: "You've hit your usage limit … try again at 7:33 AM". No
           output was written.
