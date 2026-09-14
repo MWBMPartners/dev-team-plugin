@@ -128,12 +128,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     right now), `guard: on` is set in `.dev-team/config.yml`, or `DEV_TEAM_GUARD` is set — and even
     then it only refuses a write to one of the seven ledger names at the top level (or `SECURITY.md`
     in `.github/`/`docs/`) when the incoming text itself carries the marker or a dev-team record id
-    such as `F-001` or `FG-012`. It deliberately does **not** treat a committed
-    `.dev-team/autopilot.json` as proof that a run is active: some real projects keep that file
-    committed in git, so if presence-of-the-file were the signal, this rule would have been
-    permanently on in those projects and would have stopped their owners editing their own
-    top-level `HANDOFF.md` or `FEATURES.md` forever. `loop.lock/` is a real "right now" signal
-    instead — it's created for the length of one cycle and removed at the end, and it's never
+    such as `F-001` or `FG-012` (the number can run to four digits or more, so `F-1000` is caught
+    too, not just ids up to 999 — a long-lived project's counter never runs out of protection). When
+    a session starts in a subfolder of the repository, Rule 2 guards that subfolder's own top-level
+    ledger names the same way (never `<subfolder>/.github/` or `<subfolder>/docs/`) — every skill
+    writes `.dev-team/<name>` relative to the folder the session starts in, so that subfolder can be
+    the old top-level place a stale instruction means, and guarding both the repository's real top
+    level and the session's own subfolder is safe whichever one is meant. It deliberately does
+    **not** treat a committed `.dev-team/autopilot.json` as proof that a run is active: some real
+    projects keep that file committed in git, so if presence-of-the-file were the signal, this rule
+    would have been permanently on in those projects and would have stopped their owners editing
+    their own top-level `HANDOFF.md` or `FEATURES.md` forever. `loop.lock/` is a real "right now"
+    signal instead — it's created for the length of one cycle and removed at the end, and it's never
     committed to git.
   - **Path resolution**, used by both rules: before either one decides, the target path is worked
     out lexically — every `.` piece dropped, and every `..` piece cancels the piece right before it
@@ -150,9 +156,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `.dev-team/.gitignore` (containing exactly `loop.lock/`) and `.dev-team/README.md` are created
   once, the first time anything is written into the folder, and never overwritten after that; a
   warning is added to the run report if the project's own `.gitignore` would swallow the folder.
-- `schemas/verdict.schema.json`, a JSON Schema describing `verdict.json`'s exact shape, with a
-  sample fixture and two `tests/scripts.bats` cases validating against it via `check-jsonschema`
-  (skipped, not failed, when that tool isn't installed locally — CI always has it).
+- `schemas/verdict.schema.json`, a JSON Schema describing `verdict.json`'s exact shape, with sample
+  fixtures and `tests/scripts.bats` cases validating against it via `check-jsonschema` (skipped, not
+  failed, when that tool isn't installed locally — CI always has it). Its rules reject a verdict
+  whose overall result the rest of its own contents rule out: a PASS with a failed integration check
+  or an unresolved critical claim, and now also a FAIL that names no cause of its own — no failed
+  integration check and no claim marked FAILED at critical severity — since the review protocol
+  defines FAIL as needing one of those two causes and nothing else.
+- `scripts/check-verdict.sh`, a small script that checks a `verdict.json`'s numbers actually add up
+  (the five per-claim counts match `checked`, the `claims` list holds exactly that many entries, ids
+  are unique) — checks a shape-only schema can't make, because they need to count entries against
+  each other rather than just look at one entry's shape. It exits 0 when everything adds up, 1 when
+  the file is valid JSON but a rule fails, and 2 when the file cannot even be checked: not valid
+  JSON, or empty, whitespace-only, or more than one JSON value in the file. That last group matters
+  because a plain "is this JSON" test lets all of them through: an empty file — the ordinary result
+  of a write getting interrupted partway — used to print eight misleading "rule failed" lines
+  instead of saying plainly that the file could not be checked at all.
 
 ### Known gaps (follow-ups, not fixed in this release)
 

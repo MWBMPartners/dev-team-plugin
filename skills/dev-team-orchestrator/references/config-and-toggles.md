@@ -143,7 +143,12 @@ now governs two separate hooks that each judge "is a run active" a different way
   `guard: off`. (An earlier wording said Rule 1 could never block
   a person; that overstated it.) Rule 2 — a write to a top-level file with one of the seven ledger
   names, whose content looks like plugin output — is active only while `.dev-team/loop.lock/`
-  exists, `guard: on` is set, or `DEV_TEAM_GUARD` is set. Rule 2 **never** activates merely because
+  exists, `guard: on` is set, or `DEV_TEAM_GUARD` is set. When the session started in a subfolder of
+  the repository, Rule 2 also guards that subfolder's own top-level file with one of the seven ledger
+  names (never `<subfolder>/.github/` or `<subfolder>/docs/`) — because every skill writes
+  `.dev-team/<name>` relative to the folder the session starts in, so that subfolder can be the old
+  top-level place a stale instruction means, and guarding both locations is safe whichever one is
+  meant. Rule 2 **never** activates merely because
   `.dev-team/autopilot.json` exists, unlike `guard-dev-team.sh`'s own `auto` test above: some real
   projects keep `autopilot.json` committed in git, which would make that test permanently true and
   would have stopped the project owner ever editing their own top-level `HANDOFF.md` or
