@@ -6,8 +6,8 @@
             Rewritten as work happens, not tidied at the end. See .claude/CLAUDE.md section 2.
 -->
 
-**Last updated:** 14 September 2026, 07:39. Fix round 4 committed and pushed (960ef64, 6f9d1ab, 8be396b).
-Codex review round 4 STARTED at 07:38 and is confirmed running (see the 07:38 entry). Newest entries in "What to do next" are near the top of that list,
+**Last updated:** 14 September 2026, 08:50. Fix round 5 committed and pushed (fc49383 … f646ff9).
+Codex round 4 stopped mid-review on a usage limit at 07:50; ONE retry is booked for 12:40 (see the 08:47 entry). Newest entries in "What to do next" are near the top of that list,
 starting with "Fix round 4 DONE".
 **Working branch:** `claude/ledger-file-clashes` (made from `main`; `alpha` is fully contained in
 `main`, so this branch can later go to `alpha` in one pull request). Pushed to GitHub.
@@ -424,6 +424,34 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
             (session-folder SECURITY.md with F-001 and lock → refused; F-1000 → refused; `src/deep/` and
             `src/.github/` → allowed), commit per builder, push, update #41, update codex-exec-prompt-4.md's
             header. All of that must be finished before the 12:40 Codex retry starts.
+        - **08:47 — Fix round 5 DONE, committed and pushed** (`wf_1faffad2-024`):
+          - fc49383 hook (B additive subfolder names, sub name matched literally; A `{3,}`);
+          - 8b0d080 schema 4th allOf rule, 2 new fixtures, and check-verdict `jq -s -e 'length == 1 and
+            (.[0] | type == "object")'` → exit 2. Note: a bare `42` also exits 2 now, with the header
+            changed to match;
+          - 88d7d47 move-ledgers `-qf` in points 4 and 6, the Rule 2 wording in conventions,
+            config-and-toggles and README, the id width sentence, and CHANGELOG;
+          - 6414826 tests (the old subfolder test flipped to expect 2, plus the N3 hygiene checks). The
+            test builder deliberately did NOT add sed/git to the command-word list: that gave false
+            positives on the file's own read-only `git -C "$REPO_ROOT" branch` and `sed -n` lines, so it
+            is a separate three-grep check. It also added a no-`cd`-into-$REPO_ROOT check that excludes
+            two known read-only lines by exact text;
+          - f646ff9 the verification record.
+          - **Lead's checks:**
+            - audits OK, shellcheck clean, bats **144 of 144**, no "dev-template";
+            - check-verdict gives exit 2 on empty, whitespace, `{} {}`, `{not json` and `42`;
+            - every fixture through both check-verdict and check-jsonschema (installed via Homebrew):
+              every invalid one is rejected by at least one, every valid one passes both, and
+              fail-without-cause is rejected by the schema only;
+            - 9 hook probes from a subfolder, all correct under bash 3.2 and 5.
+          - **Trap:** in a shell loop, `echo "$(basename "$f") -> $?"` prints basename's exit code, not the
+            previous command's. Capture `rc=$?` first. The lead's first fixture loop showed all zeros for
+            this reason.
+          - #41 updated. `codex-exec-prompt-4.md`'s header now lists fix rounds 4 and 5, says Codex's own
+            leads were confirmed, frames the subfolder-location question as an open owner question
+            (report real damage, not the question), and says 144 tests.
+          - **Next:** the 12:40 Codex retry (cron `911f360f`), output `codex-review-4c.md`. Nothing is
+            mid-edit.
         - **03:29 — Codex review round 4 did NOT happen.** It started on gpt-5.6-sol (high effort,
           read-only) and stopped at once: "You've hit your usage limit … try again at 7:33 AM". No
           output was written.
