@@ -242,6 +242,24 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
             22.04 "jammy" ships bats 1.2.1, which is too old. If the workflow is ever pinned to
             `ubuntu-22.04`, the minimum-version line will fail it on purpose.
           - **#41 is now waiting only for Codex's catch-up review** (booked for 02:37 on 14 September).
+        - **02:37, 14 September — Codex review round 3 STARTED and confirmed.** One `codex exec` run,
+          high effort, read-only, focused prompt `codex-exec-prompt-2.md`, covering the whole branch
+          against `main` (from commit 4a5530c). Its banner says `reasoning effort: high` and there is
+          no limit error; it is actively reading. Output goes to the scratchpad files
+          `codex-review-3-focused.md` and `.log`. #41 has been told. **Next:** read the final output,
+          verify each finding against the files, have a Sonnet builder fix confirmed ones, rerun every
+          check, commit (stating the review status), and run one more Codex review if the findings
+          were substantive.
+        - **Orchestrator deep planning finished (about 23:00, 13 September)**, but the reviser's
+          returned result was only the END of its plan (from partway through §5.2); the earlier
+          sections were in earlier messages. The lead is rebuilding the full revised plan from the
+          reviser's transcript. Draft (full, pre-critique) and critique are in the scratchpad as
+          `orch-plan-draft.md` and `orch-plan-critique.md`. **Critique:** 3 blocking and 13
+          important points, all applied by the reviser — the Claude pause cannot be recorded at the
+          moment of exhaustion, so reclaim must always snapshot first; `git stash create` misses
+          untracked files, so use a temporary-index snapshot; lock the plan by hand before any code;
+          split increment 0 into 0a/0b; and others. Do not present or lock the plan until the full
+          revised text is recovered and checked.
         - **Lesson:** on this ChatGPT plan, Codex's allowance runs out after about one high-effort
           whole-branch review, and the reset can be hours away. Plan Codex reviews as single, spaced
           runs, and save them for the most valuable check.
