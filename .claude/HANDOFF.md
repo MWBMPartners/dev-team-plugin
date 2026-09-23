@@ -6,12 +6,88 @@
             Rewritten as work happens, not tidied at the end. See .claude/CLAUDE.md section 2.
 -->
 
-**Last updated:** 14 September 2026, 08:50. Fix round 5 committed and pushed (fc49383 … f646ff9).
-Codex round 4 stopped mid-review on a usage limit at 07:50; ONE retry is booked for 12:40 (see the 08:47 entry). Newest entries in "What to do next" are near the top of that list,
-starting with "Fix round 4 DONE".
+**Last updated:** 23 September 2026, about 21:40 (UK time). Standing rules revised; this "START HERE"
+section added for a fresh session. Everything below "Detailed history" is the older, fuller record.
 **Working branch:** `claude/ledger-file-clashes` (made from `main`; `alpha` is fully contained in
 `main`, so this branch can later go to `alpha` in one pull request). Pushed to GitHub.
-**Issue:** [#41](https://github.com/MWBMPartners/dev-team-plugin/issues/41)
+**Issues:** [#41](https://github.com/MWBMPartners/dev-team-plugin/issues/41) (the main work),
+[#46](https://github.com/MWBMPartners/dev-team-plugin/issues/46),
+[#45](https://github.com/MWBMPartners/dev-team-plugin/issues/45).
+
+## START HERE — for a fresh session with no chat history
+
+Read, in this order: this section; `.claude/CLAUDE.md` (the standing rules, revised on 23 September);
+`.claude/CONTEXT.md` (what the repository is and how to check it); `.claude/MEMORY.md` (traps already
+found — especially the Codex ones). Codex reads the same rules through `AGENTS.md` → `.OpenAI/`.
+
+### Where things stand
+
+- **#41 (move the plugin's record files into `.dev-team/`, version 1.5.0)** is fully built. It has
+  been through one complete Codex review (round 3, 14 problems, all fixed) and five fix rounds. All
+  checks passed at the last run (14 September): both audits, smoke test, shellcheck, and bats 144 of
+  144.
+- **What is missing: a clean Codex review of fix rounds 3, 4 and 5.** Codex's round-4 review ran out
+  of allowance part-way on 14 September; the two problems it had spotted were confirmed and fixed in
+  round 5. Stand-in reviews by fresh Claude agents checked rounds 3 and 4, but under the rules the
+  branch counts as **not fully reviewed** until Codex comes back clean.
+- **Not in this record:** the saved record stops at 14 September, 08:50. The 12:40 Codex retry booked
+  that day left no result in the repository, and nothing on GitHub is newer. The owner reports a
+  **Codex review booked for 00:08** (the night of 23–24 September) in their own Claude Code session.
+  Nothing has been committed to the branch since, apart from the assistant-notes commit of 23 September
+  (`.claude/`, `.OpenAI/`, `AGENTS.md` only — no plugin code).
+
+### What to do next (in order)
+
+1. **The Codex review.** A booking made inside a Claude Code session (CronCreate) dies with that
+   session. So:
+   - if the old session is still open and the 00:08 run happened, find its output file (the path is in
+     that session) and go to step 2;
+   - if the session was restarted, **start the review by hand**, once, after the Codex allowance has
+     reset. The exact command and the brief are in
+     `.claude/plans/ledger-file-clashes/codex-review-prompt-5.md` (saved in the repository so a new
+     session has it). Check the start-up banner says `reasoning effort: high` and that the log has no
+     "You've hit your usage limit", "Selected model is at capacity" or `ERROR:` line before telling #41.
+   - Do not commit anything while Codex is reading the branch.
+   - If Codex cannot run, follow the fallback rule (rule 8): a fresh, independent Claude reviewer
+     (Opus) checks rounds 3–5, and the branch stays "not fully reviewed".
+2. **Verify each Codex finding** against the files (Opus verifiers, one after another), fix the
+   confirmed ones (Sonnet builders; Opus for the hook if it is subtle), rerun every check listed in
+   `.claude/CONTEXT.md`, commit, push, update #41. Then review with Codex again — repeat until a round
+   finds nothing.
+3. **Thorough documentation update** (asked for on 23 September, deliberately queued until the Codex
+   review is done so the review is not reading a moving target): every `.md` file, the in-plugin help
+   (skills, commands, references), `.claude/` and `.OpenAI/`. No API, so no Swagger (rule 11).
+4. Tell the owner #41 is ready for the single pull request to `alpha` — they choose when it is opened.
+5. Then #46 and #45, which wait on the owner's decisions below.
+
+### Owner decisions still open (none blocks steps 1–3)
+
+| # | Question | Suggested answer |
+| --- | --- | --- |
+| Q1 | In a session started in a subfolder of a repository, should `.dev-team/` live in that subfolder or at the top? | The subfolder (what the skills already do); `/dev-team-move-ledgers` then also looks there. |
+| Q2 | #46 D1–D4: the orchestrator's engine language (Node), its branch (a fresh one from `alpha` after 1.5.0 merges — against the one-branch rule, so the owner's call), Gemini/Kimi/Grok documented but unverified, and hand-over after 12+ hours of outage. | As recommended in `.claude/plans/orchestrator-v2/plan.md`. |
+| Q3 | #45: which of the owner's standard practices to build into the plugin, and whether their on/off defaults become built-in defaults or a named preset (`profile: standard`). | A preset. |
+| Q4 | The plugin's own "deep thinking" helper (`deep-architect`) still defaults to Fable. The owner's working rule now prefers Opus for deep work. Change the plugin's default too? | Leave the plugin as it is for now; this rule is about how we work on the repository. Decide when #46 lands. |
+| Q5 | Device-wide rules: the 23 September session ran in the cloud and could not reach the owner's computer. | Ask any local session to add `.claude/device-wide-rules.md` to `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`. |
+
+### Task queue
+
+| # | Task | Status |
+| --- | --- | --- |
+| 1 | #41 build, fix rounds 1–5 | Done |
+| 2 | Codex review of the whole branch (round 5) | **Next** — booked 00:08 in the owner's session, or run by hand |
+| 3 | Verify and fix Codex findings; re-review until clean | Waiting on 2 |
+| 4 | Thorough documentation update | Queued after 3 |
+| 5 | Standing rules revised (`.claude/CLAUDE.md`, `.OpenAI/AGENTS.md`), memory and context files added | Done 23 September |
+| 6 | Device-wide rules on the owner's computer | Wording ready; needs a local session (Q5) |
+| 7 | One pull request to `alpha` | Owner's call, after 3 and 4 |
+| 8 | #46 orchestrator; #45 standard practices | Waiting on Q2, Q3 |
+| 9 | Follow-ups #42, #43, #44 | Not started |
+| 10 | Hand test: does the hook fire for a sub-agent's writes? | Not done |
+
+---
+
+# Detailed history (13–14 September)
 
 ## What we are trying to do, and why
 
@@ -89,7 +165,7 @@ putting **all** the plugin's documents in the project's `.dev-team/` folder. Tha
   `content`, `new_string`, `edits[]`, `cwd`). The builder must confirm them against Claude Code's
   hooks documentation.
 
-## Task queue
+## Task queue (as it stood on 14 September — superseded by the one in START HERE)
 
 | # | Task | Status |
 | --- | --- | --- |
