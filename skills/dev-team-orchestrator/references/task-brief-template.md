@@ -20,7 +20,7 @@ workstream needs that tier. See `model-routing.md`. Verification roles never go 
   `CONTRIBUTING.md` that apply, plus the path and specific rule IDs of any normative document
   (a standard, a policy, a spec) one of them names for this kind of work — you read the
   document itself, in full (or, if it is too large to read whole, as step 3 of the rule
-  allows), from the repository; never a copy of its rules pasted here; or "none found"]
+  allows), from the snapshot copies; never a copy of its rules pasted here; or "none found"]
 - Instruction snapshot (every brief carries it): [the path of this run's snapshot folder,
   `~/.dev-team/runs/<run-id>/snapshot/` (`dev-team-orchestrator/references/conventions.md`,
   "Repository instructions and normative documents", step 1). Read the instruction files, normative

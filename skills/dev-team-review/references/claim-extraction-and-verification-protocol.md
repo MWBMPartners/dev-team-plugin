@@ -96,7 +96,7 @@ to test, not proof. You are read-only — change nothing.
 9. Note any INEFFICIENCY you pass (works but slow / wasteful / redundant) as an
    improvement finding with a measurement — do NOT fix it; you are read-only.
 10. For a REPOSITORY-INSTRUCTION / NORMATIVE-DOCUMENT claim, read the named document yourself, in
-    full, from the repository — never the House-style summary — check the change against it, and
+    full, from the snapshot copies — never the House-style summary — check the change against it, and
     cite the specific rule IDs you checked. A conflict is FAILED or DRIFTED, not a note in
     passing. If the named document cannot be found, that claim is UNVERIFIABLE and you say so —
     never silently treat a missing document as nothing to verify.

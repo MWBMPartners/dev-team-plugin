@@ -31,7 +31,7 @@ The documentarian maintains this file at `.dev-team/PROJECT.md`. Every record fi
 
 ## House style (existing-repo conventions)
 - [test framework + run command, lint/format config, directory layout, dependency manifest, key existing patterns — from the conventions scout; omit for greenfield]
-- [the path of the run's **snapshot folder**, `~/.dev-team/runs/<run-id>/snapshot/` (`conventions.md`, "Repository instructions and normative documents", step 1) — the lead writes that folder itself, never you; the repository's own instruction files found (`AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md`, `GEMINI.md`, `.OpenAI/`/`.openai/`, `.github/copilot-instructions.md`, `CONTRIBUTING.md`), the path + specific rule IDs of any normative document one of them names for the work in hand, and the **profile** the lead decided applies to this repository — read from the repository, never copied here; omit the files if none exist]
+- [the path of the run's **snapshot folder**, `~/.dev-team/runs/<run-id>/snapshot/` (`conventions.md`, "Repository instructions and normative documents", step 1) — the lead writes that folder itself, never you; the repository's own instruction files found (`AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md`, `GEMINI.md`, `.OpenAI/`/`.openai/`, `.github/copilot-instructions.md`, `CONTRIBUTING.md`), the path + specific rule IDs of any normative document one of them names for the work in hand, and the **profile** the lead decided applies to this repository — read from the snapshot copies, never copied here; omit the files if none exist]
 - [`handoff-file: on|off` — the value the lead settled for this run, and where it came from (`conventions.md`, "Auto-handoff")]
 
 ## Stage plan
