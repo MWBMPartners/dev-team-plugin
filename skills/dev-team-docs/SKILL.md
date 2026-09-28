@@ -92,6 +92,12 @@ Model routing: `skills/dev-team-orchestrator/references/model-routing.md`.
 
 ## Cold-resume
 
+**At the start of the run, before any agent is spawned:** take the instruction snapshot
+(`dev-team-orchestrator/references/conventions.md`, "Repository instructions and normative
+documents", step 1) and settle `handoff-file` once ("Auto-handoff", same file); pass the snapshot in
+every brief and the `handoff-file` value in every documentarian brief. Under the autopilot
+conductor, use the conductor's snapshot and value instead of taking your own.
+
 Before fresh work, check for a prior `dev-team-docs` pass to resume from instead of
 re-scouting cold (the suite's general Cold-resume contract, `conventions.md`) — this skill
 owns no dedicated ledger file, so the check is: does `.dev-team/PROJECT.md` (if it exists,

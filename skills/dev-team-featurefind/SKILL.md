@@ -42,6 +42,12 @@ PHASE 0: FRAME (scout current feature set + infer aim/category; reuse Codebase M
 
 ### Phase 0 — Frame the product
 
+**At the start of the run, before any agent is spawned:** take the instruction snapshot
+(`dev-team-orchestrator/references/conventions.md`, "Repository instructions and normative
+documents", step 1) and settle `handoff-file` once ("Auto-handoff", same file); pass the snapshot in
+every brief and the `handoff-file` value in every documentarian brief. Under the autopilot
+conductor, use the conductor's snapshot and value instead of taking your own.
+
 You're always in an existing repo, so **scout first**. Spawn scout(s) to establish, as first-class outputs:
 
 - **What the app does today** — its surfaces and the features it already ships. This is the baseline you diff against; getting it wrong invents gaps that aren't gaps.

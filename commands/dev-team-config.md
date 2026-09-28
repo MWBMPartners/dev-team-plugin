@@ -58,9 +58,8 @@ This is **read-only** — never create, edit, or touch the file for `show`.
    never be committed, and the README tells a person browsing the repo what the folder is. Tell the
    user which of the two were created and which were already there. Never edit the project's own
    `.gitignore`.
-   Then work out `handoff-file` as `conventions.md`'s "Auto-handoff" says, reading the
-   repository's instruction files from the trusted base (`conventions.md`, "Repository instructions
-   and normative documents", step 1): one that explicitly forbids a second handover makes it `off`;
+   Then work out `handoff-file` as `conventions.md`'s "Auto-handoff" says, reading the repository's instruction files as they are now, at the start of this command
+   (`conventions.md`, "Repository instructions and normative documents", step 1): one that explicitly forbids a second handover makes it `off`;
    if one only says where the project's notes live, ask the user once whether the plugin should
    still keep `.dev-team/HANDOFF.md`, and write the answer as `handoff-file: on` or
    `handoff-file: off` under `features:` in the file just written (in place of its commented

@@ -91,6 +91,12 @@ Same shape as the orchestrator, specialized for migration work:
 
 ## Picking the mode
 
+**At the start of the run, before any agent is spawned:** take the instruction snapshot
+(`dev-team-orchestrator/references/conventions.md`, "Repository instructions and normative
+documents", step 1) and settle `handoff-file` once ("Auto-handoff", same file); pass the snapshot in
+every brief and the `handoff-file` value in every documentarian brief. Under the autopilot
+conductor, use the conductor's snapshot and value instead of taking your own.
+
 - **`plan`** — no approved Migration Plan exists yet for this `from=`/`to=` pair in this repo (or
   the user is asking "how would we migrate X to Y", "what's the plan", "assess the migration").
   Assesses the surface, chooses a strategy, defines the staged plan, and **stops for approval** —

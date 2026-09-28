@@ -79,6 +79,12 @@ Same shape as the orchestrator, specialized for delivery infrastructure:
 
 ## Picking the mode
 
+**At the start of the run, before any agent is spawned:** take the instruction snapshot
+(`dev-team-orchestrator/references/conventions.md`, "Repository instructions and normative
+documents", step 1) and settle `handoff-file` once ("Auto-handoff", same file); pass the snapshot in
+every brief and the `handoff-file` value in every documentarian brief. Under the autopilot
+conductor, use the conductor's snapshot and value instead of taking your own.
+
 - **`setup`** — the repo has no CI workflow, no branch protection/ruleset, no secret
   scanning, and/or no release flow. Stand it all up from scratch.
 - **`audit`** — the repo already has some pipeline. Check it against the four rules above

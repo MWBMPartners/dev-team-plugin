@@ -54,6 +54,12 @@ PHASE 0: THREAT MODEL + ATTACK-SURFACE MAP + TOOLING SWEEP + MULTI-ROLE FIXTURES
 
 ### Phase 0 — Threat model & attack-surface map
 
+**At the start of the run, before any agent is spawned:** take the instruction snapshot
+(`dev-team-orchestrator/references/conventions.md`, "Repository instructions and normative
+documents", step 1) and settle `handoff-file` once ("Auto-handoff", same file); pass the snapshot in
+every brief and the `handoff-file` value in every documentarian brief. Under the autopilot
+conductor, use the conductor's snapshot and value instead of taking your own.
+
 You're always in an existing repo, so **scout first**. Follow `references/threat-model-and-surface-protocol.md`. In short:
 
 0. **Resume check (do this first).** Look for a current `.dev-team/SECURITY.md` (found through the lookup order) — its **coverage ledger** and **findings register** — from a prior `dev-team-security` run in this repo. If it exists and validates as current (git-drift check + a quick spot-check, same discipline as `dev-team-iterate`'s Phase 0), **RESUME**: reuse the coverage ledger and findings register as-is, and pick up red-teaming only the checklist classes still `tested? = no`/`partial` and any `open`/unresolved finding — don't re-run the full sweep. If it's missing, stale, fails the spot-check, or the tree is dirty in a way that invalidates it, do a **full Phase 0** and write it fresh. Either way, update the run record. See `dev-team-orchestrator/references/conventions.md` ("Cold-resume").

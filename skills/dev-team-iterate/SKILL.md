@@ -36,6 +36,12 @@ PHASE 0: RESUME CHECK (.dev-team/PROJECT.md + Codebase Map exist & current?
 
 ### Phase 0 — Reverse-engineer the purpose and audit
 
+**At the start of the run, before any agent is spawned:** take the instruction snapshot
+(`dev-team-orchestrator/references/conventions.md`, "Repository instructions and normative
+documents", step 1) and settle `handoff-file` once ("Auto-handoff", same file); pass the snapshot in
+every brief and the `handoff-file` value in every documentarian brief. Under the autopilot
+conductor, use the conductor's snapshot and value instead of taking your own.
+
 You are always in an existing repo. Follow `references/audit-and-backlog-protocol.md`. In short:
 
 0. **Resume check (do this first).** Look for a `.dev-team/PROJECT.md` (found through the lookup order) with a **Codebase Map** + run record from a prior `dev-team-iterate` run. If it exists and validates as current (git-drift check + a quick spot-check), **reuse it as context and delta-scout only what changed** since the last run — don't re-gather the whole codebase. If it's missing, stale, fails the spot-check, or it's not a git repo, do a **full scout** and write the map fresh. Either way, update the run record (commit + date). *This is what makes re-runs cheap: full context once, reference + delta thereafter.* (This is the generalized **Cold-resume** contract in `dev-team-orchestrator/references/conventions.md` — iterate already implements it, unchanged here; no new behavior to add.)
