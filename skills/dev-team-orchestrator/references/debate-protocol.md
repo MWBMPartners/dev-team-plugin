@@ -14,6 +14,7 @@ The team is deciding: [the decision, in one sentence].
 - Definition of done: [paste]
 - Constraints: [paste]
 - Relevant current state: [what exists, scale, team realities]
+- Also apply "Repository instructions and normative documents" (orchestrator conventions.md): check your option against the repository's instruction files and any normative documents, with their rule-ID scheme and profiles.
 
 ## Your assignment
 Argue for: **[Option N]**.

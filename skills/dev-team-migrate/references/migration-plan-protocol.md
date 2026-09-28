@@ -22,6 +22,7 @@ is dirty in a way that invalidates it, do a full assessment (Steps 1–5 below) 
 
 Spawn scout agent(s) (the `opus-builder` agent, Opus tier; modify nothing):
 
+- Also apply "Repository instructions and normative documents" (orchestrator conventions.md): report the repository's instruction files and any normative documents, with their rule-ID scheme and profiles.
 - **What's in scope.** The exact modules/files/schema objects/endpoints that constitute `from=` and
   their boundary — where the migration surface ends and untouched code begins.
 - **Every caller / consumer.** Everything that depends on what's migrating — internal callers,

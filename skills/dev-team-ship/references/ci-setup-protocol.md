@@ -23,6 +23,7 @@ either mode.
 
 Before writing anything, inventory what's already there:
 
+- Also apply "Repository instructions and normative documents" (orchestrator conventions.md): report the repository's instruction files and any normative documents, with their rule-ID scheme and profiles.
 - Every file under `.github/workflows/*.yml|*.yaml` — trigger conditions (`on:`), every
   job's `name:` field (not just the workflow's top-level `name:`), and what each step
   actually runs.

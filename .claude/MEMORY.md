@@ -51,6 +51,9 @@
 - A fix brief once mistyped the folder as `dev-template`. After fix rounds, run
   `git grep -n "dev-template" -- . ':!.claude/'` and expect nothing.
 - `jq empty` accepts empty input, so it cannot on its own reject an empty JSON file.
+- A test that only looks for a heading or a loose word can pass while the rule under it says the
+  opposite (#47's first four tests did). Test the sentence that carries the meaning, and prove the
+  test by editing a throwaway copy of the repository — outside the working clone — so it fails.
 
 ## The owner's machine
 

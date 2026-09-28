@@ -68,7 +68,7 @@ Same shape as the orchestrator, specialized for migration work:
 
 - **Scouts** — the `opus-builder` agent (Opus tier), read-only. Inventory the current
   implementation, every caller/consumer of what's migrating, the dependency/coupling graph, current
-  test coverage in the migration zone, and any prior migration attempt left in the repo's history.
+  test coverage in the migration zone, and any prior migration attempt left in the repo's history. Also apply "Repository instructions and normative documents" (orchestrator conventions.md): report the repository's instruction files and any normative documents, with their rule-ID scheme and profiles.
 - **`deep-architect`** (Reasoning tier) — for the genuinely hard call: choosing the cutover
   strategy when it's contested (incremental vs. parallel-run, or the big-bang risk trade), breaking
   a circular dependency order, or designing a data-model transformation with no obvious safe path.

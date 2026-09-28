@@ -50,6 +50,7 @@ Model routing: `skills/dev-team-orchestrator/references/model-routing.md`.
   README anatomy already in use) so new docs match rather than clash. This is the "expensive
   reasoning once" pass (model-routing.md, invariant 2) — the scout gathers exact signatures,
   flags, and endpoints so the drafter never has to guess or recall from training data.
+  Also apply "Repository instructions and normative documents" (orchestrator conventions.md): report the repository's instruction files and any normative documents, with their rule-ID scheme and profiles.
 - **Drafters** — the `sonnet-scribe` agent (Sonnet tier). Write or update the actual doc
   content per `references/doc-standards.md`, using **only** facts the scout handed them —
   never invented from memory of "typical" conventions. Cheap tier is correct here because a

@@ -26,6 +26,7 @@ Spawn one or more scout agents (the `opus-builder` agent, Opus tier; modify noth
 - Lint/format config and commands.
 - Directory layout and the dependency manifest(s).
 - The existing patterns for the kinds of things you'll likely change (components, routes, data access, state).
+- Also apply "Repository instructions and normative documents" (orchestrator conventions.md): report the repository's instruction files and any normative documents, with their rule-ID scheme and profiles.
 
 **What the app does** — so you can infer purpose:
 - Entry points and how it's run/built/deployed.
@@ -60,6 +61,7 @@ Cover all of these, but **let the run's focus drive depth**. On a **balanced run
 7. **Tests** — coverage gaps on core flows, hollow/tautological tests, missing failure-path tests.
 8. **Docs** — stale or missing README/setup/usage, undocumented public APIs.
 9. **Security & dependency hygiene** — outdated deps, known CVEs, secrets in code, injection/authz smells. Patch-level safety bumps are buildable; **major upgrades are propose-only**.
+10. **Conformance** — the code conforms to the repository's normative documents (orchestrator conventions.md, "Repository instructions and normative documents"). A breach is a real finding: use the `type` that fits the fix (usually `fix`) and name the document and rule ID in its `evidence`.
 
 ### Backlog item schema
 
@@ -116,7 +118,7 @@ The documentarian writes into `.dev-team/PROJECT.md` (extending the orchestrator
 - **Surfaces:** [user-facing screens/tabs/routes/commands and what each is for]
 - **Data model:** [core entities and their relationships]
 - **Key modules / file map:** [the important directories/files and their responsibility]
-- **Conventions (house style):** [test framework, lint/format, patterns to follow]
+- **Conventions (house style):** [test framework, lint/format, patterns to follow; the repository's instruction files and normative documents — paths, rule-ID scheme, the recorded profile (orchestrator conventions.md, "Repository instructions and normative documents")]
 - **External integrations:** [APIs, DBs, services]
 - **Known characteristics:** [perf-sensitive paths, fragile areas, tech-debt hotspots]
 ```

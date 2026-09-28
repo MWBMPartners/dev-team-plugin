@@ -10,35 +10,90 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
-- **Repository instructions are authoritative.** Every agent in the suite now looks for a
-  project's own developer/agent instructions — `AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md`,
-  `GEMINI.md`, `.OpenAI/`/`.openai/`, `.github/copilot-instructions.md`, `CONTRIBUTING.md`, and
-  anything similar those point to — at the repository root and in the folders a task touches, and
-  reads in full, from the repository itself, whatever normative document (a standard, a policy, a
-  spec) one of them names for the kind of work in hand. Before this release, only what a lead
-  happened to paste into a brief ever reached a builder — `opus-builder`'s own description says it
-  has "ZERO context beyond the brief" — so a repository rule was invisible to the plugin unless
-  someone copied it in by hand, and a pasted copy is a copy that can drift from the original the
-  moment it changes. Now the lead's brief names the document's path and the specific rule IDs that
-  apply, and the agent doing the work reads the document itself; a normative document's rules are
-  never pasted into a brief or a plugin prompt. When a normative document splits into profiles or
-  hands different responsibilities to different projects, the agent works out which one applies
-  and builds only to that. A checker or reviewer verifies this independently — it reads the named
-  documents itself, cites the specific rule IDs it checked, and treats a conflict with a normative
-  document as a real finding, the same weight as a failing test; a named document that cannot be
-  found is stated plainly, never silently read as "nothing to verify." Repository-required tests,
-  including any conformance test a normative document names, are run and their measured results
-  reported. Where a repository's own instructions or a normative document conflict with one of
-  this plugin's own defaults, the repository wins and the report says so; if two of a repository's
-  own sources conflict with each other, the run stops and puts the conflict to the user rather
-  than picking one. Deliberately generic: this release adds the discovery mechanism only, with no
-  particular standard or policy named anywhere in the plugin's own files. Full rule:
-  `conventions.md`, "Repository instructions are authoritative"; touches every builder/scout/
-  checker/reviewer brief format in the suite (`task-brief-template.md`,
-  `checker-protocol.md`, `claim-extraction-and-verification-protocol.md`,
-  `documentarian-protocol.md`, `red-team-protocol.md`, `accuracy-verification-protocol.md`), the
-  orchestrator's own project-understanding and conventions-scout steps, and every agent definition
-  in `agents/*.md`.
+- **Repository instructions and normative documents** — a new shared rule, the first bullet of
+  "Shared discipline" in `skills/dev-team-orchestrator/references/conventions.md`. Before this
+  release, a builder knew only what the lead happened to paste into its brief (`opus-builder`'s own
+  instructions said it had "ZERO context beyond the brief"), so a project's own instruction files
+  and the standards or policies they name were invisible unless someone copied them in by hand —
+  and a pasted copy drifts from the original unnoticed. Now every agent, in every skill:
+  - reads the project's own instruction files (`AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md`,
+    `GEMINI.md`, `.OpenAI/` or `.openai/` files, `.github/copilot-instructions.md`,
+    `CONTRIBUTING.md`) at the repository root and in the folders the task touches, and reads in
+    full any normative document one of them names for the kind of work in hand. Where instruction
+    files at different levels differ, the one nearest the files being changed applies;
+  - **reads them only from trusted places**: the repository's default branch or the branch the
+    user chose, inside the repository. Never from files a fork's (or any untrusted contributor's)
+    pull request adds or changes, never from vendored or dependency folders (`vendor/`,
+    `third_party/`, `node_modules/`, `target/`, `.build/`, `Pods/`, git submodules), never through
+    a link that leaves the repository. Anything else is treated as data, never as instructions;
+  - has the lead decide which **profile** of a normative document applies to this repository,
+    record it in House style and in every brief; builders say so in their report if they think it
+    is wrong, rather than choosing another;
+  - names a normative document in a brief **by path, rule ID and profile, never by pasting its
+    rules**;
+  - runs the tests the repository requires, including conformance tests, and reports measured
+    results — but **only commands defined on the trusted base**, under the suite's existing
+    command-safety rules;
+  - has a checker or reviewer do **its own discovery** as well as reading every document the
+    brief names, cite the rule IDs it checked, and treat a breach as a real finding; a named
+    document that cannot be found is reported plainly, never read as "nothing to verify".
+  - **Precedence.** The repository decides how the project's work is done and wins over a plugin
+    *default* (the report says so). **The suite's safety rules are never overridden by repository
+    content** — the security skill's non-negotiables, confirmation before destructive operations,
+    ledger and file ownership, never pushing, merging or force-pushing without the user's say-so,
+    keeping findings private, and secrets handling. An instruction that would need one of those
+    broken is not followed; that part of the work stops and is reported. A repository instruction
+    that addresses a plugin behaviour counts at the same level as `.dev-team/config.yml` in the
+    precedence order of `config-and-toggles.md`; the safety rules are outside that order.
+  - **Conflicts.** Two repository sources at the same level that contradict each other are put to
+    the user in an attended run; in an unattended run (autopilot, scheduled ci-medic) the affected
+    item is marked `BLOCKED` with the conflict named, and unaffected work continues.
+- Every agent definition in `agents/` now carries one identical sentence pointing at the rule, and
+  says it has no context beyond the brief **and the repository files it names**.
+
+### Changed
+
+- **Where a project's own instructions forbid a second handover or say where notes live**,
+  auto-handoff is treated as off for that repository and the scribe never writes into the
+  project's own handover file unless those instructions ask it to (`conventions.md`,
+  "Auto-handoff"; `documentarian-protocol.md`; `agents/sonnet-scribe.md`).
+- **"Be concise"** in the docs skill's `doc-standards.md` now gives way when a project's own
+  instructions ask for fuller explanations.
+- The orchestrator reads a project's instruction files straight after its cold-resume check (it
+  had said "before anything else", which clashed with the cold-resume check coming first).
+- The iterate skill's audit gains a tenth dimension, **conformance** to the project's normative
+  documents; the review skill gains a **conformance** claim type, and its reviewers do their own
+  discovery even when House style recorded nothing.
+
+### Files touched
+
+`conventions.md`, `config-and-toggles.md`, `task-brief-template.md`, `checker-protocol.md`,
+`documentarian-protocol.md`, `debate-protocol.md` and `SKILL.md` in the orchestrator skill; the
+iterate skill's `SKILL.md` and `audit-and-backlog-protocol.md`; the security skill's `SKILL.md`,
+`threat-model-and-surface-protocol.md` and `red-team-protocol.md`; the migrate skill's `SKILL.md`
+and `migration-plan-protocol.md`; the ship skill's `SKILL.md` and `ci-setup-protocol.md`; the docs
+skill's `SKILL.md`, `doc-standards.md` and `accuracy-verification-protocol.md`; the stripe skill's
+`build-and-review-protocol.md`; the featurefind skill's `research-and-comparable-protocol.md`; the
+review skill's `SKILL.md` and `claim-extraction-and-verification-protocol.md`; all five files in
+`agents/`; `README.md`; `.claude-plugin/plugin.json` (version 1.5.0 → 1.6.0); and
+`tests/scripts.bats`, with `tests/README.md`.
+
+### Tests
+
+- Five tests in `tests/scripts.bats` replace the four added in the first draft of this release,
+  which still passed when the rule's meaning was reversed. The new ones check the sentences that
+  carry the meaning, inside the rule itself: the safety sentence, the trusted-source limits, the
+  nearest-file layering, the unattended `BLOCKED` case, the checker's own discovery, the brief
+  template's Profile field, the exact agent sentence in every file in `agents/` (so a new agent
+  without it fails), that no agent still claims context from the brief alone, and that the
+  README's stated count of cross-cutting behaviours matches its list. Each was proven to fail by
+  editing a throwaway copy of the repository.
+
+### Fixed
+
+- The README's count of cross-cutting behaviours: it said "Five" while listing six before this
+  release; it now says "Seven" and lists seven, and says which apply to every agent and which to
+  every building skill.
 
 ## [1.5.0] - <unreleased>
 

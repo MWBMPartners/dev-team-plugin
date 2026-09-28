@@ -27,6 +27,12 @@ repo and runs any dev-team skill gets the same behavior, with no setup of their 
 Higher wins. A missing or unreadable `.dev-team/config.yml` simply drops out of the chain — every
 skill and hook falls straight through to the built-in default (see Fail-open, below).
 
+A repository instruction file (`AGENTS.md`, `CLAUDE.md` and the like) that addresses one of these
+plugin behaviours counts at level 4, beside `.dev-team/config.yml` — below per-run arguments and the
+user's own words; the suite's safety rules sit outside this precedence order entirely, and no level
+of it, repository content included, can switch one off (`conventions.md`, "Repository instructions
+and normative documents", step 8).
+
 ## The schema (verbatim)
 
 ```

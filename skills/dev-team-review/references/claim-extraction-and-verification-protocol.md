@@ -17,14 +17,14 @@ Read `.dev-team/PROJECT.md` (and `.dev-team/SECURITY.md` if present) — found t
 | **Findings register** (security) | each `fixed-verified` finding is closed; nothing unresolved is mislabeled | Per terminal status (guidance, not a rigid checklist): `fixed-verified` → regression test exists+passes, re-run PoC at `depth=deep`; ROTATE-flagged → confirm rotation happened (secret absent from current code AND git history, old key invalidated) else DRIFTED; `analysis-confirmed` → spot-re-attack at `depth=deep` to confirm the PoC is genuinely impractical, not actually exploitable; `accepted-documented` → rationale present and severity still genuinely Low; `proposed` → confirm the remediation was NOT silently built without user sign-off |
 | **Decision log** | each decision is reflected in the code | Read the code; confirm the choice is actually present |
 | **Codebase Map** (iterate) | the map matches reality | Spot-check entries against the real files/surfaces |
-| **House style — repository instructions / normative documents** (`.dev-team/PROJECT.md`'s House style, or named in a build's own briefs) | the change follows the cited rule IDs from each named document | Read the named document(s) yourself, in full, from the repository — never the House-style summary or a builder's word for it — check the change against them, and cite the specific rule IDs you checked |
+| **House style — repository instructions / normative documents** (`.dev-team/PROJECT.md`'s House style, named in a build's own briefs, or found by your own discovery — orchestrator `conventions.md`, "Repository instructions and normative documents", steps 1–3 — even when House style recorded nothing) | the change follows the cited rule IDs from each document, under the recorded profile | Read the document(s) yourself, in full, from the repository's trusted base — never the House-style summary or a builder's word for it — check the change against them, and cite the specific rule IDs you checked |
 
 Also record, as first-class claims to report on:
 - **Evidence-less claims** — anything `.dev-team/PROJECT.md` marks done/fixed/verified **without pasted evidence**. Unverified by construction; they go on the report no matter what.
 - **Undocumented reality** — if you notice the code does something significant `.dev-team/PROJECT.md` never mentions, that's drift in the other direction; note it.
 - **A named normative document that cannot be found.** State it plainly on the report as its own line — never read a missing document as "nothing to verify" for that claim; it is UNVERIFIABLE, the same as any other claim you cannot check (see "Verdict definitions" below).
 
-Give each claim: `id (V-001)`, `source` (section + line), `statement` (what's asserted), `type` (criterion / stage / feature / fix / decision / metric / map / purpose), and `how-to-verify`.
+Give each claim: `id (V-001)`, `source` (section + line), `statement` (what's asserted), `type` (criterion / stage / feature / fix / decision / metric / map / purpose / conformance), and `how-to-verify`.
 
 Also load any **prior `.dev-team/VERIFICATION.md`** so the verifiers can compute a regression delta (claims VERIFIED before that fail now).
 

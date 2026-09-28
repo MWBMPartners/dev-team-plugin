@@ -4,7 +4,7 @@
   File:     .OpenAI/CONTEXT.md
   Purpose:  Codex's starting context for this repository. The shared, fuller version is
             .claude/CONTEXT.md; read that too. This file adds what is specific to Codex's role.
-  Updated:  23 September 2026.
+  Updated:  28 September 2026 (issue #47 branch added).
 -->
 
 ## What Codex does here
@@ -20,6 +20,9 @@ work it does is then reviewed by Claude Code when Claude Code is back.
 - Where the work stands right now: `.claude/HANDOFF.md` ("START HERE" section).
 - The current review brief for the working branch:
   `.claude/plans/ledger-file-clashes/codex-review-prompt-5.md`.
+- A second branch, `feature/bcp47-language-policy` (issue #47), needs its own review round —
+  compare it with `claude/ledger-file-clashes` (where it was cut, at `413d570`), not with `main`,
+  so #41's changes are not reported as #47's. What it adds is in `.claude/HANDOFF.md`.
 - Earlier Codex review results: `.claude/plans/ledger-file-clashes/codex-review-3.md` and
   `codex-review-3-verification.md`.
 

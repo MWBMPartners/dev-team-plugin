@@ -10,9 +10,33 @@
 section added for a fresh session. Everything below "Detailed history" is the older, fuller record.
 **Working branch:** `claude/ledger-file-clashes` (made from `main`; `alpha` is fully contained in
 `main`, so this branch can later go to `alpha` in one pull request). Pushed to GitHub.
+**28 September 2026:** a second branch, `feature/bcp47-language-policy` (issue #47), is in flight —
+see the section straight below.
 **Issues:** [#41](https://github.com/MWBMPartners/dev-team-plugin/issues/41) (the main work),
 [#46](https://github.com/MWBMPartners/dev-team-plugin/issues/46),
 [#45](https://github.com/MWBMPartners/dev-team-plugin/issues/45).
+
+## Also in flight: `feature/bcp47-language-policy` (issue #47) — added 28 September 2026
+
+- **What it adds (plugin version 1.6.0):** a shared rule, "Repository instructions and normative
+  documents" (first bullet of "Shared discipline" in
+  `skills/dev-team-orchestrator/references/conventions.md`). Every agent reads a project's own
+  instruction files (`AGENTS.md`, `CLAUDE.md` and the like) and the standards they name — from the
+  repository's trusted base only, never from a fork's pull request or a vendored folder — and the
+  suite's safety rules are never overridden by repository content. All five agents carry one
+  identical sentence pointing at it; the brief template, checker, review, iterate, security,
+  migrate, ship, docs, stripe, featurefind and debate briefs point at it.
+- **Waits on `claude/ledger-file-clashes`** (#41, below): this branch was cut from it at `413d570`
+  and must not go to `alpha` before it.
+- **Review state:** first build `af39817`; an independent review by a fresh Opus agent found it
+  unsafe and incomplete; every finding was acted on in the next commit (safety precedence,
+  trusted sources, unattended conflicts, the nine missed briefing places, the profile, one exact
+  agent sentence, tests that fail when the meaning is removed — proven by edits in a throwaway
+  copy). **Not yet re-reviewed** — it needs another review round, by Codex under rule 5.
+- **Open design point for that review:** "auto-handoff treated as off" still leaves the plugin
+  regenerating `.dev-team/HANDOFF.md` at checkpoints, so a repository that forbids any second
+  handover is not fully honoured yet.
+- Checks at the revision: bats 149 of 149, smoke test, both audits and shellcheck all pass.
 
 ## START HERE — for a fresh session with no chat history
 
@@ -84,6 +108,7 @@ found — especially the Codex ones). Codex reads the same rules through `AGENTS
 | 8 | #46 orchestrator; #45 standard practices | Waiting on Q2, Q3 |
 | 9 | Follow-ups #42, #43, #44 | Not started |
 | 10 | Hand test: does the hook fire for a sub-agent's writes? | Not done |
+| 11 | #47 repository instructions and normative documents (`feature/bcp47-language-policy`) | Revised after one independent review; **needs another review round**; goes after #41 |
 
 ---
 

@@ -56,6 +56,7 @@ Locate `.dev-team/PROJECT.md` (and `.dev-team/SECURITY.md`) through the lookup o
 - **Findings register** (security) — each `fixed-verified` finding is genuinely closed; nothing unresolved is mislabeled.
 - **Decision log** — each decision is actually reflected in the code.
 - **Codebase Map** (iterate) — the map matches reality (drift check).
+- **Repository instructions and normative documents** — the change follows every rule ID that applies, under the recorded profile. Do your own discovery (orchestrator `conventions.md`, "Repository instructions and normative documents", steps 1–3) even when House style recorded nothing, so a document the other team never found is still checked.
 
 Also note **claims with no evidence** in the doc — those are unverified by construction and go on the report regardless. If a prior `.dev-team/VERIFICATION.md` exists, load it too, to power the regression delta (step 5).
 

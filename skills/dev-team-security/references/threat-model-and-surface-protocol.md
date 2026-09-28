@@ -10,6 +10,8 @@ All work here is read-only and against a **local/sandboxed instance** the user o
 
 Spawn scout agent(s) (the `opus-builder` agent, Opus tier, modify nothing — model routing: `skills/dev-team-orchestrator/references/model-routing.md`) to answer:
 
+Also apply "Repository instructions and normative documents" (orchestrator conventions.md): report the repository's instruction files and any normative documents, with their rule-ID scheme and profiles.
+
 **Architecture & trust boundaries**
 - Stack, frameworks, runtime; how it's built, run, and deployed; how to stand up a **local sandbox instance** for safe testing.
 - Entry points: HTTP routes/APIs, CLIs, message consumers, webhooks, file uploads, scheduled jobs, anything that ingests external input.

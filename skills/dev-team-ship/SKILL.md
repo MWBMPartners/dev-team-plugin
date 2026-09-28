@@ -62,7 +62,7 @@ Same shape as the orchestrator, specialized for delivery infrastructure:
 - **Scouts** — the `opus-builder` agent (Opus tier), read-only. Inventory existing
   workflows and their job `name:` fields, existing branch protection AND rulesets, any
   existing secret scanning, the CHANGELOG/version/tag conventions in use, and any
-  auto-commit/auto-merge/auto-tag step that could hit the `GITHUB_TOKEN` trap.
+  auto-commit/auto-merge/auto-tag step that could hit the `GITHUB_TOKEN` trap. Also apply "Repository instructions and normative documents" (orchestrator conventions.md): report the repository's instruction files and any normative documents, with their rule-ID scheme and profiles.
 - **Builders** — the `opus-builder` agent (Opus tier). Scaffold/patch CI workflows, wire
   the gitleaks CLI, configure branch protection/rulesets, and stand up the release flow,
   via the orchestrator's `task-brief-template.md`.

@@ -78,6 +78,7 @@ make the case that it should NOT be on our buildable list. Default: refuted.
    subsystem the code isn't oriented around → move to OUT-OF-SCOPE with the reason
    (cite the code signal); do not score it as buildable. (Honor the `scope` arg:
    strict drops aggressively; loose keeps more but still tags them.)
+4. Also apply "Repository instructions and normative documents" (orchestrator conventions.md): check each candidate against the repository's instruction files and any normative documents, with their rule-ID scheme and profiles.
 
 ## Report back
 Per candidate: KEEP (in-scope gap) / OUT-OF-SCOPE (reason) / DROP (false positive,

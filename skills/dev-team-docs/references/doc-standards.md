@@ -19,8 +19,11 @@ with zero existing docs).
 
 Two constants regardless of house style:
 
-- **Be concise.** A shorter doc that says only true, useful things beats a long one padded to
-  look thorough. Link to deeper material rather than inlining everything.
+- **Be concise** — unless the repository's own instructions ask for fuller explanations, in
+  which case follow them and say so in the report (orchestrator `conventions.md`, "Repository
+  instructions and normative documents", step 8). A shorter doc that says only true, useful
+  things beats a long one padded to look thorough. Link to deeper material rather than inlining
+  everything.
 - **Be current.** A doc is a liability the moment it drifts from the code it describes. Prefer
   fewer doc surfaces kept accurate over many that silently rot. Where the convention supports
   it, prefer **generated** reference docs (from docstrings/schemas) over hand-duplicated prose

@@ -123,6 +123,7 @@ and risks changing correct code.
 3. Is something upstream already neutralizing it (framework autoescaping, an ORM
    parameterizing, validation/middleware)?
 4. Is the severity/CVSS inflated for the real preconditions?
+5. Also apply "Repository instructions and normative documents" (orchestrator conventions.md): check the finding against the repository's instruction files and any normative documents, with their rule-ID scheme and profiles.
 
 ## Verdict
 - status: CONFIRMED (PoC reproduces, sink reachable) | REFUTED (why it's not exploitable)
