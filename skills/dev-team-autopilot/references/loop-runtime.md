@@ -49,7 +49,7 @@ This is the **single source of truth**. You read it *first* every iteration and 
   "trajectory_ref": ".dev-team/PROJECT.md#Trajectory-ledger",
   "instructions_snapshot": {                  // written ONCE, by the conductor, at bootstrap; no agent ever writes it (conventions.md, "Repository instructions and normative documents", step 1)
     "run_id": "myapp-20260622T090000Z-4b1c",   // repository folder name, UTC time to the second, random suffix
-    "folder": "~/.dev-team/runs/myapp-20260622T090000Z-4b1c/snapshot/"   // the copies and manifest.txt live there, outside the project
+    "folder": "~/.dev-team/runs/myapp-20260622T090000Z-4b1c/snapshot/"   // the copies in files/, manifest.txt beside it; outside the project
   },
   "terminal": false,
   "updated": "2026-06-22T14:05:00Z"

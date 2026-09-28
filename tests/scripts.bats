@@ -706,7 +706,7 @@ $line" ;;
   esac
 }
 
-@test "the plugin's files: replaced wordings, the old label, guessed provenance and the old snapshot machinery are gone" {
+@test "the plugin's files: replaced wordings, the old label, guessed provenance, the old snapshot machinery and the old snapshot layout are gone" {
   # What this guards: each review replaced wording or machinery that turned out unsafe or
   # unworkable. A leftover copy anywhere would give an agent two rules to choose between:
   #   - "**The repository wins.**" and "follow the repository and say so in the report" (unlimited
@@ -715,13 +715,17 @@ $line" ;;
   #     (git hash-object, a "seal", a "## Instruction snapshot" ledger section);
   #   - the fifth round's guessed provenance ("Provenance first", "whose upstream is a branch",
   #     "provenance cannot be established"): the plugin no longer guesses whose checkout it is;
-  #   - "unless those instructions ask", which once let the scribe write a project's own handover.
+  #   - "unless those instructions ask", which once let the scribe write a project's own handover;
+  #   - the first snapshot layout (Codex's review of 748e87c..42bd45e, finding 3): copies kept
+  #     "into the folder, keeping their paths" right beside manifest.txt, and a pull request's
+  #     copies in "snapshot/pr-<n>/" — a project's own manifest.txt or pr-12/ folder could collide
+  #     with them. Copies now live only under files/ (snapshot/files/, snapshot/pr/<n>/files/).
   conv="$REPO_ROOT/skills/dev-team-orchestrator/references/conventions.md"
   run grep -F '**The repository wins.**' "$conv"
   [ "$status" -eq 1 ]
   run grep -F 'follow the repository and say so in the report' "$conv"
   [ "$status" -eq 1 ]
-  run grep -rnE 'Repository instructions are authoritative|merge-base|trusted base|hash-object -w <path>|git cat-file -p|"seal"|## Instruction snapshot|Provenance first|whose upstream is a branch|provenance cannot be established|unless those instructions ask' \
+  run grep -rnE 'Repository instructions are authoritative|merge-base|trusted base|hash-object -w <path>|git cat-file -p|"seal"|## Instruction snapshot|Provenance first|whose upstream is a branch|provenance cannot be established|unless those instructions ask|snapshot/pr-|pr-<n>|into the folder, keeping their paths' \
     "$REPO_ROOT/agents" "$REPO_ROOT/commands" "$REPO_ROOT/skills" "$REPO_ROOT/README.md"
   [ -z "$output" ]
   run grep -rnw 'seal' "$REPO_ROOT/agents" "$REPO_ROOT/skills" "$REPO_ROOT/README.md"
