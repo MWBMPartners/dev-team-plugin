@@ -642,9 +642,9 @@ $line" ;;
 }
 
 @test "pinned sections: every section that carries the rule, the handoff-file switch or the snapshot is word for word as pinned" {
-  # What this guards: 28 whole sections, each from its heading to the next heading, in
-  # conventions.md (repo config, dry run, auto-handoff, shared discipline — the whole rule and what
-  # follows it), config-and-toggles.md (instruction files and switches; how config is loaded), the
+  # What this guards: 29 whole sections, each from its heading to the next heading, in
+  # conventions.md (repo config, dry run, cold-resume — a resume reuses the run's snapshot —,
+  # auto-handoff, shared discipline — the whole rule and what follows it), config-and-toggles.md (instruction files and switches; how config is loaded), the
   # README (cross-cutting behaviours; both upgrade notes), the orchestrator's setup, checker and
   # checkpoint steps, autopilot's rehydrate, run-one-cycle and RECORD steps, its documentarian line
   # and its bootstrap, ci-medic's per-PR loop and safety rules, its remediation step, the
@@ -652,7 +652,7 @@ $line" ;;
   # the task-brief and checker templates, and move-ledgers' first two sections. A sentence added
   # anywhere under one of these headings — a new "Exceptions" bullet, a paragraph after a list, words
   # appended to a neighbouring bullet — fails.
-  run check_pinned_kind section 28
+  run check_pinned_kind section 29
   echo "$output"
   [ "$status" -eq 0 ]
 }

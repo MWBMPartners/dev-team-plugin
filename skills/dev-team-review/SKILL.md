@@ -48,9 +48,12 @@ READ .dev-team/PROJECT.md (+ .dev-team/SECURITY.md) → EXTRACT CLAIMS + load pr
 
 **At the start of the run, before any agent is spawned:** take the instruction snapshot
 (`dev-team-orchestrator/references/conventions.md`, "Repository instructions and normative
-documents", step 1) and settle `handoff-file` once ("Auto-handoff", same file); pass the snapshot in
-every brief and the `handoff-file` value in every documentarian brief. Under the autopilot
-conductor, use the conductor's snapshot and value instead of taking your own.
+documents", step 1) — or, when this run resumes a recorded, unfinished one (the suite's Cold-resume
+contract, same file), check and reuse that run's recorded snapshot instead, stopping with a plain
+message if the check fails and never taking a new one in its place — and settle `handoff-file` once
+("Auto-handoff", same file); pass the snapshot in every brief and the `handoff-file` value in every
+documentarian brief. Under the autopilot conductor, use the conductor's snapshot and value instead
+of taking your own.
 
 Locate `.dev-team/PROJECT.md` (and `.dev-team/SECURITY.md`) through the lookup order — the source of intent the other team wrote. This phase changes nothing, so a marked legacy root file is read where it is: move and commit nothing, and report the move as pending — "`<name>` is still at the top level of the project — run `/dev-team-move-ledgers` to move it into `.dev-team/`." (`dev-team-orchestrator/references/conventions.md`, "Where the plugin writes, and the ownership rule", point 5, read-only commands and phases). If neither exists, there's nothing to verify against: tell the user, and offer to either derive criteria from the code or take an intent statement from them. Otherwise extract the **claims** (full taxonomy in `references/claim-extraction-and-verification-protocol.md`):
 
