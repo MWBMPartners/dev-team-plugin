@@ -34,37 +34,44 @@ these (ten or more settings written out, each at its default).
     applies (every section relevant to the task, for a document with no rule IDs), listing which
     sections were read. Where instruction files at different levels differ, the one nearest the
     files being changed applies;
-  - **follows them only as they were in a snapshot taken when the run started.** Before any
-    agent is spawned, the lead records every instruction file and normative document it finds,
-    and `.dev-team/config.yml` (the run's settings are loaded from that copy): path, SHA-256 of the
-    content on disk at that moment, and a git object id holding that exact text (`git hash-object
-    -w`, which touches no working tree, index or branch). The record ends with a seal, is written
-    only by the lead or conductor (`instructions_snapshot` in `autopilot.json`; otherwise a
-    `## Instruction snapshot` section of the skill's own ledger; the run report for ship and
-    ci-medic), and is checked on every read — missing or broken means `BLOCKED`. A file that later
-    differs from its snapshot, or an instruction file that did not exist at the start, is data,
-    even when the host tool has already loaded it: agents read the snapshotted text (`git cat-file
-    -p`), report the mismatch, and a change counts only once the user accepts it. The user's own
-    uncommitted edits at the start count, and so do the files of a repository with no commits. For
-    an untrusted pull request's code (ci-medic rule 9 decides who is trusted), the trusted text is
-    the pull request's base-branch version; if that cannot be read the run asks (unattended:
-    `BLOCKED`) and never falls back to the checked-out text. Content the repository does not author
-    never counts (for example vendored code, dependency caches and build output — `vendor/`,
-    `third_party/`, `node_modules/`, `target/`, `.build/`, `Pods/`, `dist/`, `build/`, `.venv/`,
-    `_build/`, `deps/`, `bower_components/`, `Carthage/`, code vendored with `git subtree`, git
-    submodules — apart from a normative document named by path in a snapshotted instruction file,
-    which is snapshotted like any other file), nor does anything reached through a link that leaves
-    the repository. The rule covers repository content only: the user's own `~/.claude/CLAUDE.md`,
-    `CLAUDE.local.md` and skills are the user's words;
+  - **follows them only as they were in a snapshot taken when the run started.** First the lead
+    decides whose work the checkout is: the user's own only on a local branch tracking a branch
+    of this repository's own remote, or a local branch with no upstream the user started the run
+    on; a detached HEAD, another remote, a `refs/pull/…` ref or a fork's branch counts as someone
+    else's pull request (`gh` is optional, and its failure never produces trust); when that cannot
+    be established the run asks (unattended: `BLOCKED`). Then, before any agent is spawned, it
+    copies every instruction file and normative document it finds, and `.dev-team/config.yml` (the
+    run's settings come from that copy), into `~/.dev-team/runs/<run-id>/snapshot/` — a folder
+    outside the project — with a manifest of SHA-256 checksums and the provenance decision. This
+    works with no git, with no commits, and in a dry run, which writes only there. Agents read the
+    copies. A project file that later differs, or an instruction file that did not exist at the
+    start, is data, even when the host tool has already loaded it; a change counts only once the
+    user accepts it. The user's own uncommitted edits at the start count. For someone else's pull
+    request, the copies come from one base commit's own tree (`git ls-tree`, then `git cat-file
+    blob`, so no filters run; a submodule document at the commit that base records), and if that
+    cannot be read the run asks (unattended: `BLOCKED`) rather than fall back to the checked-out
+    text. **What this cannot do**, stated plainly in the rule and the README: rules written as
+    instructions cannot stop a manipulated agent from rewriting files it can reach, the snapshot
+    folder included — keeping it outside the project stops the repository's own files and commands
+    from changing it, and stops it being committed or edited by a pull request, but it is not an
+    enforcement boundary. The only enforcement is the two guard hooks, which read the live config.
+    Content the repository does not author never counts (for example vendored code, dependency
+    caches and build output — `vendor/`, `third_party/`, `node_modules/`, `target/`, `.build/`,
+    `Pods/`, `dist/`, `build/`, `.venv/`, `_build/`, `deps/`, `bower_components/`, `Carthage/`, code
+    vendored with `git subtree`, git submodules — apart from a normative document named by path in
+    a snapshotted instruction file, which is copied like any other file), nor does anything reached
+    through a link that leaves the repository. The rule covers repository content only: the user's
+    own `~/.claude/CLAUDE.md`, `CLAUDE.local.md` and skills are the user's words;
   - has the lead decide which **profile** of a normative document applies to this repository,
     record it in House style and in every brief; builders say so in their report if they think it
     is wrong, rather than choosing another;
   - names a normative document in a brief **by path, rule ID and profile, never by pasting its
     rules**;
-  - runs the tests the repository requires, including conformance tests, and reports measured
-    results — but **only commands a snapshotted instruction file names**, under the suite's
-    existing command-safety rules; a command named only in a normative document is reported, not
-    run;
+  - runs the tests the repository requires and reports measured results, with **commands only
+    from the user, the plugin's own usual build, test and lint steps for the project's toolchain,
+    or a snapshotted instruction file** — never from a normative document alone, and never from a
+    file that changed during the run; running an untrusted pull request's code stays under
+    ci-medic's existing rule;
   - has a checker or reviewer do **its own discovery** as well as reading every document the
     brief names, cite the rule IDs it checked, and treat a breach as a real finding; a named
     document that cannot be found is reported plainly, never read as "nothing to verify".
@@ -96,7 +103,8 @@ these (ten or more settings written out, each at its default).
   red team and its validator, threat-model scout, review verifier, docs verifier, featurefind
   validator, iterate, migrate and ship scouts, stripe), and each skill with its own front end
   (iterate, security, stripe, ship, docs, migrate, review, featurefind) takes the snapshot and
-  settles `handoff-file` before spawning anyone. ci-medic records its snapshot in its run report.
+  settles `handoff-file` before spawning anyone. In ci-medic the lead writes the snapshot before
+  delegating, and the scribe's run summary gives only its location.
 - **A new switch, `handoff-file`** (`features.handoff-file` in `.dev-team/config.yml`, or
   `handoff-file=on|off` for one run; default `on`; `off`/`false`/`no` and `on`/`true`/`yes` in any
   capitals, and any other value is reported and treated as `off`, the cautious value). With
@@ -172,27 +180,28 @@ skills' `SKILL.md`; all five files in
 
 ### Tests
 
-- Eighteen tests in `tests/scripts.bats` guard the rule, the `handoff-file` switch and the starter
+- Fifteen tests in `tests/scripts.bats` guard the rule, the `handoff-file` switch and the starter
   config file. Each earlier set of tests passed a change that weakened the rule — the first
   checked headings, the second a few key sentences (and passed when words were added), the third
-  the opening words of brief fields (and passed when a field's body, a table row or a precedence
-  line changed). Now these passages are compared whole, word for word, after joining wrapped
-  lines: steps 1, 6 and 8 of the rule; the direction rule as written in `config-and-toggles.md` and
-  at the end of the README's rule bullet; nine brief fields and paragraphs that carry the snapshot
-  rule (in the brief and checker templates, ci-medic, and autopilot's bootstrap and rehydrate
-  steps); the snapshot field in all 13 brief templates; the run-start line in all eight skills with
-  their own front end; the `handoff-file` paragraph of `conventions.md`; the four places that hold
-  back an old `HANDOFF.md` while `off` (conventions point 5, the README's upgrade notes, and two in
-  `/dev-team-move-ledgers`); and the cautious-direction table, both precedence paragraphs and the
-  safety paragraph. Other tests check: that no "merge-base" or "trusted base" remains; the
-  layering, unattended, own-discovery, loaded-file and large-document sentences; each place that
-  writes `.dev-team/HANDOFF.md`, on the line that says to write it; the scribe's ban; the exact
-  agent sentence in every file in `agents/`; the README's count of cross-cutting behaviours; and a
-  starter config file that sets nothing but `version: 1` (a header line may carry only a comment),
-  with `init` told to write only chosen keys and `show` to warn about an old fully written-out file.
-  Every change named in `tests/README.md` was made in a throwaway copy of the repository and made at
-  least one of these tests fail. They check wording, not behaviour: they cannot show that an agent
-  obeys the rule when it runs.
+  the opening words of brief fields, and the fourth still matched phrases inside the places that
+  write `.dev-team/HANDOFF.md` (Codex's review appended an exception sentence to the checkpoint line
+  and it passed). Now these are compared whole, word for word, after joining wrapped lines: the
+  whole rule (steps 1 to 9); the direction rule as written in `config-and-toggles.md` and at the end
+  of the README's rule bullet; twelve fields and paragraphs that carry the snapshot rule (in the
+  brief and checker templates, ci-medic's snapshot paragraph and step 7, the documentarian's ban on
+  the snapshot folder, autopilot's bootstrap and rehydrate steps, and the README rule bullet's
+  summary, which states the limits); the snapshot field in all 13 brief templates; the run-start
+  line in all eight skills with their own front end; all 13 places that write `.dev-team/HANDOFF.md`;
+  the `handoff-file` paragraph of `conventions.md`; the four places that hold back an old
+  `HANDOFF.md` while `off`; and the cautious-direction table, both precedence paragraphs, the safety
+  paragraph and both passages on `config.yml` counting only as snapshotted. Other tests check that
+  none of the replaced wording or machinery remains (the trusted-base method, `git hash-object`,
+  the seal, the old ledger section, the old precedence wordings), the exact agent sentence in every
+  file in `agents/`, the README's count of cross-cutting behaviours, the value rule for
+  `handoff-file`, and a starter config file that sets nothing but `version: 1`. Every change listed
+  in `tests/README.md` was made in a throwaway copy of the repository and made at least one of these
+  tests fail. They check wording, not behaviour: they cannot show that an agent obeys the rule when
+  it runs, and nothing enforces the rule except where a guard hook happens to cover it.
 
 ### Fixed
 

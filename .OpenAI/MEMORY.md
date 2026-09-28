@@ -19,5 +19,8 @@
 - A test that only looks for a heading or a loose word can pass while the rule under it says the
   opposite. When reviewing a test, ask whether it would fail if the rule's meaning were reversed —
   and whether it would fail if words were ADDED to the rule (a new exception), not only removed.
+- If bats cannot start in the sandbox because the temporary folder is not writable, set `TMPDIR` to
+  a writable folder (for example one under the review's own output folder), or say plainly that the
+  tests were not run.
 - A record identifier such as `F-001` can run past 999 (`F-1000`); patterns must allow three or
   more digits.

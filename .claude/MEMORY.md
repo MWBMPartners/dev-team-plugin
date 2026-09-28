@@ -62,6 +62,14 @@
 - To check an intermediate commit, use `git worktree add --detach <scratch-dir> <commit>`, not an
   export such as `git checkout-index`: the export is not a git repository, so the branch-hygiene
   test fails there for a reason that has nothing to do with the change.
+- When each review round finds holes in the previous round's new machinery (#47: a trusted-base
+  method, then a sealed git-object snapshot), stop adding mechanism. Simplify (#47 ended with plain
+  copies in a folder outside the project) and state plainly what the rule cannot do: rules written
+  for agents are not an enforcement boundary; only hooks enforce, and only what they cover.
+- Pin a safety rule as ONE whole block, and every place that acts on a switch as a whole passage.
+  A test that searches for a phrase inside a passage still passes when a sentence is appended to it.
+- Codex's read-only sandbox could not start bats (its temporary folder was not writable). Ask it to
+  set `TMPDIR` to a writable folder, or say plainly that the tests were not run there.
 - To split one working tree into several topic commits without `git stash`: list the changed
   blocks with `git diff -U0 -- <file>`, stage chosen blocks with `git apply --cached
   --unidiff-zero <patch>`, and stage a hand-made in-between version of a file with

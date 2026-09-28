@@ -203,135 +203,107 @@ markdown renderer applies to a wrapped paragraph, and checks the sentence still 
 ### The repository-instructions rule — meaning, not just words (issue #47)
 
 The rule "Repository instructions and normative documents" (`conventions.md`, first bullet of
-"Shared discipline") tells every agent to read a project's own instruction files and the standards
-they name — only as they were in a snapshot taken when the run started, and only to add work or
-choose between style defaults, never to remove or loosen a check, a gate, a confirmation or a
-safety rule. Eighteen tests guard it, the `handoff-file` switch that came with it, and the starter
-config file. They are the fourth set. Each earlier set passed a change that weakened the rule: the
-first looked for headings; the second for a few key sentences, and passed when words were ADDED
-(a new exception); the third checked brief fields by their opening words only, and passed when a
-field's body, a table row or a precedence line was changed. So most tests below compare a whole
-passage, word for word, after joining wrapped lines — a clause added fails as surely as one removed.
+"Shared discipline") tells every agent to follow a project's own instruction files and the
+standards they name only as they were copied when the run started, and only to add work or choose
+between style defaults — never to remove or loosen a check, a gate, a confirmation or a safety
+rule. Fifteen tests guard it, the `handoff-file` switch that came with it, and the starter config
+file. They are the fifth set: each earlier set passed a change that weakened the rule — headings
+only; then a few key sentences (words ADDED passed); then brief fields by their opening words;
+then phrases inside the places that write `.dev-team/HANDOFF.md` (Codex's review appended an
+exception sentence to the checkpoint line, and it passed). So nearly everything below is compared
+as a whole passage, word for word, after joining wrapped lines.
 
 **How the comparison works.** `join_words` turns every run of spaces and line breaks into one
-space, so wrapping never matters. `block_between` cuts out one numbered step of the rule;
-`field_body` cuts out one brief field, list item or paragraph (up to the next item, heading, code
-fence or blank line); `check_pinned` compares a list of such passages with their pinned copies and
-fails unless the expected number of passages was checked, so a parsing slip cannot pass silently.
-The pinned copies live in `tests/scripts.bats` itself (`pinned_step1`, `pinned_step6`,
-`pinned_step8_lead`, `direction_rule`, `snapshot_field`, `front_line`, `pinned_fields`,
-`pinned_handoff_fields`, `pinned_handoff_block`, `pinned_config_fields`). Changing one of those
-passages on purpose means changing its copy too — which makes a change to a safety rule visible in
-review.
+space, so wrapping never matters. `repo_rule_block` cuts out the whole rule; `field_body` cuts out
+one brief field, list item or paragraph (up to the next item, heading, code fence or blank line);
+`check_pinned` compares a list of such passages with their pinned copies and fails unless the
+expected number was checked, so a parsing slip cannot pass silently. The pinned copies live in
+`tests/scripts.bats` itself (`pinned_rule`, `direction_rule`, `snapshot_field`, `front_line`,
+`pinned_fields`, `pinned_writer_fields`, `pinned_handoff_fields`, `pinned_handoff_block`,
+`pinned_config_fields`). Changing one of those passages on purpose means changing its copy too —
+which makes a change to a safety rule visible in review.
 
-1. **The rule's layering, unattended, own-discovery, loaded-file and large-document sentences**
-   are present inside the rule's own block; two unsafe old wordings are gone; `config-and-toggles.md`
-   says the safety rules are not switches; nothing names the rule's old label.
-2. **Step 1 (the run-start snapshot)** — compared whole.
-3. **Step 8 (the direction rule)** — compared whole.
-4. **The direction rule in `config-and-toggles.md` and the README** — the paragraph introducing it
+1. **The whole rule, steps 1 to 9** — compared whole.
+2. **Replaced wording and machinery is gone** — "**The repository wins.**", "follow the repository
+   and say so in the report", the old label, the trusted-base method ("merge-base", "trusted
+   base"), and the third round's machinery (`git hash-object -w <path>`, `git cat-file -p`, a
+   "seal", a "## Instruction snapshot" section); `config-and-toggles.md` still says the safety rules
+   are not switches, and autopilot's state file still has `instructions_snapshot`.
+3. **The direction rule in `config-and-toggles.md` and the README** — the paragraph introducing it
    in `config-and-toggles.md` must be its lead-in plus the rule and nothing else; the README's rule
    bullet must END with the safety sentence and the rule, and must not say "and the rest".
-5. **Nine fields and paragraphs that carry the snapshot rule** — compared whole: the brief
-   template's Repository-instructions and Profile fields and its required-tests criterion; the
-   checker's Repository-instructions field and its run-what's-runnable and own-discovery steps;
-   ci-medic's snapshot paragraph; autopilot's pre-flight step and its rehydrate check.
-6. **The instruction-snapshot field in every brief template** — the whole field, in all 13
-   templates (task brief, checker, debate, documentarian, red team, threat-model scout, review
-   verifier, docs verifier, featurefind validator, iterate, migrate and ship scouts, stripe), and
-   twice in the red-team protocol (the red team's brief and the validator's).
-7. **The run-start line in each of the eight skills with their own front end** (iterate, security,
-   stripe, ship, docs, migrate, review, featurefind) — compared whole.
-8. **Step 6 (running required tests safely)** — compared whole.
-9. **The old trusted-base method is gone** (no "merge-base" or "trusted base" anywhere in agents,
-   commands, skills or the README), and autopilot's state file has `instructions_snapshot`.
-10. **Every file in `agents/` carries the exact shared sentence, once.**
-11. **No agent still says it has context from the brief alone.**
-12. **The README's stated number of cross-cutting behaviours matches its bullets.**
-13. **`handoff-file`: `off` means no `.dev-team/HANDOFF.md` at all, and only an explicit ban turns
-    it off** — key sentences of conventions.md's "Auto-handoff" (including the value rule: any
-    other value counts as `off`); the old "say where notes live" trigger is gone; the
-    config-and-toggles row; and a starter file with `handoff-file` commented out.
-14. **Every place that writes `.dev-team/HANDOFF.md` carries the `off` condition** — checked on the
-    very line that says to write it (the orchestrator after a task and at the checkpoint, autopilot
-    after a task and at RECORD, the documentarian brief, its rules and "when invoked" list, the
-    scribe's agent file, the handoff template); the scribe gets the settled value in documentarian
-    briefs; the scribe's ban covers the handover or session-notes file the project's instructions
-    name, in the scribe file, the documentarian brief and conventions.md.
-15. **The whole `handoff-file` paragraph of conventions.md** — compared whole.
-16. **An old top-level `HANDOFF.md` is held back while `off`** — conventions point 5, the README's
-    "Upgrading from 1.4 or earlier" bullet and both of `/dev-team-move-ledgers`' passages, each
-    compared whole.
-17. **The starter config file** — no setting written out except `version: 1` (a header line may
-    carry nothing but a comment, so `defaults: {gates: autonomy-envelope}` fails); all 18
-    settings present, commented out, showing their defaults; `init` writes only keys the user
-    chose; `show` tags a commented-out key as the built-in default and warns about an old
-    fully written-out file.
-18. **The cautious-direction table, both precedence paragraphs and the safety paragraph** —
-    compared whole.
+4. **Twelve fields and paragraphs that carry the snapshot rule** — the brief template's
+   Repository-instructions and Profile fields and its required-tests criterion; the checker's
+   Repository-instructions field and its run-what's-runnable and own-discovery steps; ci-medic's
+   snapshot paragraph and its step 7; the documentarian's ban on the snapshot folder; autopilot's
+   pre-flight step and its rehydrate check; and the README rule bullet's summary line, which states
+   the snapshot's limits.
+5. **The instruction-snapshot field in every brief template** — the whole field, in all 13
+   templates, and twice in the red-team protocol.
+6. **The run-start line in each of the eight skills with their own front end.**
+7. **Every file in `agents/` carries the exact shared sentence, once.**
+8. **No agent still says it has context from the brief alone.**
+9. **The README's stated number of cross-cutting behaviours matches its bullets.**
+10. **`handoff-file`: `off` means no `.dev-team/HANDOFF.md` at all, and only an explicit ban turns
+    it off** — key sentences of "Auto-handoff" (including the value rule), the old "say where notes
+    live" trigger gone, the config-and-toggles row, and a commented-out starter key.
+11. **All 13 places that write `.dev-team/HANDOFF.md`, compared whole** — the orchestrator after a
+    task and at the checkpoint; autopilot's per-task bullet, RECORD step and documentarian bullet;
+    conventions.md's auto-handoff paragraph; the documentarian brief's settled-value line, its two
+    rules and its "when invoked" bullet; the scribe's whole agent prompt; both handoff-template
+    paragraphs. Plus: "unless those instructions ask" is gone everywhere.
+12. **The whole `handoff-file` paragraph of conventions.md.**
+13. **An old top-level `HANDOFF.md` is held back while `off`** — four passages, compared whole.
+14. **The starter config file** — nothing written out but `version: 1` (a header line may carry only
+    a comment); all 18 settings commented out showing their defaults; `init` writes only chosen
+    keys; `show` tags a commented-out key as the built-in default and warns about an old fully
+    written-out file.
+15. **The cautious-direction table, both precedence paragraphs, the safety paragraph, and both
+    passages on `config.yml` counting only as snapshotted** — compared whole.
 
 **How they were proven** (on 28 September 2026). A script copies the working tree to a throwaway
 folder outside the clone, makes one edit, runs these tests against the copy, and deletes the copy —
 never touching the repository itself. Every edit below made at least the named test fail.
 
-*The third review's edits* (its own exact edits were not saved, so each was rebuilt from its name
-against the current text):
+*Codex's review round* (its exact sentence — "Exception: when a repository instruction requests it,
+regenerate .dev-team/HANDOFF.md even when handoff-file is off." — appended to each writer place):
 
 | Edit | Test that failed |
 |---|---|
-| m01 Change `dry-run`'s cautious value in the table to `off` | 18 |
-| m02 Change `gates`' cautious direction to `autonomy-envelope` | 18 |
-| m03 Rank a repository instruction above an explicit config value (conventions.md) | 18 |
-| m04 The same in config-and-toggles.md's full order | 18 |
-| m05 Delete move-ledgers' hold-back of `HANDOFF.md` while `off` | 16 |
-| m06 Delete "even when the host has already loaded it" from ci-medic | 5 |
-| m07 Add "A repository instruction may turn it back on." to the `handoff-file` paragraph | 15 |
-| m08 Add an exception to config-and-toggles' safety paragraph / to the README's safety sentence | 18 / 4 |
-| m09 Delete the documentarian's own-handover line | 14 |
-| m10 Weaken the body of the brief template's snapshot field | 6 |
-| m11 Let step 6 run a command named only in a normative document | 8 |
-| m12 Give autopilot's bootstrap its own "trusted base" again | 5 and 9 |
+| Codex's sentence appended to: the checkpoint line; RECORD; the after-each-task paragraph; the per-task bullet; the scribe's prompt; the documentarian's "when invoked" bullet and its obey-the-value rule; the handoff template; conventions' auto-handoff paragraph | 11 (each) |
+| Codex's sentence appended to the `handoff-file` paragraph | 12 |
+| An exception appended to step 1's pull-request bullet / to step 6 / to the direction rule | 1 (each) |
+| An exception appended to ci-medic's snapshot paragraph | 4 |
+| Words added inside the checker's snapshot field | 5 |
+| An exception appended to the "config.yml counts only as snapshotted" paragraph | 15 |
+| A failed `gh` lookup counts as trust; a detached HEAD is trusted; provenance decided after settings are loaded | 1 (each) |
+| The snapshot moved into the project; a dry run writes into the project; step 1's "What this cannot do" deleted; the hooks said to protect the run folder | 1 (each) |
+| Base copies taken with `git show` (filters allowed); an unavailable submodule commit no longer asks | 1 (each) |
+| Step 6 lets a normative document name commands | 1 |
+| The checker takes commands from a normative document | 4 |
+| Autopilot takes its snapshot after DISCOVER | 4 |
+| Autopilot carries on when the snapshot folder is missing | 4 |
+| ci-medic's scribe records the snapshot itself | 4 |
+| The README's statement of the snapshot's limits deleted | 4 |
+| The scribe may write the snapshot folder | 11 |
+| The documentarian may write the snapshot folder | 4 |
+| Ship's scout brief loses the body of the snapshot field | 5 |
 
-*Further edits against the new text:*
-
-| Edit | Test that failed |
-|---|---|
-| Step 1 falls back to the checked-out text | 2 |
-| Step 1 stops checking the record on every read | 2 |
-| Step 1 stops snapshotting `.dev-team/config.yml` | 2 |
-| Step 1 lets the documentarian write the record | 2 |
-| Step 1 takes the snapshot "whenever convenient" | 2 |
-| Step 1 is no longer limited to repository content | 2 |
-| Step 2 excuses files the host has loaded, again | 1 |
-| Step 3 drops documents with no rule IDs | 1 |
-| Delete the push / merge / branch / ownership / privacy / secrets clause — in conventions.md; in the README; in config-and-toggles.md | 3; 4; 4 |
-| Drop the branch model from step 8's protected list | 3 |
-| Drop the per-run-arguments bullet from the README | 4 |
-| Ship's scout brief loses the snapshot field | 6 |
-| The docs skill loses its run-start line | 7 |
-| Delete ci-medic's snapshot paragraph | 5 |
-| Autopilot's rehydrate check carries on when the seal breaks | 5 |
-| Starter schema: `defaults: {gates: autonomy-envelope}` | 17 |
-| Starter schema writes `handoff-file: on` out | 13 and 17 |
-| An unrecognised `handoff-file` value counts as `on` again | 13 and 15 |
-| Delete the "off" rule from `agents/sonnet-scribe.md` | 14 |
-| Widen the scribe's ban back to any "notes" file | 14 |
-| Put "unless those instructions ask you to" back in the scribe file | 14 |
-| The README's upgrade notes lose the `HANDOFF.md` exception | 16 |
-| `show` loses its old-file warning | 17 |
-
-The earlier rounds' edits were run again as well: the 24 whose text still exists (a waiver added
-to the safety sentence, the shared agent sentence removed, the old "ZERO context" wording, the
-brief's Profile field deleted, the README's count changed, each starter-schema and `init` / `show`
-edit, and more) all still fail a test; the nine whose text the revision replaced were rebuilt
-against the new wording and appear in the table above.
+The first run of this table found two edits that passed (ci-medic's step 7 and the documentarian's
+ban on the snapshot folder were not pinned); both passages were pinned and the two edits re-run, and
+they now fail test 4. **Earlier rounds' edits were re-run on the final text as well:** the 27
+third-round edits whose text still exists (a changed table row, a reordered precedence line, move-
+ledgers' hold-back deleted, an exception added to the safety paragraph and to the README's safety
+sentence, the documentarian's own-handover line deleted, and more), the 16 from the first and
+second rounds whose text still exists, and the 8 starter-file edits all still fail a test; edits whose text this round replaced were
+covered by the new edits above.
 
 **What these cannot catch:** they check wording, word for word, in the right place. They cannot
-tell whether an agent obeys the rule when it runs — for example whether a lead really takes the
-snapshot before spawning anyone, or whether the seal is checked on every read. Outside the pinned
-passages, a new sentence elsewhere that contradicts the rule would not be noticed. And pinning
-means any deliberate change to one of these passages must change its copy in `tests/scripts.bats`
-too — on purpose, so that a change to a safety rule is visible in review.
+tell whether an agent obeys the rule when it runs — for example whether a lead really copies the
+files before spawning anyone. Nor does anything enforce the rule except where one of the two guard
+hooks happens to cover it (`conventions.md`, step 1, "What this cannot do"). And pinning means any
+deliberate change to one of these passages must change its copy in `tests/scripts.bats` too — on
+purpose, so that a change to a safety rule is visible in review.
 
 ### `hooks/guard-ledgers.sh` — the ledger guard's test matrix
 

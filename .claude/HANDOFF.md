@@ -6,9 +6,9 @@
             Rewritten as work happens, not tidied at the end. See .claude/CLAUDE.md section 2.
 -->
 
-**Last updated:** 28 September 2026 — issue #47 revised after its THIRD independent review. The
-lead pushed up to `dbb5e31` (the starter config file); five more commits follow it locally, not yet
-pushed. None of the third-review revision is reviewed yet; see the #47 section straight below. The "START HERE"
+**Last updated:** 28 September 2026 — issue #47 revised after CODEX's review of the whole change.
+The lead pushed up to `748e87c`; two more commits follow it locally (`7b61564` and the notes commit
+after it), not yet pushed or reviewed; see the #47 section straight below. The "START HERE"
 section dates from 23 September; everything below "Detailed history" is the older, fuller record.
 **Working branch:** `claude/ledger-file-clashes` (made from `main`; `alpha` is fully contained in
 `main`, so this branch can later go to `alpha` in one pull request). Pushed to GitHub.
@@ -23,10 +23,11 @@ see the section straight below.
 - **What it adds (plugin version 1.6.0):** a shared rule, "Repository instructions and normative
   documents" (first bullet of "Shared discipline" in
   `skills/dev-team-orchestrator/references/conventions.md`). Every agent reads a project's own
-  instruction files (`AGENTS.md`, `CLAUDE.md` and the like) and the standards they name, only as
-  they were in a **snapshot taken when the run started** (path + SHA-256 + a git object id, in a
-  sealed record only the lead writes); a file that later differs, even one the host tool already
-  loaded, is data, and an untrusted pull request's code uses its base branch's version. Repository
+  instruction files (`AGENTS.md`, `CLAUDE.md` and the like) and the standards they name, only as they were **copied when the run started** into `~/.dev-team/runs/<run-id>/snapshot/`
+  (outside the project, with a SHA-256 manifest), after the lead has decided whose work the
+  checkout is; a file that later differs, even one the host tool already loaded, is data, and
+  someone else's pull request is read from its base commit's tree. The limit is stated plainly:
+  this is not an enforcement boundary — only the two guard hooks enforce anything. Repository
   content may **add** work and checks and choose between style defaults, but may **never remove,
   skip, weaken or waive** a check, a gate, a confirmation or a safety rule, and moves a plugin
   switch only toward its more cautious value (the "direction rule", step 8, written word for word
@@ -74,7 +75,8 @@ see the section straight below.
     defined differently by autopilot, and kept its base where agents could rewrite it. The lead
     took final decisions (16 items); all were built in five commits, **committed locally and NOT
     pushed** (the lead pushes):
-    - `bfb4e8a` — the run-start SNAPSHOT replaces the trusted base everywhere (conventions.md step
+    - `bfb4e8a` — (its storage was replaced after Codex's review, below) the run-start SNAPSHOT
+      replaces the trusted base everywhere (conventions.md step
       1): path + SHA-256 + a git object id (`git hash-object -w`) for every instruction file,
       normative document and `.dev-team/config.yml`, taken before any agent is spawned, in a sealed
       record only the lead writes (`instructions_snapshot` in autopilot.json; a
@@ -96,17 +98,38 @@ see the section straight below.
     - `2f407cc` — config-and-toggles' safety paragraph pinned; `tests/README.md` rewritten with the
       proof tables.
     - The commit after `2f407cc` — CHANGELOG 1.6.0 and these notes.
-  - **None of the third-review revision is independently reviewed yet.** Under rule 5 it needs a
-    Codex review round (compare with `claude/ledger-file-clashes` / `413d570`, not `main`).
-- **Checks at the latest commit:** bats 162 of 162, smoke test, both audits, shellcheck and
-  actionlint all pass. Earlier: 155 of 155 at `dbb5e31`; `25223c0` on its own 153 of 153 in a
-  separate git worktree.
+    - The lead pushed up to `748e87c`.
+  - **Codex's review** (the usual reviewer, available again) of the whole change `413d570..748e87c`
+    was NOT clean: 10 findings. The seal could not stop replacement; a failed pull-request lookup
+    fell through to trust; base-branch discovery was underspecified; `git hash-object` can run
+    filters and change bytes; the storage broke non-git and dry runs; autopilot spawned agents
+    before its record existed; the command rule blocked ordinary tests; ci-medic had the scribe
+    write the snapshot; the writer test matched substrings; and `.claude/CONTEXT.md` was stale.
+    The lead decided to SIMPLIFY and state limits honestly, not add machinery. Built in `7b61564`:
+    plain copies in `~/.dev-team/runs/<run-id>/snapshot/` with a manifest (no git objects, no
+    seal); provenance decided first (only a local branch tracking this repository's own remote, or
+    a local branch with no upstream the user started on, is the user's own; `gh` never produces
+    trust; unknown → ask or BLOCKED); base-tree copies with `git ls-tree` and `git cat-file blob`;
+    autopilot snapshots in bootstrap step 1; commands from the user, the plugin's own usual build,
+    test and lint, or a snapshotted instruction file; ci-medic's lead writes the snapshot; the
+    limits stated plainly in step 1 and the README. Tests: the whole rule pinned as one copy, all
+    13 writer places compared whole. Then the notes commit (CHANGELOG, `tests/README.md`, these
+    notes).
+  - **None of Codex's-round revision is reviewed yet.** Under rule 5 it needs another Codex round
+    (compare with `claude/ledger-file-clashes` / `413d570`, not `main`). Codex reported that bats
+    could not start in its sandbox because the temporary folder was not writable; set `TMPDIR` to
+    a writable folder when asking it to run the tests.
+- **Checks at the latest commit:** bats 159 of 159 (the test list was consolidated: the whole
+  rule is one test now instead of separate step tests), smoke test, both audits, shellcheck and
+  actionlint all pass. Earlier: 162 of 162 at `748e87c`; 155 of 155 at `dbb5e31`; `25223c0` on its
+  own 153 of 153 in a separate git worktree.
 - **Proof the tests bite:** every edit listed in `tests/README.md` was made in a throwaway copy
-  outside the clone and made at least one test fail: the third review's twelve (rebuilt from their
-  names — the reviewer's exact edits were not saved; m08 in two places), sixteen more against the
-  new text, the nine earlier-round edits whose wording the revision replaced (rebuilt), and the 24
-  earlier-round edits whose text still exists. The scripts that ran them are in the builder's
-  session scratchpad (`r3work/mutate4.py`, `mutate5.py`), not in the repository.
+  outside the clone and made at least one test fail. Codex's round: 34 edits, including Codex's
+  exact exception sentence appended to each of ten writer places (the first run found two
+  unpinned passages — ci-medic's step 7 and the documentarian's snapshot-folder ban — which were
+  then pinned). Re-run on the final text: the third round's 27 edits whose text still exists, the
+  first and second rounds' 16, and the 8 starter-file edits. The scripts are in the builder's
+  session scratchpad (`r3work/mutate6.py` and friends), not in the repository.
 - **Decisions the builder took inside the lead's decisions** (a reviewer may want to look at these):
   - A per-switch table in `config-and-toggles.md` says which value is the more cautious one. Two
     switches have none, so an instruction file cannot move them: `models` (a cost choice; the
@@ -119,15 +142,20 @@ see the section straight below.
     single commit are fixed); in that case it keeps `on`, does not offer the pointer sentence, and
     says so in its report.
   - A scribe brief with no `handoff-file` value writes no card and says so.
-  - Third review: the snapshot keeps each file's exact text with `git hash-object -w` (stored in
-    git's object store, invisible to status, readable with `git cat-file -p`), so "read the
-    snapshotted text" works even for uncommitted edits. The seal is the SHA-256 of the entry lines;
-    "matches" means the seal still fits the entries and, where a brief carries a copy, the entries
-    agree. For non-autopilot skills the lead writes the snapshot section into the skill's ledger
-    itself (the documentarian never touches it). A trusted pull request (rule 9) is snapshotted when
-    it is checked out. An unrecognised `handoff-file` value is reported and treated as `off`, as
-    decided. `show` flags an old file when ten or more settings are written out at their
-    defaults.
+    - Third review (since replaced): the snapshot used `git hash-object -w`, a seal, and a
+    `## Instruction snapshot` ledger section. Codex showed the seal could not stop replacement and
+    hash-object could change bytes, so all three are gone.
+  - Codex's round: the run folder is `~/.dev-team/runs/<run-id>/snapshot/` with `manifest.txt`
+    (the provenance decision, then `<sha256>  <path>` per file); a missing folder or a copy that no
+    longer matches → BLOCKED (this detects damage, not a deliberate rewrite — the limit is stated).
+    The folder's path is recorded in `autopilot.json` (run id and folder only), House style, or the
+    ship / ci-medic run report. When someone else's pull request's base branch is unknown, the base
+    is this repository's default branch. Only a branch of this same repository counts as a trusted
+    pull request for instructions; a fork's pull request uses the base rule even from a trusted
+    collaborator (rule 9 still decides whether its code may run). The dry-run promise in every skill
+    now says "no file or git changes in the project". An unrecognised `handoff-file` value is
+    reported and treated as `off`, as decided. `show` flags an old file when ten or more settings
+    are written out at their defaults.
 - **Rejected on the way:** testing a few key phrases (the second review showed a rule can be
   weakened by ADDING words, which such tests never see — so steps 1 and 8 are compared whole); a
   closed list of protected things (anything left off it was open to override — replaced by the
