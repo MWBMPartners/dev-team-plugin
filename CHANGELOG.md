@@ -41,17 +41,23 @@ these (ten or more settings written out, each at its default).
     `.dev-team/config.yml` (the run's settings come from that copy), into a new, uniquely named
     folder outside the project, `~/.dev-team/runs/<run-id>/snapshot/` (the run id is the repository
     folder's name, the UTC time to the second and a random suffix; the folder is created with a
-    command that fails if it already exists), with `manifest.txt` naming the repository's absolute
-    path, the run id and a SHA-256 checksum per file. This works with no git, with no commits, and
+    command that fails if it already exists). The copies go in its `files/` folder, each at its
+    path in the project, and `snapshot/manifest.txt`, beside `files/`, names the repository's
+    absolute path, the run id and a SHA-256 checksum per file; project files go only under `files/`,
+    so a project's own `manifest.txt`, or a folder named `pr/`, can never collide with the plugin's
+    own records. This works with no git, with no commits, and
     in a dry run, which writes only there. Agents read the copies. A project file that later
     differs, or an instruction file that did not exist at the start, is data, even when the host
     tool has already loaded it; a change counts only once the user accepts it. If the folder cannot
     be written or read, or does not match, the run stops (unattended: `BLOCKED`) and never falls
-    back to the project's files; the folder is kept after the run. Someone else's pull request is
+    back to the project's files; the folder is kept after the run. **A resume keeps the snapshot:**
+    a later session that resumes a recorded, unfinished run checks that run's snapshot and reuses
+    it, stops with a plain message if the check fails, and never takes a new one; only a new run
+    takes a new snapshot (autopilot already worked this way). Someone else's pull request is
     handled only by a skill that checks it out itself (ci-medic): before the checkout it copies that
     pull request's instruction files from its base commit's own tree (`git ls-tree`, then `git
-    cat-file blob`, so no filters run) into `snapshot/pr-<n>/` with its own manifest, never from the
-    checked-out text; a same-repository branch pushed by a collaborator is still someone else's
+    cat-file blob`, so no filters run) into `snapshot/pr/<n>/files/` with its own manifest in
+    `snapshot/pr/<n>/manifest.txt`, never from the checked-out text; a same-repository branch pushed by a collaborator is still someone else's
     code; ci-medic's rule 9 decides only whether the code may run, never whose instructions count;
     and the run's settings stay the user's own. **What this cannot do**, stated plainly in the rule
     and the README: if you start a run on someone else's code, the plugin reads their instructions
@@ -60,9 +66,13 @@ these (ten or more settings written out, each at its default).
     snapshot is safe from git operations (a checkout, a commit, a pull request's changes) but not
     from commands the run executes, the project's own scripts included, and the checksum catches
     accidental damage only; none of this is an enforcement boundary. The only enforcement the
-    plugin itself provides is its two guard hooks, described exactly (both fail open, both read the
-    live config; the Bash guard matches command text, so a plain `git push` made while on `main`
-    passes); server-side branch protection is the real protection for pushes. Content the
+    plugin itself provides is its two guard hooks, described exactly: both fail open and read the
+    live config; the Bash guard reads a command's text (quotes and backslashes taken away) and
+    refuses a push that names `main`/`master`, a push that names no branch when git's own settings
+    show it would go there, and a live Stripe key, but cannot see a branch held in a variable or a
+    push run from a script, and lets through a push whose destination it cannot tell (after a `cd`
+    in the same command, outside a git repository); server-side branch protection is the real
+    protection for pushes. Content the
     repository does not author never counts (for example vendored code, dependency caches and build
     output — `vendor/`, `third_party/`, `node_modules/`, `target/`, `.build/`, `Pods/`, `dist/`,
     `build/`, `.venv/`, `_build/`, `deps/`, `bower_components/`, `Carthage/`, code vendored with `git
@@ -111,8 +121,12 @@ these (ten or more settings written out, each at its default).
   red team and its validator, threat-model scout, review verifier, docs verifier, featurefind
   validator, iterate, migrate and ship scouts, stripe), and each skill with its own front end
   (iterate, security, stripe, ship, docs, migrate, review, featurefind) takes the snapshot and
-  settles `handoff-file` before spawning anyone. In ci-medic the lead writes the snapshot before
-  delegating, and the scribe's run summary gives only its location.
+  settles `handoff-file` before spawning anyone — or, when it resumes a recorded, unfinished run,
+  checks and reuses that run's snapshot. In ci-medic the lead writes the snapshot before
+  delegating, once per run: a `/loop` of watch passes is one run, whose first pass takes the
+  snapshot and records the starting branch and commit in `~/.dev-team/runs/<run-id>/run.txt`, and
+  whose later passes check and reuse it; every pass puts the starting branch back before it ends,
+  and stops and says so if it cannot. The scribe's run summary gives only the snapshot's location.
 - **A new switch, `handoff-file`** (`features.handoff-file` in `.dev-team/config.yml`, or
   `handoff-file=on|off` for one run; default `on`; `off`/`false`/`no` and `on`/`true`/`yes` in any
   capitals, and any other value is reported and treated as `off`, the cautious value). With
@@ -164,6 +178,24 @@ these (ten or more settings written out, each at its default).
 - The orchestrator reads a project's instruction files, and takes the snapshot, straight after its
   cold-resume check (it had said "before anything else", which clashed with the cold-resume check
   coming first).
+- **The Bash guard (`hooks/guard-dev-team.sh`) reads a command the way the shell does.** It used
+  to match the raw text and understood only double quotes, so `git push origin 'main'`,
+  `git push origin \main` and `'git' push origin main` were all let through. It now takes quotes
+  and backslashes away first (a quoted multi-word argument stays one word, so
+  `git commit -m 'push to main'` is still allowed), reads a command string given to `sh -c` /
+  `bash -c` or `eval` as well, and — for a push that names no branch (`git push`,
+  `git push origin`, `git push origin HEAD`, `--all`, `--mirror`) — asks git, in the folder the
+  command runs in, where it would push (the current branch, the branch it tracks, `push.default`,
+  `remote.<name>.push`, and the command's own `-C` and `-c`), refusing it when that is `main` or
+  `master`. Where it cannot tell (an earlier `cd` in the same command, a `GIT_*` variable set in
+  it, not a git repository, a detached HEAD) it lets the push through, and its header, the README
+  and `conventions.md` say so. The old raw-text check still runs, so nothing refused before is
+  allowed now. Only the commands that need it are read word by word, so a long command (a large
+  heredoc, say) is still checked in about half a second.
+- **Every description of the guard hooks now says exactly what they cover.** "This written rule is
+  the real protection" is gone from `conventions.md`'s ownership rule (the written rule is what
+  agents follow, not enforcement; the one hook enforces only the writes it can see), and ci-medic's
+  rule 2 no longer says the hook "already blocks pushes to main".
 - The iterate skill's audit gains a tenth dimension, **conformance** to the project's normative
   documents; the review skill gains a **conformance** claim type, and its reviewers do their own
   discovery even when House style recorded nothing.
@@ -180,11 +212,13 @@ skill's `SKILL.md`, `doc-standards.md` and `accuracy-verification-protocol.md`; 
 review skill's `SKILL.md` and `claim-extraction-and-verification-protocol.md`; the orchestrator's
 `handoff-template.md`; the autopilot skill's `SKILL.md` and `loop-runtime.md`; the
 `/dev-team-config` and `/dev-team-move-ledgers` commands (the pointer-sentence offer, the starter
-file, `show`, and a held-back `HANDOFF.md`); the ci-medic skill's `SKILL.md` and
-`remediation-protocol.md`; the autopilot skill's `mission-and-done.md`; the stripe and featurefind
-skills' `SKILL.md`; all five files in
-`agents/`; `README.md`; `.claude-plugin/plugin.json` (version 1.5.0 → 1.6.0); and
-`tests/scripts.bats`, with `tests/README.md`.
+file, `show`, and a held-back `HANDOFF.md`); the `/dev-team-watch-prs` command; the ci-medic
+skill's `SKILL.md`, `remediation-protocol.md` and `watch-and-schedule-protocol.md`; the autopilot
+skill's `mission-and-done.md`; the stripe and featurefind skills' `SKILL.md`; all five files in
+`agents/`; `hooks/guard-dev-team.sh` (the Bash guard) and a comment in `hooks/guard-ledgers.sh`;
+`README.md`; `CONTRIBUTING.md`; `.claude-plugin/plugin.json` (version 1.5.0 → 1.6.0); and
+`tests/scripts.bats`, `tests/fixtures/pinned-instructions.txt` and `tests/smoke-structure.sh`, with
+`tests/README.md`.
 
 ### Tests
 
@@ -194,21 +228,35 @@ skills' `SKILL.md`; all five files in
   places that write `.dev-team/HANDOFF.md`; then, with whole passages pinned, text added NEXT to a
   pinned passage (a paragraph after a list, a new bullet before the next one, words appended to a
   neighbouring bullet). The pinned copies now live in `tests/fixtures/pinned-instructions.txt` and
-  are checked three ways: 28 whole sections, each from its heading to the next heading outside a
-  code fence (in `conventions.md`, `config-and-toggles.md`, the README, the orchestrator, autopilot,
-  ci-medic, the documentarian protocol, the handoff template, the task-brief and checker templates,
+  are checked three ways: 30 whole sections, each from its heading to the next heading outside a
+  code fence (in `conventions.md` — its Cold-resume section included —, `config-and-toggles.md`,
+  the README, the orchestrator, autopilot, ci-medic — its one-snapshot-per-run section included —,
+  the documentarian protocol, the handoff template, the task-brief and checker templates,
   and `/dev-team-move-ledgers`); 11 passages inside larger sections, each compared whole together
   with the opening words of what follows it (the scribe's prompt, conventions point 5, autopilot's
   snapshot example, and the run-start line in eight skills); and the snapshot field as a whole list
   item in all 13 brief templates. Other tests check that the direction rule is written identically
   in three places, that no replaced wording or machinery remains (the trusted-base method, `git
   hash-object`, the seal, the old ledger section, guessed provenance, the old precedence wordings,
-  "unless those instructions ask"), the exact agent sentence in every file in `agents/`, the
+  "unless those instructions ask", the first snapshot layout's `snapshot/pr-<n>/` and "into the
+  folder, keeping their paths"), the exact agent sentence in every file in `agents/`, the
   README's count of cross-cutting behaviours, the value rule for `handoff-file`, and a starter
   config file that sets nothing but `version: 1`. Every change listed in `tests/README.md` was made
   in a throwaway copy of the repository and made at least one of these tests fail. They check
   wording, not behaviour: they cannot show that an agent obeys the rule when it runs, and nothing
   enforces the rule except where a guard hook happens to cover it.
+- Sixteen new tests for the Bash guard, each in a throwaway git repository with the machine's own
+  git settings shut out: single quotes, backslashes, a quoted `git`, quoted refspecs, `sh -c` /
+  `bash -c` / `eval`, and quoted text that only mentions `main` (allowed); a push that names no
+  branch — bare, remote only, `HEAD` and `@`, `-C`, the hook input's `cwd`, `push.default=upstream`
+  (also set with `-c` on the command), `matching`, `--all`, `--mirror`, `remote.origin.push` —
+  refused when it would reach `main`, allowed when it would not, and the documented limits allowed;
+  and a long command (2,000 simple commands, or a large heredoc) still read to the end. Twelve of
+  the sixteen fail against the previous hook (the other four test allowed cases).
+- `tests/smoke-structure.sh` now checks each required hook registration in `hooks/hooks.json`:
+  Bash to `guard-dev-team.sh`, and Write, Edit and MultiEdit to `guard-ledgers.sh`, each by its
+  exact command path. It used to ask only whether some matcher contained "Write", so removing the
+  Bash registration or narrowing the ledger guard to Write alone still passed; both now fail.
 
 ### Fixed
 

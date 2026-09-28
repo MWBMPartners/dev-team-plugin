@@ -6,9 +6,9 @@
             Rewritten as work happens, not tidied at the end. See .claude/CLAUDE.md section 2.
 -->
 
-**Last updated:** 28 September 2026 — issue #47 revised after a stand-in review of Codex's-round
-revision. The lead pushed up to `a9fb292`; two more commits follow it locally (`11ec8be` and the
-notes commit after it), not yet pushed or reviewed; see the #47 section straight below. The "START HERE"
+**Last updated:** 28 September 2026 — issue #47's fourth round, acting on Codex's review of
+`748e87c..42bd45e`. The lead pushed up to `42bd45e`; nine commits follow it locally (`8ea4c12` to
+the notes commit), not yet pushed or reviewed; see the #47 section straight below. The "START HERE"
 section dates from 23 September; everything below "Detailed history" is the older, fuller record.
 **Working branch:** `claude/ledger-file-clashes` (made from `main`; `alpha` is fully contained in
 `main`, so this branch can later go to `alpha` in one pull request). Pushed to GitHub.
@@ -24,15 +24,18 @@ see the section straight below.
   documents" (first bullet of "Shared discipline" in
   `skills/dev-team-orchestrator/references/conventions.md`). Every agent reads a project's own
   instruction files (`AGENTS.md`, `CLAUDE.md` and the like) and the standards they name, only as they were **copied when the run started** into a new, uniquely named folder
-  `~/.dev-team/runs/<run-id>/snapshot/` (outside the project, with a manifest naming the
-  repository, the run id and a SHA-256 per file). The checkout the user starts the run on is
-  treated as the user's own — the plugin no longer guesses from git whose code it is. A file that
-  later differs, even one the host tool already loaded, is data. Someone else's pull request is
-  handled only by a skill that checks it out itself (ci-medic), which copies its instruction files
-  from its base commit into `snapshot/pr-<n>/`. The limits are stated plainly: start from your own
-  branch; the snapshot is safe from git operations but not from commands the run executes; this is
-  not an enforcement boundary — only the plugin's two guard hooks enforce anything, and only what
-  they cover. Repository
+  `~/.dev-team/runs/<run-id>/snapshot/` (outside the project: the copies in its `files/` folder,
+  and beside that a manifest naming the repository, the run id and a SHA-256 per file). The
+  checkout the user starts the run on is treated as the user's own — the plugin no longer guesses
+  from git whose code it is. A file that later differs, even one the host tool already loaded, is
+  data. A resumed run checks and reuses its recorded snapshot; only a new run takes one. Someone
+  else's pull request is handled only by a skill that checks it out itself (ci-medic), which copies
+  its instruction files from its base commit into `snapshot/pr/<n>/files/`; a ci-medic `/loop` is
+  one run with one snapshot, and every pass puts the starting branch back. The limits are stated
+  plainly: start from your own branch; the snapshot is safe from git operations but not from
+  commands the run executes; this is not an enforcement boundary — only the plugin's two guard
+  hooks enforce anything, and only what they cover (each described exactly: the Bash guard now
+  reads quoted and escaped words and resolves a push that names no branch). Repository
   content may **add** work and checks and choose between style defaults, but may **never remove,
   skip, weaken or waive** a check, a gate, a confirmation or a safety rule, and moves a plugin
   switch only toward its more cautious value (the "direction rule", step 8, written word for word
@@ -129,7 +132,8 @@ see the section straight below.
     worktrees were all misclassified). **The lead's final decision: stop guessing.** Built in
     `11ec8be`: the checkout the user starts on is the user's own (limit stated: start from your own
     branch); someone else's pull request is handled only by a skill that checks it out itself
-    (ci-medic), snapshotting its base-commit instruction files into `snapshot/pr-<n>/`; rule 9
+    (ci-medic), snapshotting its base-commit instruction files into `snapshot/pr-<n>/` (moved to
+    `snapshot/pr/<n>/files/` in the fourth round); rule 9
     decides only whether code may run; settings always come from the user's own config; autopilot
     snapshots before creating its run branch; unique run ids and a create-that-fails folder; the
     manifest records the repository path and run id; stop, never fall back, if the folder cannot be
@@ -138,18 +142,83 @@ see the section straight below.
     copies moved to `tests/fixtures/pinned-instructions.txt`, checked as 28 whole sections (heading
     to next heading), 11 items with the opening words of what follows, and the snapshot field as a
     whole list item in 13 templates. Then the notes commit.
-  - **None of this revision is reviewed yet.** Under rule 5 it needs a Codex round when Codex is
-    back (compare with `claude/ledger-file-clashes` / `413d570`, not `main`). Set `TMPDIR` to a
-    writable folder when asking Codex to run bats (its sandbox's default was not writable).
+  - The lead pushed up to `42bd45e`.
+  - **Codex's review of `748e87c..42bd45e`** (the usual reviewer) was NOT clean: six findings
+    (its output is in the lead's session scratchpad, `codex-plugin-r3.out`, not in the
+    repository). (1) ci-medic snapshotted whatever each pass started on, so after a pass left a
+    pull request checked out, the next `/loop` pass took that pull request's instructions as the
+    user's own; (2) the orchestrator's setup step resumed a run and then took a new snapshot
+    anyway; (3) copies kept at their project paths right beside `manifest.txt` and `pr-<n>/` could
+    collide with a project's own `manifest.txt` or `pr-12/` folder; (4) the Bash guard let
+    `git push origin 'main'` and a bare `git push` on `main` through, and several descriptions
+    overstated it ("This written rule is the real protection"; "already blocks pushes to main");
+    (5) the smoke test passed with the Bash registration removed or the ledger matcher narrowed;
+    (6) `.OpenAI/CONTEXT.md` gave stale review history. The lead took final decisions
+    (`brief-plugin-r4.md` in the lead's scratchpad) and a fresh builder acted on all six, in
+    commits **committed locally and NOT pushed** (the lead pushes):
+    - `8ea4c12` — the smoke test checks each registration: Bash to `guard-dev-team.sh`, and Write,
+      Edit and MultiEdit to `guard-ledgers.sh`, by exact command path, a matcher read as a
+      whole-name pattern (empty or `*` = every tool). Proved in throwaway copies: Bash removed,
+      ledger matcher `Write`, both, Bash pointed at the wrong script, and `Writer|Edits` each fail;
+      the real file passes; the old smoke script passed the first two.
+    - `0993347` — the Bash guard reads the command the way the shell does (quotes and backslashes
+      taken away, a quoted multi-word argument kept as one word, `sh -c` / `bash -c` / `eval`
+      strings read too, three levels deep) on top of the old raw-text rule, and resolves a push that
+      names no branch by asking git in the folder the command runs in (hook input `cwd`, then
+      `-C`); the descriptions in `conventions.md` (step 1 "What this cannot do", and point 9 of the
+      ownership rule), the README (cross-cutting bullet, hooks table, security note), ci-medic rule
+      2 and `guard-ledgers.sh`'s header now say exactly what it covers. 15 new tests. (Its message
+      says "10 of the 15" fail against the old hook; it was 11 of 15 — a miscount.)
+    - `7769558` — snapshot layout: `snapshot/files/<path>`, `snapshot/manifest.txt` beside it,
+      `snapshot/pr/<n>/files/` and `snapshot/pr/<n>/manifest.txt`; the snapshot field in all 13
+      brief templates says "from the copies in its `files/` folder"; the "gone" test also rejects
+      `snapshot/pr-`, `pr-<n>` and "into the folder, keeping their paths".
+    - `5d5438a` — a resume of a recorded, unfinished run checks and reuses its recorded snapshot and
+      stops with a plain message if the check fails; only a new run takes one — in
+      `conventions.md` step 1 (new sub-bullet) and "Cold-resume", the orchestrator's setup step,
+      all eight skills' run-start lines and the README. The Cold-resume section is now pinned
+      whole (29 sections).
+    - `f9eb396` — ci-medic: a run takes ONE snapshot and a `/loop` is one run; the first pass writes
+      the run record `~/.dev-team/runs/<run-id>/run.txt` (repository path, run id, starting branch or
+      `detached`, starting commit) and starts every pass report with `ci-medic run <run-id> — started
+      on <branch> at <commit>`; later passes find that line, check and reuse the snapshot, and put
+      the starting branch back first if needed; every pass puts it back before it ends, or stops and
+      says so (no forcing, discarding or stash). In SKILL.md, the watch protocol (new section,
+      pinned: 30 sections), the remediation checkout step, the watch-prs command and
+      `conventions.md` step 1.
+    - `4e7a40d` — the guard's word-by-word reading moved its joining and filtering into awk: a 24 KB
+      command took about 12 seconds in bash and now takes about half a second; a 16th test checks
+      a long command is still read to the end.
+    - `b6ae2a9` — step 1's "Resuming" bullet also says an unattended run whose snapshot check fails
+      is marked BLOCKED with the same reason (as autopilot does); the Cold-resume paragraph
+      re-wrapped.
+    - `1988586` — ci-medic wording from a read-through: "a LATER pass never snapshots what is checked
+      out" (a new run's first pass does snapshot the user's starting checkout), and the watch
+      protocol's "every pass re-triages from scratch" note moved back under the watch pass.
+    - The notes commit: CHANGELOG 1.6.0, `tests/README.md`, `CONTRIBUTING.md` (what the smoke test
+      checks), these notes, `.claude/CONTEXT.md`, `.OpenAI/CONTEXT.md` (finding 6: the outstanding
+      range is now `42bd45e..HEAD`) and both MEMORY files.
+  - **None of the fourth round is reviewed yet.** Under rule 5 it needs a Codex round — of
+    `42bd45e..HEAD` only (everything before `42bd45e` has had Codex's review and each round's
+    findings were acted on). Set `TMPDIR` to a writable folder when asking Codex to run bats (its
+    sandbox's default was not writable).
   - Note: the lead's decision named "review/verify when given `pr=`" as a second skill that checks
     pull requests out; the review skill has no `pr=` argument today, so the text says "a skill that
     checks one out itself — today, ci-medic".
-- **Checks at the latest commit:** bats 154 of 154 (the #47 group is now 10 tests: the pinned
-  sections, items and fields replaced the separate pins), run with `TMPDIR` set to a writable
-  scratch folder; smoke test, both audits, shellcheck and actionlint all pass. Earlier: 159 at
-  `a9fb292`, 162 at `748e87c`, 155 at `dbb5e31`.
+- **Checks at the latest commit:** bats 170 of 170 (154 before this round, plus the 16 Bash-guard
+  tests; the #47 group is still 10 tests, now checking 30 sections, 11 items and 13 fields), run
+  with `TMPDIR` set to a writable scratch folder; the Bash-guard tests also pass with the Mac's
+  `/bin/bash` 3.2; smoke test, both audits, shellcheck and actionlint all pass. Earlier: 154 at
+  `42bd45e`, 159 at `a9fb292`, 162 at `748e87c`, 155 at `dbb5e31`.
 - **Proof the tests bite:** every edit listed in `tests/README.md` was made in a throwaway copy
-  outside the clone and made at least one test fail. This round: the stand-in reviewer's own edit
+  outside the clone and made at least one test fail. Fourth round: the seven edits in its table,
+  the smoke-test mutations (Bash registration removed; ledger matcher `Write`; both; wrong script;
+  `Writer|Edits`), the Bash-guard tests against the old hook (12 of 16 fail — the four others test
+  allowed cases) and with `git` dropped from the reader's filter (six fail); and every earlier
+  edit re-run at `f9eb396` — 75 of 75 applicable from earlier rounds and 33 of 33 applicable
+  stand-in edits still caught, 33 no longer applicable (their text was replaced). The driver and
+  copies of the scripts are in this builder's session scratchpad (`r4work/prior/`), not in the
+  repository. In the stand-in round before it: the stand-in reviewer's own edit
   scripts (m1–m13 and m10b; m6 and m7 adapted to replaced wording) and 22 more. Re-run on the final
   text: 76 earlier-round edits whose text still exists. The scripts are in the builder's session
   scratchpad (`r3work/edits5/`, `r3work/run_edits5.sh`, `r3work/*_r6.py`), not in the
@@ -181,13 +250,50 @@ see the section straight below.
     now says "no file or git changes in the project". An unrecognised `handoff-file` value is
     reported and treated as `off`, as decided. `show` flags an old file when ten or more settings
     are written out at their defaults.
+  - Fourth round (Codex's review of `748e87c..42bd45e`):
+    - **Bash guard.** The new shell-reading rule is added ON TOP of the old raw-text rule, so
+      nothing it refused before is allowed now; its old over-caution stays (for example
+      `git checkout main && git push` is still refused). Resolving a push that names no branch
+      follows git: `simple` and `current` push the current branch; `upstream`/`tracking` the branch
+      it tracks; `matching` counts the local `main`/`master`; `nothing` nothing; a value it does not
+      know counts both; a `remote.<name>.push` setting replaces `push.default`, and a refspec with
+      `*` counts the local `main`/`master`; `--all`, `--branches` and `--mirror` count them too;
+      `HEAD`/`@` with no destination is the current branch; `--tags` alone pushes no branch. It
+      passes the command's own `-c`, `--git-dir` and `--work-tree` to git and runs nothing else.
+      "Cannot tell" (allowed, stated): an earlier `cd`/`pushd`/`popd` command (also inside
+      `( … )` or a nested `sh -c`), a `GIT_*=` word set in or exported before the command, not a
+      git repository, a detached HEAD. The force-push message is checked first so it can show.
+      `sh -c` / `bash -c` / `eval` strings are read three levels deep. Without `jq` it scans the
+      raw input only, as before.
+    - **Smoke test.** A matcher is read as a pattern matching the whole tool name, and an empty or
+      `*` matcher matches every tool — the way Claude Code reads it.
+    - **Resume.** "A resume" means continuing a recorded, unfinished run from its recorded next
+      action. Reusing an earlier run's cached knowledge in a new run (iterate's Codebase Map, a
+      prior docs pass) is not a resume, so that run takes its own snapshot; if it is unclear, the
+      lead asks. A run recorded before 1.6.0 has no snapshot: attended → say so and take one;
+      unattended → BLOCKED, exactly as autopilot already does.
+    - **ci-medic.** The run record is a file, `~/.dev-team/runs/<run-id>/run.txt`, beside
+      `snapshot/`; the run id travels from pass to pass in the conversation, in the first line of
+      every pass report, and the limit is stated: if that line is summarised away, the next pass
+      takes its checkout as a new run's start — the starting branch whenever every earlier pass
+      put it back. A pull request's base copies are taken the first time a run works on it and
+      reused for the rest of the run. A pass that cannot put the branch back stops without forcing,
+      discarding or stashing. A scheduled routine's runs are each a new run.
+    - **Pinning.** Two more whole sections are pinned — conventions "Cold-resume" and ci-medic's
+      "One snapshot per run, and the starting branch put back" — so both rules are guarded like the
+      rest (30 sections).
 - **Rejected on the way:** testing a few key phrases (the second review showed a rule can be
   weakened by ADDING words, which such tests never see — so steps 1 and 8 are compared whole); a
   closed list of protected things (anything left off it was open to override — replaced by the
   direction rule); ranking an instruction file beside `.dev-team/config.yml` (it now sits below an
   explicit config value, toward caution only); "says where notes live" turning the file off (too
   broad); letting the scribe write a project's own handover when asked (ownership is not
-  overridable).
+  overridable). Fourth round: removing every quote character from the command before matching
+  (it would read `git commit -m 'push to main'` as a push — a real shell-style reader keeps a
+  quoted argument as one word instead); doing the word-by-word reading in bash (about 12 seconds
+  on a 24 KB command — it moved to awk); guarding against a lost ci-medic run id by checking
+  whether the checkout is some pull request's head branch (that is guessing whose code it is,
+  which the design rules out — it is stated as a limit instead).
 - **Suggestion, now built:** `/dev-team-config init` used to write every other key explicitly
   (`dry-run: off`, `gates: hybrid`, …), so a freshly initialised config could overrule a project's
   cautious instruction. Decided by the lead and built in the starter-file commit (above).

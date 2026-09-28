@@ -5,7 +5,8 @@
   Purpose:  Lessons that matter when Codex works on, or reviews, this repository. The fuller shared
             list is .claude/MEMORY.md (its "Running Codex reviews" section is about how Codex is
             started here). Add new lessons to whichever file fits, and keep them in step.
-  Updated:  28 September 2026 (after #47's second independent review).
+  Updated:  28 September 2026 (after #47's fourth round: reading commands like the shell, and hook
+            registration).
 -->
 
 - When reviewing, compare the working branch with `main` (`git diff main...HEAD`). Text that
@@ -22,5 +23,10 @@
 - If bats cannot start in the sandbox because the temporary folder is not writable, set `TMPDIR` to
   a writable folder (for example one under the review's own output folder), or say plainly that the
   tests were not run.
+- When a check reads a command's text, try the shapes the shell treats as the same: single quotes,
+  a backslash, a quoted command name, a command string given to `sh -c` or `eval`, and a command
+  that names no target at all (a bare `git push`). And when a test runs a hook script directly,
+  ask whether anything checks that the hook is still registered in `hooks/hooks.json` (the smoke
+  test does, since #47's fourth round).
 - A record identifier such as `F-001` can run past 999 (`F-1000`); patterns must allow three or
   more digits.

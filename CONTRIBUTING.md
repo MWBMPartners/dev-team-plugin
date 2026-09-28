@@ -86,8 +86,10 @@ it) — nothing else should need to change.
   frontmatter block, so don't skip it.
 - **Hook:** add the script under `hooks/`, make it executable (`chmod +x`), then wire it into
   `hooks/hooks.json` referencing it as `${CLAUDE_PLUGIN_ROOT}/hooks/<script>.sh`.
-  `tests/smoke-structure.sh` validates `hooks.json` as JSON (via `jq`) and checks that every
-  `command` path it references exists on disk and is executable. Hooks in this repo are
+  `tests/smoke-structure.sh` validates `hooks.json` as JSON (via `jq`), checks that every
+  `command` path it references exists on disk and is executable, and checks that `Bash` reaches
+  `guard-dev-team.sh` and `Write`, `Edit` and `MultiEdit` reach `guard-ledgers.sh` — so a hook you
+  add must not narrow or replace those two registrations. Hooks in this repo are
   **fail-open by design** — a hook must exit 0 on any internal error, missing dependency, or
   unexpected environment (see the header comment in `hooks/guard-dev-team.sh` for the fullest
   example of this discipline) — and they read `.dev-team/config.yml` toggles (best-effort, never

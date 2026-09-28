@@ -13,18 +13,27 @@ structural + behavioral checks on the plugin repo itself, not on a project the p
   executable; every `skills/*/SKILL.md` exists with `name:` + `description:` frontmatter; both
   `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` are valid JSON. No network,
   no external deps beyond `jq`. Prints `SMOKE OK` and exits 0 on success; prints one or more
-  `SMOKE FAIL: <reason>` lines on stderr and exits non-zero otherwise. Two checks added for this
-  change: `hooks/hooks.json` must have a `PreToolUse` entry whose `matcher` covers `Write` — so a
-  future edit that narrows the matcher can't silently stop `hooks/guard-ledgers.sh` from firing
-  without anyone noticing; and every `schemas/*.schema.json` file must itself be valid JSON and
-  carry a top-level `$schema`, `title`, and `description` (a structural check only — it confirms a
+  `SMOKE FAIL: <reason>` lines on stderr and exits non-zero otherwise. It also checks that each
+  tool the two guards exist for reaches the right guard under `PreToolUse` in `hooks/hooks.json`:
+  `Bash` to `${CLAUDE_PLUGIN_ROOT}/hooks/guard-dev-team.sh`, and `Write`, `Edit` and `MultiEdit`
+  to `${CLAUDE_PLUGIN_ROOT}/hooks/guard-ledgers.sh`, each by its exact command path, with a
+  matcher read as a pattern that must match the whole tool name (an empty or `*` matcher matches
+  every tool). The behaviour tests in `scripts.bats` run the guard scripts directly and never go
+  through `hooks.json`, so without this a narrowed or missing registration would switch a guard off
+  unnoticed. (Until issue #47's round with Codex, finding 5, it only asked whether some matcher
+  contained the text `Write`: removing the Bash registration, or narrowing the ledger guard's
+  matcher to `Write`, still printed `SMOKE OK`. In throwaway copies, each of those now fails, as do
+  both together, a Bash entry pointed at the wrong script, and a ledger matcher of `Writer|Edits`;
+  putting the real `hooks.json` back passes.) And every `schemas/*.schema.json` file must itself
+  be valid JSON and carry a top-level `$schema`, `title`, and `description` (a structural check only — it confirms a
   schema file is well-formed, not that any particular data file matches it, which is what the
   `verdict-schema` tests in `scripts.bats`, below, are for).
 
 - **`scripts.bats`** — [bats-core](https://github.com/bats-core/bats-core) behavioral tests for
   `scripts/audit-model-ids.sh`, `scripts/audit-ledger-paths.sh` (see its own section below),
   `hooks/guard-dev-team.sh` (including the `.dev-team/config.yml`
-  `guard:` toggle matrix and every bypass/allow case), `hooks/guard-ledgers.sh` (see its own
+  `guard:` toggle matrix and every bypass/allow case, and quoted words and pushes that name no
+  branch — see its own section below), `hooks/guard-ledgers.sh` (see its own
   section below), `hooks/check-update.sh` (including the `update-notifier:` config toggle),
   `hooks/sync-branches-check.sh` (including the `branch-notifier:` config toggle),
   `scripts/branch-hygiene.sh`, the `schemas/verdict.schema.json` + `scripts/check-verdict.sh`
@@ -230,13 +239,14 @@ of spaces and line breaks into one space), so line breaks never matter but every
 a slip in reading the fixture cannot pass quietly. Changing one of these passages on purpose means
 changing its record in the fixture too — which makes a change to a safety rule visible in review.
 
-1. **Pinned sections** — 28 sections: in `conventions.md`, "Repo config & feature toggles",
-   "Dry-run / plan-preview", "Auto-handoff" and "Shared discipline" (the whole rule and what follows
-   it); in `config-and-toggles.md`, "Repository instruction files and these switches" and "How
+1. **Pinned sections** — 30 sections: in `conventions.md`, "Repo config & feature toggles",
+   "Dry-run / plan-preview", "Cold-resume" (a resume reuses the run's snapshot), "Auto-handoff" and
+   "Shared discipline" (the whole rule and what follows it); in `config-and-toggles.md`, "Repository instruction files and these switches" and "How
    skills and hooks load it"; in the README, "Cross-cutting behaviors" and both upgrade notes; the
    orchestrator's setup, checker and checkpoint steps; autopilot's rehydrate, run-one-cycle and
    RECORD steps, its "what carries over" list and its bootstrap; ci-medic's per-PR loop and safety
-   rules, and its remediation step 2; the documentarian protocol's PROJECT.md layout, brief and
+   rules, its one-snapshot-per-run section (a `/loop` is one run; every pass puts the starting branch
+   back) and its remediation step 2; the documentarian protocol's PROJECT.md layout, brief and
    "when invoked" list; the handoff template; the task-brief and checker templates; and
    `/dev-team-move-ledgers`' first two sections.
 2. **Pinned items** — 11: the scribe's one-line prompt, conventions point 5's legacy-file bullet,
@@ -250,7 +260,8 @@ changing its record in the fixture too — which makes a change to a safety rule
 5. **Replaced wording and machinery is gone** — the unsafe old precedence wordings and label, the
    trusted-base method, the third round's snapshot machinery (`git hash-object`, a seal, a
    `## Instruction snapshot` section), guessed provenance ("Provenance first", "whose upstream is a
-   branch", "provenance cannot be established"), and "unless those instructions ask".
+   branch", "provenance cannot be established"), "unless those instructions ask", and the first
+   snapshot layout (`snapshot/pr-`, `pr-<n>`, "into the folder, keeping their paths").
 6. **Every file in `agents/` carries the exact shared sentence, once.**
 7. **No agent still says it has context from the brief alone.**
 8. **The README's stated number of cross-cutting behaviours matches its bullets.**
@@ -313,6 +324,26 @@ fails one — 76 in all: 27 from Codex's round, 26 from the third round, 15 from
 rounds, and the 8 starter-file edits. The rest targeted text this round replaced (guessed provenance and
 its wording) and are covered by the edits above.
 
+*Codex's review of `748e87c..42bd45e`* (fourth round) — each edit in a throwaway copy of the
+tree, as above:
+
+| Edit | Test that failed |
+|---|---|
+| ci-medic's pull-request copies put back in `snapshot/pr-<n>/` | 1 and 5 |
+| The orchestrator takes a new snapshot unconditionally again (the RESUME exception deleted) | 1 |
+| The Cold-resume section lets a resume "take a new one" | 1 |
+| migrate's run-start line takes a new snapshot when the check fails | 2 |
+| ci-medic's per-pass snapshot ("the checkout the pass starts on") put back | 1 |
+| The "put the starting branch back" step deleted from the watch protocol | 1 |
+| A failed check in a later pass takes a new snapshot | 1 |
+
+Every earlier round's edit was also run again against the fourth round's text (at `f9eb396`): of
+the 75 from Codex's, the third and the first two rounds whose text still exists, all 75 still fail
+a test, and so do all 33 of the stand-in round's edits above whose text still exists. Thirty-three
+more no longer apply, because the text they targeted was replaced — in earlier rounds, or in this
+one (the hook's old "a plain `git push` made while on `main` passes", the old `snapshot/pr-<n>/`
+layout, and the run-start line's old wording); this round's own edits above cover those places.
+
 **What these cannot catch:** they check wording, word for word, in the right place. They cannot
 tell whether an agent obeys the rule when it runs — for example whether a lead really copies the
 files before spawning anyone. Nothing enforces the rule except where one of the two guard hooks
@@ -320,6 +351,51 @@ happens to cover it (`conventions.md`, step 1, "What this cannot do"). A passage
 pinned section and item can still change unnoticed. And pinning means any deliberate change to one
 of these passages must change its record in the fixture too — on purpose, so that a change to a
 safety rule is visible in review.
+
+### `hooks/guard-dev-team.sh` — quoted words, and pushes that name no branch (issue #47)
+
+Codex's review of `748e87c..42bd45e` (finding 4) showed the Bash guard let through
+`git push origin 'main'` (it understood only double quotes) and a bare `git push` made while on
+`main` (it matched text, and a bare push names no branch). The hook now also reads the command the
+way the shell does — quotes and backslashes taken away, a quoted multi-word argument kept as one
+word, and a command string given to `sh -c` / `bash -c` or `eval` read as well — and, for a push
+that names no branch, asks git in the folder the command runs in where it would push. Sixteen
+tests, every one with `DEV_TEAM_GUARD=1` unless it says otherwise, in a throwaway git repository
+under `$SCRATCH` with the machine's own git settings shut out (`HOME`, `GIT_CONFIG_GLOBAL`,
+`GIT_CONFIG_NOSYSTEM`), so a `push.default` on the machine running them cannot change a result:
+
+- **Quoting** (blocked): a single-quoted `'main'`; `\main`; a quoted or escaped `git` (`'git'`,
+  `"git"`, `\git`, `g'i't … ma"in"`); single-quoted refspecs (`'HEAD:refs/heads/main'`,
+  `HEAD:'main'`, `--force origin '+main'`); a push to `main` inside `bash -c '…'`, `sh -c "…"` or
+  `eval "…"`. **Allowed:** quoted text that only mentions `main` (`git commit -m 'push to main'`,
+  `'maintenance'`, `'feature-main'`, an `echo` of the words).
+- **A long command** — 2,000 simple commands, or an 800-line heredoc — is still read to the end: a
+  push to `main` at the very end is refused, a harmless one allowed. (The word-by-word part passes
+  only the commands that matter on to bash, which is slow on thousands of words; a 24 KB command
+  took about 12 seconds before that and takes about half a second now.)
+- **No branch named** (blocked, message names the branch): a bare `git push` on `main`;
+  `git push origin`, `-u origin HEAD`, `origin @`, `2>&1`, `command git push`; `git -C repo push`
+  from outside; the hook input's `cwd` pointing at the repository (and, the other way round, a
+  `cwd` elsewhere allows it); a branch tracking `main` under `push.default=upstream`, set in the
+  repository or with `-c` on the command; `push.default=matching`, `--all`, `--mirror` and a
+  `remote.origin.push` naming `main`, all from a feature branch. **Allowed:** a feature branch
+  with no upstream, `HEAD` on a feature branch, upstream to `feature`, `push.default=nothing`,
+  `--tags`.
+- **The documented limits** (allowed, pinned so the docs stay true): not a git repository, an
+  earlier `cd` (also inside `( … )`), `GIT_DIR=…` as a prefix, through `env`, or exported
+  earlier, and a detached HEAD.
+- **The hook off** (no active run, no `DEV_TEAM_GUARD`): a bare push on `main` is allowed.
+
+**Proof:** against the previous hook (`42bd45e`), twelve of the sixteen fail — every test with a
+case that must be refused — and the four tests of allowed cases pass, as they should. (The commit
+that added the first fifteen, `0993347`, says "10 of the 15"; it was 11 of 15 — a miscount in that
+message.) Dropping `git` from the word-by-word filter in a throwaway copy makes the six bare-push
+tests fail. All sixteen pass under Homebrew's bash 5 and the Mac's own `/bin/bash` 3.2.
+
+**What these cannot catch:** the hook reads the text of a command before it runs; it cannot see a
+branch held in a variable, a push from a script or an alias, or a protected branch other than
+`main` and `master`, and without `jq` it only scans the raw input. Its header comment lists every
+limit.
 
 ### `hooks/guard-ledgers.sh` — the ledger guard's test matrix
 

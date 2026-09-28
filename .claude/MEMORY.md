@@ -5,8 +5,9 @@
   Purpose:  Things learned the hard way while working on this repository, kept in the repository so
             they survive a new session, a new machine or a different assistant. Add to it when a
             lesson is learned; do not remove entries that still hold.
-  Updated:  28 September 2026 (three lessons from #47's second review added; the rest
-            gathered from the handover history of 13–14 September).
+  Updated:  28 September 2026 (three lessons from #47's fourth round added — hook
+            registration, reading commands like the shell, re-pinning; the rest gathered from the
+            handover history and #47's earlier rounds).
 -->
 
 ## Running Codex reviews
@@ -75,6 +76,16 @@
   A test that searches for a phrase inside a passage still passes when a sentence is appended to it.
 - Codex's read-only sandbox could not start bats (its temporary folder was not writable). Ask it to
   set `TMPDIR` to a writable folder, or say plainly that the tests were not run there.
+- A hook's behaviour tests run the script directly, so they cannot notice the hook being removed
+  from, or narrowed in, `hooks/hooks.json`. Check the registration separately:
+  `tests/smoke-structure.sh` now checks that each tool reaches the right guard by its exact path
+  (#47, Codex's finding 5 — removing the Bash registration used to leave the whole suite green).
+- A guard that reads a command's text must read it the way the shell does. The old Bash guard
+  understood double quotes only, so `git push origin 'main'`, `\main` and `'git' push` all passed;
+  and a command that names no target (a bare `git push`) can only be judged from the
+  repository's own settings, never from the text. Say plainly what it still cannot see.
+- To re-pin a passage you changed on purpose, rewrap its new text at 100 columns and review the
+  fixture with `git diff --word-diff=porcelain`, so only the intended words show as changed.
 - To split one working tree into several topic commits without `git stash`: list the changed
   blocks with `git diff -U0 -- <file>`, stage chosen blocks with `git apply --cached
   --unidiff-zero <patch>`, and stage a hand-made in-between version of a file with
