@@ -6,8 +6,10 @@
 # scribe's own self-check; it stops a mistaken write before it happens instead of only detecting
 # one afterwards. Fail-open by design, same posture as hooks/guard-dev-team.sh: any error, missing
 # tool, missing jq, or anything it cannot parse => allow (exit 0). One defense layer, best-effort
-# text matching — NEVER the safety guarantee. The real protection is the plugin only ever writing
-# into .dev-team/, plus a person reading what they are about to commit.
+# text matching — NEVER the safety guarantee. It is the only part of the ".dev-team/ only" rule
+# that is enforced at all, and only for the writes it can see; the written rule is what the
+# plugin's own agents follow (words, not enforcement), and a person reading what they are about to
+# commit is the last check.
 #
 # Two separate rules, both read from the tool call's own JSON (stdin), never from the filesystem
 # except .dev-team/config.yml and .dev-team/loop.lock/ (looked for at both the repository's top

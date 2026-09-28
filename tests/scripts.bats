@@ -959,6 +959,190 @@ $line" ;;
 }
 
 # ---------------------------------------------------------------------------
+# hooks/guard-dev-team.sh — quoted and escaped words, and a push that names no branch
+# ---------------------------------------------------------------------------
+# Codex's review of #47 (finding 4) showed the hook read `git push origin 'main'` and a bare
+# `git push` made while on main as harmless: it matched the raw text, and understood only double
+# quotes. The hook now reads the command the way the shell does (quotes and backslashes removed)
+# and, for a push that names no branch, asks git in the folder the command runs in where it would
+# push. Every test below runs with DEV_TEAM_GUARD=1 unless it says otherwise, and every git
+# repository it uses is a throwaway one under $SCRATCH, with the user's own git settings shut out
+# (HOME, GIT_CONFIG_GLOBAL and GIT_CONFIG_NOSYSTEM), so a setting such as push.default on the
+# machine running the tests cannot change the result.
+
+# Builds a hook payload whose command is exactly $1 (jq does the JSON quoting), plus a "cwd" field
+# when $2 is given.
+guard_payload() {
+  if [ "$#" -ge 2 ]; then
+    jq -n --arg c "$1" --arg d "$2" '{tool_input: {command: $c}, cwd: $d}'
+  else
+    jq -n --arg c "$1" '{tool_input: {command: $c}}'
+  fi
+}
+
+# Runs the guard from folder $1 on command $2 (optional $3: the payload's "cwd"), with
+# DEV_TEAM_GUARD=1 and only the throwaway repository's own git settings in effect.
+run_guard_cmd() {
+  local dir="$1" payload
+  if [ "$#" -ge 3 ]; then payload="$(guard_payload "$2" "$3")"; else payload="$(guard_payload "$2")"; fi
+  ( cd "$dir" && printf '%s' "$payload" \
+      | DEV_TEAM_GUARD=1 HOME="$SCRATCH/home" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 \
+        bash "$REPO_ROOT/hooks/guard-dev-team.sh" )
+}
+
+# Makes a throwaway repository at $SCRATCH/repo with one empty commit on main, then checks out
+# branch $1 (created if it is not main). Only ever touches $SCRATCH. The test identity is set with
+# -c on this one command, inside the throwaway repository only.
+make_push_repo() {
+  mkdir -p "$SCRATCH/home"
+  export HOME="$SCRATCH/home" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+  git init -q "$SCRATCH/repo"
+  git -C "$SCRATCH/repo" symbolic-ref HEAD refs/heads/main
+  git -C "$SCRATCH/repo" -c user.name=dev-team-test -c user.email=dev-team-test@example.invalid \
+    commit -q --allow-empty -m "test"
+  [ "$1" = "main" ] || git -C "$SCRATCH/repo" checkout -q -b "$1"
+}
+
+@test "guard (quoting): a single-quoted 'main' is blocked like a bare main" {
+  run run_guard_cmd "$SCRATCH" "git push origin 'main'"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"push to main/master detected"* ]]
+}
+
+@test "guard (quoting): a backslash-escaped \\main is blocked like a bare main" {
+  run run_guard_cmd "$SCRATCH" 'git push origin \main'
+  [ "$status" -eq 2 ]
+}
+
+@test "guard (quoting): a quoted or escaped git ('git', \"git\", \\git) is still a git push" {
+  for c in "'git' push origin main" '"git" push origin main' '\git push origin main' "g'i't push origin ma\"in\""; do
+    run run_guard_cmd "$SCRATCH" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 2 ]
+  done
+}
+
+@test "guard (quoting): a single-quoted refspec naming main is blocked" {
+  for c in "git push origin 'HEAD:refs/heads/main'" "git push origin HEAD:'main'" "git push --force origin '+main'"; do
+    run run_guard_cmd "$SCRATCH" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 2 ]
+  done
+}
+
+@test "guard (quoting): a push to main inside a single-quoted sh -c / bash -c string, or eval, is blocked" {
+  for c in "bash -c 'git push origin main'" "sh -c \"git push origin 'main'\"" 'eval "git push origin main"'; do
+    run run_guard_cmd "$SCRATCH" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 2 ]
+  done
+}
+
+@test "guard (quoting): quoted words that only mention main are allowed" {
+  for c in "git commit -m 'push to main'" "git push origin 'maintenance'" "git push origin 'feature-main'" "echo 'git push origin main is blocked'"; do
+    run run_guard_cmd "$SCRATCH" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 0 ]
+  done
+}
+
+@test "guard (no branch named): a bare git push while on main is blocked, and the message names the branch" {
+  make_push_repo main
+  run run_guard_cmd "$SCRATCH/repo" "git push"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"git would push to 'main'"* ]]
+}
+
+@test "guard (no branch named): git push <remote>, git push origin HEAD and git push 2>&1 while on main are blocked" {
+  make_push_repo main
+  for c in "git push origin" "git push -u origin HEAD" "git push origin @" "git push 2>&1" "command git push"; do
+    run run_guard_cmd "$SCRATCH/repo" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 2 ]
+  done
+}
+
+@test "guard (no branch named): git -C <repo> push is resolved in that repository" {
+  make_push_repo main
+  run run_guard_cmd "$SCRATCH" "git -C repo push"
+  [ "$status" -eq 2 ]
+}
+
+@test "guard (no branch named): the payload's cwd decides the repository, not the hook's own folder" {
+  make_push_repo main
+  mkdir -p "$SCRATCH/elsewhere"
+  run run_guard_cmd "$SCRATCH/elsewhere" "git push" "$SCRATCH/repo"
+  [ "$status" -eq 2 ]
+  run run_guard_cmd "$SCRATCH/repo" "git push" "$SCRATCH/elsewhere"
+  [ "$status" -eq 0 ]
+}
+
+@test "guard (no branch named): a branch whose upstream is main is blocked under push.default=upstream, including -c on the command" {
+  make_push_repo feature
+  git -C "$SCRATCH/repo" config branch.feature.remote origin
+  git -C "$SCRATCH/repo" config branch.feature.merge refs/heads/main
+  run run_guard_cmd "$SCRATCH/repo" "git -c push.default=upstream push"
+  [ "$status" -eq 2 ]
+  git -C "$SCRATCH/repo" config push.default upstream
+  run run_guard_cmd "$SCRATCH/repo" "git push"
+  [ "$status" -eq 2 ]
+}
+
+@test "guard (no branch named): push.default=matching, --all, --mirror and a remote.<name>.push naming main are blocked from a feature branch" {
+  make_push_repo feature
+  for c in "git push --all" "git push --mirror origin" "git -c push.default=matching push"; do
+    run run_guard_cmd "$SCRATCH/repo" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 2 ]
+  done
+  git -C "$SCRATCH/repo" config remote.origin.push refs/heads/feature:refs/heads/main
+  run run_guard_cmd "$SCRATCH/repo" "git push"
+  [ "$status" -eq 2 ]
+}
+
+@test "guard (no branch named): pushes that would not reach main are allowed" {
+  make_push_repo feature
+  run run_guard_cmd "$SCRATCH/repo" "git push"
+  [ "$status" -eq 0 ]
+  run run_guard_cmd "$SCRATCH/repo" "git push -u origin HEAD"
+  [ "$status" -eq 0 ]
+  git -C "$SCRATCH/repo" config branch.feature.remote origin
+  git -C "$SCRATCH/repo" config branch.feature.merge refs/heads/feature
+  git -C "$SCRATCH/repo" config push.default upstream
+  run run_guard_cmd "$SCRATCH/repo" "git push"
+  [ "$status" -eq 0 ]
+  git -C "$SCRATCH/repo" checkout -q main
+  git -C "$SCRATCH/repo" config push.default nothing
+  run run_guard_cmd "$SCRATCH/repo" "git push"
+  [ "$status" -eq 0 ]
+  git -C "$SCRATCH/repo" config push.default simple
+  run run_guard_cmd "$SCRATCH/repo" "git push --tags"
+  [ "$status" -eq 0 ]
+}
+
+@test "guard (no branch named): documented limits — not a repository, detached HEAD, an earlier cd, a GIT_DIR setting — are allowed" {
+  make_push_repo main
+  mkdir -p "$SCRATCH/plain"
+  run run_guard_cmd "$SCRATCH/plain" "git push"
+  [ "$status" -eq 0 ]
+  for c in "cd . && git push" "(cd . && git push)" "GIT_DIR=.git git push" "env GIT_DIR=.git git push" "export GIT_DIR=.git; git push"; do
+    run run_guard_cmd "$SCRATCH/repo" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 0 ]
+  done
+  git -C "$SCRATCH/repo" checkout -q --detach
+  run run_guard_cmd "$SCRATCH/repo" "git push"
+  [ "$status" -eq 0 ]
+}
+
+@test "guard (no branch named): with no active run and no DEV_TEAM_GUARD, a bare push on main is allowed (the hook is off)" {
+  make_push_repo main
+  unset DEV_TEAM_GUARD
+  run bash -c 'cd "$1" && printf "%s" "$2" | bash "$3"' _ "$SCRATCH/repo" "$(guard_payload "git push")" "$REPO_ROOT/hooks/guard-dev-team.sh"
+  [ "$status" -eq 0 ]
+}
+
+# ---------------------------------------------------------------------------
 # hooks/guard-ledgers.sh — Rule 1 (marker-bearing content written outside .dev-team/)
 # ---------------------------------------------------------------------------
 # Rule 1 applies to a Write only, and stays on regardless of whether a run is active — see the

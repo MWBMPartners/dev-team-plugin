@@ -112,9 +112,12 @@ on-ramp every entry point (skill, command, loop, routine) must carry forward.
 1. **Never game tests.** If a failing check is a test, fix the CODE UNDER TEST — never edit
    the test's assertions or expectations to make it pass. A test that's genuinely wrong is a
    human call: surface it, don't silently "fix" it by relaxing what it checks.
-2. **Push to the PR HEAD branch only — never `main`/`master`, never force-push.** The suite's
-   guard hook already blocks pushes to main; this rule is belt-and-suspenders, not the only
-   line of defense, and it holds even when a fix is "obviously right."
+2. **Push to the PR HEAD branch only — never `main`/`master`, never force-push.** This rule
+   holds on its own, even when a fix is "obviously right." The suite's Bash guard refuses some
+   pushes to `main`/`master` — only while it is active, and only those it can see in the
+   command's text (orchestrator `conventions.md`, "Repository instructions and normative
+   documents", step 1, "What this cannot do") — so it catches some breaches of this rule, not
+   all of them.
 3. **Only PRs you own** — your repo, your authored PR — unless the user explicitly opts in
    per-PR. Never triage, comment on, or push to someone else's PR uninvited.
 4. **`GITHUB_TOKEN` anti-recursion.** A local run pushes with the user's own `gh` credentials,
