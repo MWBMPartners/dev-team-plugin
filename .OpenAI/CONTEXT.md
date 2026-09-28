@@ -26,10 +26,10 @@ work it does is then reviewed by Claude Code when Claude Code is back.
   two reviews were done by fresh Opus agents because Codex was out of allowance, so a Codex review
   of the whole #47 range is still owed; the newest, unreviewed part is the second-review revision
   (the commits after `0c25209`). Codex's own review of `413d570..748e87c` was not clean; its
-  findings were acted on in `7b61564` (plain copies in a run folder outside the project,
-  provenance before trust, commands from the user / the plugin / an instruction file, the limits
-  stated plainly) and a notes commit. Review that revision next, starting from conventions.md step
-  1. To run the bats tests, set `TMPDIR` to a writable folder (the sandbox's default was not).
+  findings were acted on in `7b61564`; a stand-in Opus review of that was not clean either, and was
+  acted on in `11ec8be` (the plugin no longer guesses whose checkout it is; unique run folders;
+  exact limits; whole-section pins in `tests/fixtures/pinned-instructions.txt`) and a notes commit.
+  Review that revision next, starting from conventions.md step 1. To run the bats tests, set `TMPDIR` to a writable folder (the sandbox's default was not).
 - Earlier Codex review results: `.claude/plans/ledger-file-clashes/codex-review-3.md` and
   `codex-review-3-verification.md`.
 

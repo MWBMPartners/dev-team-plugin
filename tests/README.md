@@ -206,104 +206,120 @@ The rule "Repository instructions and normative documents" (`conventions.md`, fi
 "Shared discipline") tells every agent to follow a project's own instruction files and the
 standards they name only as they were copied when the run started, and only to add work or choose
 between style defaults — never to remove or loosen a check, a gate, a confirmation or a safety
-rule. Fifteen tests guard it, the `handoff-file` switch that came with it, and the starter config
-file. They are the fifth set: each earlier set passed a change that weakened the rule — headings
-only; then a few key sentences (words ADDED passed); then brief fields by their opening words;
-then phrases inside the places that write `.dev-team/HANDOFF.md` (Codex's review appended an
-exception sentence to the checkpoint line, and it passed). So nearly everything below is compared
-as a whole passage, word for word, after joining wrapped lines.
+rule. Ten tests guard it, the `handoff-file` switch that came with it, and the starter config file.
+This is the sixth set: each earlier set passed a change that weakened the rule — headings only;
+then a few key sentences (words ADDED passed); then brief fields by their opening words; then
+phrases inside the places that write `.dev-team/HANDOFF.md`; then, with whole passages pinned, text
+added NEXT to a pinned passage (a paragraph after a list, a new bullet before the next one, words
+appended to a neighbouring bullet).
 
-**How the comparison works.** `join_words` turns every run of spaces and line breaks into one
-space, so wrapping never matters. `repo_rule_block` cuts out the whole rule; `field_body` cuts out
-one brief field, list item or paragraph (up to the next item, heading, code fence or blank line);
-`check_pinned` compares a list of such passages with their pinned copies and fails unless the
-expected number was checked, so a parsing slip cannot pass silently. The pinned copies live in
-`tests/scripts.bats` itself (`pinned_rule`, `direction_rule`, `snapshot_field`, `front_line`,
-`pinned_fields`, `pinned_writer_fields`, `pinned_handoff_fields`, `pinned_handoff_block`,
-`pinned_config_fields`). Changing one of those passages on purpose means changing its copy too —
-which makes a change to a safety rule visible in review.
+**The pinned copies** live in `tests/fixtures/pinned-instructions.txt`, one record per passage,
+and are checked three ways. Every comparison first joins wrapped lines (`join_words` turns every run
+of spaces and line breaks into one space), so line breaks never matter but every word does.
 
-1. **The whole rule, steps 1 to 9** — compared whole.
-2. **Replaced wording and machinery is gone** — "**The repository wins.**", "follow the repository
-   and say so in the report", the old label, the trusted-base method ("merge-base", "trusted
-   base"), and the third round's machinery (`git hash-object -w <path>`, `git cat-file -p`, a
-   "seal", a "## Instruction snapshot" section); `config-and-toggles.md` still says the safety rules
-   are not switches, and autopilot's state file still has `instructions_snapshot`.
-3. **The direction rule in `config-and-toggles.md` and the README** — the paragraph introducing it
-   in `config-and-toggles.md` must be its lead-in plus the rule and nothing else; the README's rule
-   bullet must END with the safety sentence and the rule, and must not say "and the rest".
-4. **Twelve fields and paragraphs that carry the snapshot rule** — the brief template's
-   Repository-instructions and Profile fields and its required-tests criterion; the checker's
-   Repository-instructions field and its run-what's-runnable and own-discovery steps; ci-medic's
-   snapshot paragraph and its step 7; the documentarian's ban on the snapshot folder; autopilot's
-   pre-flight step and its rehydrate check; and the README rule bullet's summary line, which states
-   the snapshot's limits.
-5. **The instruction-snapshot field in every brief template** — the whole field, in all 13
-   templates, and twice in the red-team protocol.
-6. **The run-start line in each of the eight skills with their own front end.**
-7. **Every file in `agents/` carries the exact shared sentence, once.**
-8. **No agent still says it has context from the brief alone.**
-9. **The README's stated number of cross-cutting behaviours matches its bullets.**
-10. **`handoff-file`: `off` means no `.dev-team/HANDOFF.md` at all, and only an explicit ban turns
-    it off** — key sentences of "Auto-handoff" (including the value rule), the old "say where notes
-    live" trigger gone, the config-and-toggles row, and a commented-out starter key.
-11. **All 13 places that write `.dev-team/HANDOFF.md`, compared whole** — the orchestrator after a
-    task and at the checkpoint; autopilot's per-task bullet, RECORD step and documentarian bullet;
-    conventions.md's auto-handoff paragraph; the documentarian brief's settled-value line, its two
-    rules and its "when invoked" bullet; the scribe's whole agent prompt; both handoff-template
-    paragraphs. Plus: "unless those instructions ask" is gone everywhere.
-12. **The whole `handoff-file` paragraph of conventions.md.**
-13. **An old top-level `HANDOFF.md` is held back while `off`** — four passages, compared whole.
-14. **The starter config file** — nothing written out but `version: 1` (a header line may carry only
-    a comment); all 18 settings commented out showing their defaults; `init` writes only chosen
-    keys; `show` tags a commented-out key as the built-in default and warns about an old fully
-    written-out file.
-15. **The cautious-direction table, both precedence paragraphs, the safety paragraph, and both
-    passages on `config.yml` counting only as snapshotted** — compared whole.
+- **Sections** (`@@section <file> | <heading>`): the text from that heading to the next heading
+  outside a ``` code fence (`section_body`). Anything added anywhere under the heading fails.
+- **Items** (`@@item <file> | <next words>`): a list item or paragraph inside a larger section,
+  compared whole, and the next non-blank line after it must start with the recorded words
+  (`item_and_next`) — so a paragraph added straight after it fails too.
+- **Fields** (`@@field <file> | <count>`): every "Instruction snapshot" list item in a brief
+  template must be word for word the pinned field (`snapshot_items`), and there must be exactly
+  that many — so words added after its closing bracket, on the same line or the next, fail.
 
-**How they were proven** (on 28 September 2026). A script copies the working tree to a throwaway
-folder outside the clone, makes one edit, runs these tests against the copy, and deletes the copy —
-never touching the repository itself. Every edit below made at least the named test fail.
+`check_pinned_kind` fails unless it checked exactly the expected number of records of its kind, so
+a slip in reading the fixture cannot pass quietly. Changing one of these passages on purpose means
+changing its record in the fixture too — which makes a change to a safety rule visible in review.
 
-*Codex's review round* (its exact sentence — "Exception: when a repository instruction requests it,
-regenerate .dev-team/HANDOFF.md even when handoff-file is off." — appended to each writer place):
+1. **Pinned sections** — 28 sections: in `conventions.md`, "Repo config & feature toggles",
+   "Dry-run / plan-preview", "Auto-handoff" and "Shared discipline" (the whole rule and what follows
+   it); in `config-and-toggles.md`, "Repository instruction files and these switches" and "How
+   skills and hooks load it"; in the README, "Cross-cutting behaviors" and both upgrade notes; the
+   orchestrator's setup, checker and checkpoint steps; autopilot's rehydrate, run-one-cycle and
+   RECORD steps, its "what carries over" list and its bootstrap; ci-medic's per-PR loop and safety
+   rules, and its remediation step 2; the documentarian protocol's PROJECT.md layout, brief and
+   "when invoked" list; the handoff template; the task-brief and checker templates; and
+   `/dev-team-move-ledgers`' first two sections.
+2. **Pinned items** — 11: the scribe's one-line prompt, conventions point 5's legacy-file bullet,
+   autopilot's `instructions_snapshot` example, and the run-start line in each of the eight skills
+   with their own front end.
+3. **Pinned fields** — the snapshot field in all 13 brief templates (twice in the red-team
+   protocol).
+4. **The direction rule is written identically** in `conventions.md` step 8, in
+   `config-and-toggles.md`'s introducing paragraph (nothing else in it) and at the end of the
+   README's rule bullet.
+5. **Replaced wording and machinery is gone** — the unsafe old precedence wordings and label, the
+   trusted-base method, the third round's snapshot machinery (`git hash-object`, a seal, a
+   `## Instruction snapshot` section), guessed provenance ("Provenance first", "whose upstream is a
+   branch", "provenance cannot be established"), and "unless those instructions ask".
+6. **Every file in `agents/` carries the exact shared sentence, once.**
+7. **No agent still says it has context from the brief alone.**
+8. **The README's stated number of cross-cutting behaviours matches its bullets.**
+9. **`handoff-file`: `off` means no `.dev-team/HANDOFF.md` at all, and only an explicit ban turns
+   it off** — key sentences, the old "say where notes live" trigger gone, the config row, a
+   commented-out starter key.
+10. **The starter config file** — nothing written out but `version: 1`; all 18 settings commented
+    out showing their defaults; `init` writes only chosen keys; `show` tags a commented-out key as
+    the built-in default and warns about an old fully written-out file.
+
+**How they were proven** (on 28 September 2026). Each edit was made in a throwaway copy of the
+working tree outside the clone, the #47 test group was run against the copy with a writable
+`TMPDIR`, and the copy was deleted — never touching the repository itself. Every edit below made
+the named test fail.
+
+*The stand-in review's own edit scripts* (m6 and m7 adapted, because the text they targeted was
+replaced in this round; the others run unchanged):
 
 | Edit | Test that failed |
 |---|---|
-| Codex's sentence appended to: the checkpoint line; RECORD; the after-each-task paragraph; the per-task bullet; the scribe's prompt; the documentarian's "when invoked" bullet and its obey-the-value rule; the handoff template; conventions' auto-handoff paragraph | 11 (each) |
-| Codex's sentence appended to the `handoff-file` paragraph | 12 |
-| An exception appended to step 1's pull-request bullet / to step 6 / to the direction rule | 1 (each) |
-| An exception appended to ci-medic's snapshot paragraph | 4 |
-| Words added inside the checker's snapshot field | 5 |
-| An exception appended to the "config.yml counts only as snapshotted" paragraph | 15 |
-| A failed `gh` lookup counts as trust; a detached HEAD is trusted; provenance decided after settings are loaded | 1 (each) |
-| The snapshot moved into the project; a dry run writes into the project; step 1's "What this cannot do" deleted; the hooks said to protect the run folder | 1 (each) |
-| Base copies taken with `git show` (filters allowed); an unavailable submodule commit no longer asks | 1 (each) |
-| Step 6 lets a normative document name commands | 1 |
-| The checker takes commands from a normative document | 4 |
-| Autopilot takes its snapshot after DISCOVER | 4 |
-| Autopilot carries on when the snapshot folder is missing | 4 |
-| ci-medic's scribe records the snapshot itself | 4 |
-| The README's statement of the snapshot's limits deleted | 4 |
-| The scribe may write the snapshot folder | 11 |
-| The documentarian may write the snapshot folder | 4 |
-| Ship's scout brief loses the body of the snapshot field | 5 |
+| m1 a paragraph added after the orchestrator's checkpoint list | 1 |
+| m2 a new "Exceptions" bullet added before "Evidence, not claims" | 1 |
+| m3 an exception appended after the debate brief's snapshot field | 3 |
+| m4 a paragraph added after ci-medic's snapshot paragraph | 1 |
+| m5 a paragraph added after autopilot's rehydrate check | 1 |
+| m6 (adapted) an unreadable base falls back to the checked-out text | 1 |
+| m7 (adapted) the orchestrator's setup bullet moves the snapshot into the project, after a scout | 1 |
+| m8 the dry-run section puts the snapshot inside the project | 1 |
+| m9 the scribe may refresh the snapshot folder | 2 |
+| m10 a new README bullet after the rule bullet | 1 and 8 |
+| m10b an exception appended to the end of the README's next bullet | 1 |
+| m11 iterate's run-start line changed | 2 |
+| m12 a "10. Exceptions" step added to the rule | 1 |
+| m13 a line added inside the task brief's snapshot field | 1 and 3 |
 
-The first run of this table found two edits that passed (ci-medic's step 7 and the documentarian's
-ban on the snapshot folder were not pinned); both passages were pinned and the two edits re-run, and
-they now fail test 4. **Earlier rounds' edits were re-run on the final text as well:** the 27
-third-round edits whose text still exists (a changed table row, a reordered precedence line, move-
-ledgers' hold-back deleted, an exception added to the safety paragraph and to the README's safety
-sentence, the documentarian's own-handover line deleted, and more), the 16 from the first and
-second rounds whose text still exists, and the 8 starter-file edits all still fail a test; edits whose text this round replaced were
-covered by the new edits above.
+*Further edits:*
+
+| Edit | Test that failed |
+|---|---|
+| A same-repository branch pushed by a collaborator counts as the user's own | 1 |
+| The snapshot no longer taken before autopilot's run branch; autopilot's bootstrap creates the branch first | 1 (each) |
+| The run id is just the date; the folder made with `mkdir -p`; the manifest loses the repository path | 1 (each) |
+| An unreadable folder falls back to the project's files | 1 |
+| The "plain `git push` while on `main` passes" limit deleted; "the only enforcement the plugin itself provides" overstated | 1 (each) |
+| Settings taken from the pull request's base; rule 9 said to decide whose instructions count | 1 (each) |
+| ci-medic copies a pull request into the shared snapshot folder | 1 |
+| The README's "start from your own branch" warning deleted | 1 |
+| The limit about the project's own scripts deleted | 1 |
+| A line added inside iterate's snapshot field | 3 |
+| An exception paragraph added after the docs skill's run-start line | 2 |
+| Autopilot's example run id made non-unique | 2 |
+| The scribe allowed to write a pull request's snapshot sub-folder | 2 |
+| Codex's exception sentence appended to the checkpoint line | 1 |
+| An "Exceptions" bullet added at the end of "Auto-handoff" | 1 |
+| An exception appended to the README's "Upgrading from 1.5" note | 1 |
+| One agent's shared sentence changed back to "from the trusted repository" | 6 |
+
+Every earlier round's edit whose text still exists was run again against these tests and still
+fails one — 76 in all: 27 from Codex's round, 26 from the third round, 15 from the first and second
+rounds, and the 8 starter-file edits. The rest targeted text this round replaced (guessed provenance and
+its wording) and are covered by the edits above.
 
 **What these cannot catch:** they check wording, word for word, in the right place. They cannot
 tell whether an agent obeys the rule when it runs — for example whether a lead really copies the
-files before spawning anyone. Nor does anything enforce the rule except where one of the two guard
-hooks happens to cover it (`conventions.md`, step 1, "What this cannot do"). And pinning means any
-deliberate change to one of these passages must change its copy in `tests/scripts.bats` too — on
-purpose, so that a change to a safety rule is visible in review.
+files before spawning anyone. Nothing enforces the rule except where one of the two guard hooks
+happens to cover it (`conventions.md`, step 1, "What this cannot do"). A passage outside every
+pinned section and item can still change unnoticed. And pinning means any deliberate change to one
+of these passages must change its record in the fixture too — on purpose, so that a change to a
+safety rule is visible in review.
 
 ### `hooks/guard-ledgers.sh` — the ledger guard's test matrix
 

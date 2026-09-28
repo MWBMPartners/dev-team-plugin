@@ -6,9 +6,9 @@
             Rewritten as work happens, not tidied at the end. See .claude/CLAUDE.md section 2.
 -->
 
-**Last updated:** 28 September 2026 — issue #47 revised after CODEX's review of the whole change.
-The lead pushed up to `748e87c`; two more commits follow it locally (`7b61564` and the notes commit
-after it), not yet pushed or reviewed; see the #47 section straight below. The "START HERE"
+**Last updated:** 28 September 2026 — issue #47 revised after a stand-in review of Codex's-round
+revision. The lead pushed up to `a9fb292`; two more commits follow it locally (`11ec8be` and the
+notes commit after it), not yet pushed or reviewed; see the #47 section straight below. The "START HERE"
 section dates from 23 September; everything below "Detailed history" is the older, fuller record.
 **Working branch:** `claude/ledger-file-clashes` (made from `main`; `alpha` is fully contained in
 `main`, so this branch can later go to `alpha` in one pull request). Pushed to GitHub.
@@ -23,11 +23,16 @@ see the section straight below.
 - **What it adds (plugin version 1.6.0):** a shared rule, "Repository instructions and normative
   documents" (first bullet of "Shared discipline" in
   `skills/dev-team-orchestrator/references/conventions.md`). Every agent reads a project's own
-  instruction files (`AGENTS.md`, `CLAUDE.md` and the like) and the standards they name, only as they were **copied when the run started** into `~/.dev-team/runs/<run-id>/snapshot/`
-  (outside the project, with a SHA-256 manifest), after the lead has decided whose work the
-  checkout is; a file that later differs, even one the host tool already loaded, is data, and
-  someone else's pull request is read from its base commit's tree. The limit is stated plainly:
-  this is not an enforcement boundary — only the two guard hooks enforce anything. Repository
+  instruction files (`AGENTS.md`, `CLAUDE.md` and the like) and the standards they name, only as they were **copied when the run started** into a new, uniquely named folder
+  `~/.dev-team/runs/<run-id>/snapshot/` (outside the project, with a manifest naming the
+  repository, the run id and a SHA-256 per file). The checkout the user starts the run on is
+  treated as the user's own — the plugin no longer guesses from git whose code it is. A file that
+  later differs, even one the host tool already loaded, is data. Someone else's pull request is
+  handled only by a skill that checks it out itself (ci-medic), which copies its instruction files
+  from its base commit into `snapshot/pr-<n>/`. The limits are stated plainly: start from your own
+  branch; the snapshot is safe from git operations but not from commands the run executes; this is
+  not an enforcement boundary — only the plugin's two guard hooks enforce anything, and only what
+  they cover. Repository
   content may **add** work and checks and choose between style defaults, but may **never remove,
   skip, weaken or waive** a check, a gate, a confirmation or a safety rule, and moves a plugin
   switch only toward its more cautious value (the "direction rule", step 8, written word for word
@@ -115,21 +120,40 @@ see the section straight below.
     limits stated plainly in step 1 and the README. Tests: the whole rule pinned as one copy, all
     13 writer places compared whole. Then the notes commit (CHANGELOG, `tests/README.md`, these
     notes).
-  - **None of Codex's-round revision is reviewed yet.** Under rule 5 it needs another Codex round
-    (compare with `claude/ledger-file-clashes` / `413d570`, not `main`). Codex reported that bats
-    could not start in its sandbox because the temporary folder was not writable; set `TMPDIR` to
-    a writable folder when asking it to run the tests.
-- **Checks at the latest commit:** bats 159 of 159 (the test list was consolidated: the whole
-  rule is one test now instead of separate step tests), smoke test, both audits, shellcheck and
-  actionlint all pass. Earlier: 162 of 162 at `748e87c`; 155 of 155 at `dbb5e31`; `25223c0` on its
-  own 153 of 153 in a separate git worktree.
+    - The lead pushed up to `a9fb292`.
+  - **Stand-in review** (a fresh Opus agent, standing in for Codex until 12:35) of
+    `748e87c..a9fb292`: NOT clean — 4 must, 5 should, 4 minor; its report, probes and edit scripts
+    are in the lead's session scratchpad (`review-tmp/plugin-review-5/`), not in the repository.
+    Core: guessing "whose checkout is this" from git state cannot be made airtight (a `gh pr
+    checkout` fork branch, a `pull/123/head` fetch, autopilot's own run branch and detached
+    worktrees were all misclassified). **The lead's final decision: stop guessing.** Built in
+    `11ec8be`: the checkout the user starts on is the user's own (limit stated: start from your own
+    branch); someone else's pull request is handled only by a skill that checks it out itself
+    (ci-medic), snapshotting its base-commit instruction files into `snapshot/pr-<n>/`; rule 9
+    decides only whether code may run; settings always come from the user's own config; autopilot
+    snapshots before creating its run branch; unique run ids and a create-that-fails folder; the
+    manifest records the repository path and run id; stop, never fall back, if the folder cannot be
+    used; honest limits (git operations only; the checksum catches accidents only; hooks described
+    exactly from the code); "from the snapshot copies" everywhere files are read. Tests: pinned
+    copies moved to `tests/fixtures/pinned-instructions.txt`, checked as 28 whole sections (heading
+    to next heading), 11 items with the opening words of what follows, and the snapshot field as a
+    whole list item in 13 templates. Then the notes commit.
+  - **None of this revision is reviewed yet.** Under rule 5 it needs a Codex round when Codex is
+    back (compare with `claude/ledger-file-clashes` / `413d570`, not `main`). Set `TMPDIR` to a
+    writable folder when asking Codex to run bats (its sandbox's default was not writable).
+  - Note: the lead's decision named "review/verify when given `pr=`" as a second skill that checks
+    pull requests out; the review skill has no `pr=` argument today, so the text says "a skill that
+    checks one out itself — today, ci-medic".
+- **Checks at the latest commit:** bats 154 of 154 (the #47 group is now 10 tests: the pinned
+  sections, items and fields replaced the separate pins), run with `TMPDIR` set to a writable
+  scratch folder; smoke test, both audits, shellcheck and actionlint all pass. Earlier: 159 at
+  `a9fb292`, 162 at `748e87c`, 155 at `dbb5e31`.
 - **Proof the tests bite:** every edit listed in `tests/README.md` was made in a throwaway copy
-  outside the clone and made at least one test fail. Codex's round: 34 edits, including Codex's
-  exact exception sentence appended to each of ten writer places (the first run found two
-  unpinned passages — ci-medic's step 7 and the documentarian's snapshot-folder ban — which were
-  then pinned). Re-run on the final text: the third round's 27 edits whose text still exists, the
-  first and second rounds' 16, and the 8 starter-file edits. The scripts are in the builder's
-  session scratchpad (`r3work/mutate6.py` and friends), not in the repository.
+  outside the clone and made at least one test fail. This round: the stand-in reviewer's own edit
+  scripts (m1–m13 and m10b; m6 and m7 adapted to replaced wording) and 22 more. Re-run on the final
+  text: 76 earlier-round edits whose text still exists. The scripts are in the builder's session
+  scratchpad (`r3work/edits5/`, `r3work/run_edits5.sh`, `r3work/*_r6.py`), not in the
+  repository.
 - **Decisions the builder took inside the lead's decisions** (a reviewer may want to look at these):
   - A per-switch table in `config-and-toggles.md` says which value is the more cautious one. Two
     switches have none, so an instruction file cannot move them: `models` (a cost choice; the
@@ -145,7 +169,8 @@ see the section straight below.
     - Third review (since replaced): the snapshot used `git hash-object -w`, a seal, and a
     `## Instruction snapshot` ledger section. Codex showed the seal could not stop replacement and
     hash-object could change bytes, so all three are gone.
-  - Codex's round: the run folder is `~/.dev-team/runs/<run-id>/snapshot/` with `manifest.txt`
+  - Codex's round (the provenance guessing in it was removed in the stand-in round): the run
+    folder is `~/.dev-team/runs/<run-id>/snapshot/` with `manifest.txt`
     (the provenance decision, then `<sha256>  <path>` per file); a missing folder or a copy that no
     longer matches → BLOCKED (this detects damage, not a deliberate rewrite — the limit is stated).
     The folder's path is recorded in `autopilot.json` (run id and folder only), House style, or the

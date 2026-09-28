@@ -66,6 +66,11 @@
   method, then a sealed git-object snapshot), stop adding mechanism. Simplify (#47 ended with plain
   copies in a folder outside the project) and state plainly what the rule cannot do: rules written
   for agents are not an enforcement boundary; only hooks enforce, and only what they cover.
+- Do not try to infer from git state whose code a checkout is: six review rounds of #47 found a
+  new misclassification each time. Trust the checkout the user starts on, say so as a limit, and
+  treat only what a skill fetched itself as someone else's.
+- Pinning a whole passage still misses text added NEXT to it. Pin whole sections (heading to next
+  heading), or a passage together with the opening words of what follows it.
 - Pin a safety rule as ONE whole block, and every place that acts on a switch as a whole passage.
   A test that searches for a phrase inside a passage still passes when a sentence is appended to it.
 - Codex's read-only sandbox could not start bats (its temporary folder was not writable). Ask it to
