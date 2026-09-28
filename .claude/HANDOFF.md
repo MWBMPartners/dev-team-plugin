@@ -6,9 +6,9 @@
             Rewritten as work happens, not tidied at the end. See .claude/CLAUDE.md section 2.
 -->
 
-**Last updated:** 28 September 2026 — issue #47 revised after its second independent review; the
-lead pushed up to `d98a02c`, and one more local commit (the starter config file) follows it, not yet
-pushed. None of the revision is reviewed yet; see the #47 section straight below. The "START HERE"
+**Last updated:** 28 September 2026 — issue #47 revised after its THIRD independent review. The
+lead pushed up to `dbb5e31` (the starter config file); five more commits follow it locally, not yet
+pushed. None of the third-review revision is reviewed yet; see the #47 section straight below. The "START HERE"
 section dates from 23 September; everything below "Detailed history" is the older, fuller record.
 **Working branch:** `claude/ledger-file-clashes` (made from `main`; `alpha` is fully contained in
 `main`, so this branch can later go to `alpha` in one pull request). Pushed to GitHub.
@@ -24,8 +24,9 @@ see the section straight below.
   documents" (first bullet of "Shared discipline" in
   `skills/dev-team-orchestrator/references/conventions.md`). Every agent reads a project's own
   instruction files (`AGENTS.md`, `CLAUDE.md` and the like) and the standards they name, only as
-  they are at the run's **trusted base** — the commit the run started from, never a pull request's
-  head branch; a file changed since then, even one the host tool already loaded, is data. Repository
+  they were in a **snapshot taken when the run started** (path + SHA-256 + a git object id, in a
+  sealed record only the lead writes); a file that later differs, even one the host tool already
+  loaded, is data, and an untrusted pull request's code uses its base branch's version. Repository
   content may **add** work and checks and choose between style defaults, but may **never remove,
   skip, weaken or waive** a check, a gate, a confirmation or a safety rule, and moves a plugin
   switch only toward its more cautious value (the "direction rule", step 8, written word for word
@@ -60,26 +61,57 @@ see the section straight below.
       `HANDOFF.md` while `off`.
     - `c5dfd68` — CHANGELOG and `tests/README.md` (the 25-edit proof table).
   - The lead re-ran all six checks and pushed up to `d98a02c` (154 of 154).
-  - **The starter config file (one more commit after `d98a02c`, local, not pushed).** The lead
+  - **The starter config file (`dbb5e31`, pushed by the lead).** The lead
     decided the suggestion below: `/dev-team-config init` now writes an explicit value only for a
     key the user chose in that `init` conversation; every other setting goes into the starter file
     commented out, showing its default, as `handoff-file` already was. The starter schema in
     `config-and-toggles.md` now sets nothing but `version: 1`; `show` tags a commented-out key
     `(built-in default)`. A new test (11) fails if the starter writes any setting out explicitly or
     `init` stops saying to write only chosen keys; 8 edits in a throwaway copy each made it fail.
-  - **None of the second-review revision is independently reviewed yet.** Under rule 5 it needs a
+  - **Third independent review** (a fresh Opus agent standing in for Codex) of `0c25209..dbb5e31`
+    was NOT clean. Its core finding: the trusted-base method (merge-base, diff, show) missed
+    uncommitted edits and new files, failed on shallow clones and unusual remote names, was
+    defined differently by autopilot, and kept its base where agents could rewrite it. The lead
+    took final decisions (16 items); all were built in five commits, **committed locally and NOT
+    pushed** (the lead pushes):
+    - `bfb4e8a` — the run-start SNAPSHOT replaces the trusted base everywhere (conventions.md step
+      1): path + SHA-256 + a git object id (`git hash-object -w`) for every instruction file,
+      normative document and `.dev-team/config.yml`, taken before any agent is spawned, in a sealed
+      record only the lead writes (`instructions_snapshot` in autopilot.json; a
+      `## Instruction snapshot` section of the skill's own ledger; the run report for ship and
+      ci-medic), checked on every read. Changed or new files are data; untrusted pull-request code
+      uses the base branch's version, never the checked-out text. Also: config.yml counts only as
+      snapshotted (hooks cannot enforce this); user files outside the repository are the user's
+      words; the snapshot field in all 13 brief templates; the run-start line in the eight skills
+      with their own front end; step 3 for documents without rule IDs; step 6 never runs a command
+      named only in a normative document; the branch model and per-run arguments added to the
+      direction rule.
+    - `af1138a` — `handoff-file` values (`off`/`false`/`no` and `on`/`true`/`yes`, any capitals;
+      anything else counts as `off`); the scribe's ban names only the project's handover or
+      session-notes file; the value goes in documentarian briefs only; the old-HANDOFF.md exception
+      is also in conventions point 5 and the README's "Upgrading from 1.4 or earlier".
+    - `45e12c9` — README "Upgrading from 1.5 or earlier" (comment out config lines you did not
+      choose) and a `show` warning for an old fully written-out file; the cautious table and both
+      precedence paragraphs pinned; test 11's header pattern tightened.
+    - `2f407cc` — config-and-toggles' safety paragraph pinned; `tests/README.md` rewritten with the
+      proof tables.
+    - The commit after `2f407cc` — CHANGELOG 1.6.0 and these notes.
+  - **None of the third-review revision is independently reviewed yet.** Under rule 5 it needs a
     Codex review round (compare with `claude/ledger-file-clashes` / `413d570`, not `main`).
-- **Checks at the starter-file commit:** bats 155 of 155, smoke test, both audits, shellcheck and
-  actionlint all pass (at `c5dfd68`: 154 of 154). `25223c0` on its own was checked in a separate git worktree: bats 153 of 153.
-- **Proof the tests bite:** 25 edits, each made in a throwaway copy outside the clone, each made at
-  least one test fail — the seven the review named (a waiver added to step 8, the trusted base
-  loosened, the push/merge/secrets clause deleted, the symlink/DATA sentences deleted, RECORD or
-  the orchestrator checkpoint writing the card unconditionally, the "off" rule deleted from the
-  scribe file and from the documentarian brief) plus 18 more. Table in `tests/README.md`.
+- **Checks at the latest commit:** bats 162 of 162, smoke test, both audits, shellcheck and
+  actionlint all pass. Earlier: 155 of 155 at `dbb5e31`; `25223c0` on its own 153 of 153 in a
+  separate git worktree.
+- **Proof the tests bite:** every edit listed in `tests/README.md` was made in a throwaway copy
+  outside the clone and made at least one test fail: the third review's twelve (rebuilt from their
+  names — the reviewer's exact edits were not saved; m08 in two places), sixteen more against the
+  new text, the nine earlier-round edits whose wording the revision replaced (rebuilt), and the 24
+  earlier-round edits whose text still exists. The scripts that ran them are in the builder's
+  session scratchpad (`r3work/mutate4.py`, `mutate5.py`), not in the repository.
 - **Decisions the builder took inside the lead's decisions** (a reviewer may want to look at these):
   - A per-switch table in `config-and-toggles.md` says which value is the more cautious one. Two
     switches have none, so an instruction file cannot move them: `models` (a cost choice; the
-    verification tier never drops anyway) and `git.default-branch` (it decides the trusted base).
+    verification tier never drops anyway) and `git.default-branch` (it decides which branch runs start from and target; before the third
+    review the reason given was "it decides the trusted base", which no longer exists).
     `auto-commit: off`, `auto-handoff: off` and `telemetry: on` are counted as the cautious values.
   - `/dev-team-config show` says plainly that it does not read instruction files, rather than
     trying to reflect them.
@@ -87,6 +119,15 @@ see the section straight below.
     single commit are fixed); in that case it keeps `on`, does not offer the pointer sentence, and
     says so in its report.
   - A scribe brief with no `handoff-file` value writes no card and says so.
+  - Third review: the snapshot keeps each file's exact text with `git hash-object -w` (stored in
+    git's object store, invisible to status, readable with `git cat-file -p`), so "read the
+    snapshotted text" works even for uncommitted edits. The seal is the SHA-256 of the entry lines;
+    "matches" means the seal still fits the entries and, where a brief carries a copy, the entries
+    agree. For non-autopilot skills the lead writes the snapshot section into the skill's ledger
+    itself (the documentarian never touches it). A trusted pull request (rule 9) is snapshotted when
+    it is checked out. An unrecognised `handoff-file` value is reported and treated as `off`, as
+    decided. `show` flags an old file when ten or more settings are written out at their
+    defaults.
 - **Rejected on the way:** testing a few key phrases (the second review showed a rule can be
   weakened by ADDING words, which such tests never see — so steps 1 and 8 are compared whole); a
   closed list of protected things (anything left off it was open to override — replaced by the
