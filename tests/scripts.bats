@@ -1051,6 +1051,19 @@ make_push_repo() {
   done
 }
 
+@test "guard (quoting): a long command — 2,000 simple commands, or a large heredoc — is still read to the end" {
+  # The word-by-word reading passes only the commands that matter (a git, a shell, eval, cd ...)
+  # on to the slower part of the hook; this checks that a push at the very end is still seen.
+  long="$(for i in $(seq 1 2000); do printf 'echo line %s; ' "$i"; done)"
+  run run_guard_cmd "$SCRATCH" "${long}git push origin 'main'"
+  [ "$status" -eq 2 ]
+  run run_guard_cmd "$SCRATCH" "${long}git push origin 'feature'"
+  [ "$status" -eq 0 ]
+  body="$(for i in $(seq 1 800); do printf 'a line of text %s\n' "$i"; done)"
+  run run_guard_cmd "$SCRATCH" "$(printf 'cat > notes.txt <<EOF\n%s\nEOF\ngit push origin \\main' "$body")"
+  [ "$status" -eq 2 ]
+}
+
 @test "guard (no branch named): a bare git push while on main is blocked, and the message names the branch" {
   make_push_repo main
   run run_guard_cmd "$SCRATCH/repo" "git push"

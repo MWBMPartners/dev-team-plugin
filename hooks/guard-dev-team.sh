@@ -116,21 +116,48 @@ text_rules "$norm"
 # ---------------------------------------------------------------------------------------------
 # Reading the command the way the shell does.
 # ---------------------------------------------------------------------------------------------
-# shell_words prints the words of the text on its standard input, one per line, after the shell's
-# own quote removal: '...' keeps everything literally, "..." keeps everything except that a
-# backslash before $ ` " \ or a line break is removed, a bare backslash makes the next character
-# literal, $'...' and $"..." lose their $. Outside quotes, a line break and ; & | ( ) ` end the
-# simple command and print a line "@@SEP"; > and < print "@@REDIR" (the next word is where the
-# output goes, not an argument), and a number just before them (the 2 in 2>&1) is dropped. Spaces,
-# tabs and line breaks INSIDE a quoted word are kept as single spaces, so a commit message such as
-# 'push to main' stays one word and is never read as a push. This is a reading aid, not a full
-# shell parser: it does not expand variables, globs, braces or aliases.
+# shell_words reads the text on its standard input the way the shell does, after the shell's own
+# quote removal: '...' keeps everything literally, "..." keeps everything except that a backslash
+# before $ ` " \ or a line break is removed, a bare backslash makes the next character literal,
+# $'...' and $"..." lose their $. Outside quotes, a line break and ; & | ( ) ` end a simple
+# command; > and < start a redirection (the next word is where output goes, not an argument, and a
+# number just before them — the 2 in 2>&1 — is dropped). Spaces, tabs and line breaks INSIDE a
+# quoted word are kept as single spaces, so a commit message such as 'push to main' stays one word
+# and is never read as a push. This is a reading aid, not a full shell parser: it does not expand
+# variables, globs, braces or aliases.
+# It prints, first, one line "@@JOINED <all the words joined by spaces>" — each space inside a word
+# becomes _ so the word stays one word, a command separator becomes ";" and a redirection ">" — for
+# the text rules. Then, one word per line with a line "@@SEP" after each command, only the simple
+# commands the rest of this hook needs to look at word by word: one with a word that is git, a
+# shell (sh, bash, zsh, dash, ksh) or eval, or a GIT_...= setting, or one whose first word is cd,
+# pushd, popd, export, declare, typeset, set, builtin or command. Leaving the rest out keeps a long
+# command — a large heredoc, say — quick to check: the word-by-word part runs in bash, which is
+# slow on thousands of words.
 shell_words() {
   awk '
-    function flush() { if (inw) { gsub(/[\t\n]/, " ", w); print w } ; w = ""; inw = 0 }
+    function endword() {
+      if (inw) { gsub(/[\t\n]/, " ", w); nw++; cw[nw] = w; t = w; gsub(/ /, "_", t); joined = joined " " t }
+      w = ""; inw = 0
+    }
+    function endcmd(   k, keep, first, x) {
+      endword()
+      if (nw > 0) {
+        keep = 0; first = 1
+        while (first <= nw && cw[first] ~ /^[A-Za-z_][A-Za-z0-9_]*=/) first++
+        if (first <= nw && cw[first] ~ /^(cd|pushd|popd|export|declare|typeset|set|builtin|command)$/) keep = 1
+        for (k = 1; k <= nw; k++) {
+          x = cw[k]
+          if (x ~ /(^|\/)(git|sh|bash|zsh|dash|ksh)$/ || x == "eval" || x ~ /^GIT_[A-Za-z0-9_]*=/) keep = 1
+        }
+        if (keep) { for (k = 1; k <= nw; k++) out = out cw[k] "\n"; out = out "@@SEP\n" }
+        joined = joined " ;"
+      }
+      nw = 0
+    }
     { s = s (NR > 1 ? "\n" : "") $0 }
     END {
-      n = length(s); i = 1; st = 0; w = ""; inw = 0   # st: 0 unquoted, 1 in '\''..'\'', 2 in "..", 3 in $'\''..'\''
+      n = length(s); i = 1; st = 0; w = ""; inw = 0; nw = 0; joined = ""; out = ""
+      # st: 0 unquoted, 1 inside '\''...'\'', 2 inside "...", 3 inside $'\''...'\''
       while (i <= n) {
         c = substr(s, i, 1)
         if (st == 1) { if (c == "'\''") st = 0; else w = w c; i++; continue }
@@ -148,13 +175,14 @@ shell_words() {
           }
           w = w c; i++; continue
         }
-        if (c == " " || c == "\t") { flush(); i++; continue }
-        if (c == "\n" || c == ";" || c == "|" || c == "(" || c == ")" || c == "`") { flush(); print "@@SEP"; i++; continue }
-        if (c == "&" && substr(s, i + 1, 1) != ">") { flush(); print "@@SEP"; i++; continue }
+        if (c == " " || c == "\t") { endword(); i++; continue }
+        if (c == "\n" || c == ";" || c == "|" || c == "(" || c == ")" || c == "`") { endcmd(); i++; continue }
+        if (c == "&" && substr(s, i + 1, 1) != ">") { endcmd(); i++; continue }
         if (c == ">" || c == "<" || c == "&") {
-          if (inw && w ~ /^[0-9]+$/) { w = ""; inw = 0 } else flush()
+          if (inw && w ~ /^[0-9]+$/) { w = ""; inw = 0 } else endword()
           while (i <= n && index("<>&|", substr(s, i, 1)) > 0) i++
-          print "@@REDIR"; continue
+          nw++; cw[nw] = "@@REDIR"; joined = joined " >"
+          continue
         }
         if (c == "\\") {
           if (i < n) { d = substr(s, i + 1, 1); if (d != "\n") { w = w d; inw = 1 } }
@@ -169,7 +197,9 @@ shell_words() {
         }
         w = w c; inw = 1; i++
       }
-      flush()
+      endcmd()
+      print "@@JOINED" joined
+      printf "%s", out
     }
   '
 }
@@ -355,25 +385,19 @@ check_simple_command() {
   return 0
 }
 
-# Splits the text $1 into words and applies every rule to it: the text rules to the words joined
-# back together (quotes removed; a space inside a quoted word becomes _ so it stays one word),
-# check_simple_command to each simple command, and all of this again, one level deeper, to a
-# command string given to a shell's -c or to eval ($2 is the depth, at most 3).
+# Reads the text $1 with shell_words and applies every rule to it: the text rules to the words
+# joined back together (quotes removed; a space inside a quoted word becomes _ so it stays one
+# word), check_simple_command to each simple command shell_words passed on, and all of this again,
+# one level deeper, to a command string given to a shell's -c or to eval ($2 is the depth; the
+# nesting stops at depth 3).
 analyse() {
-  local text="$1" depth="$2" line joined="" cmdwords word i n inner
+  local text="$1" depth="$2" line joined="" got_joined=0 cmdwords word i n inner
   local all=()
-  while IFS= read -r line; do all[${#all[@]}]="$line"; done < <(printf '%s' "$text" | shell_words)
+  while IFS= read -r line; do
+    if [ "$got_joined" -eq 0 ]; then joined="${line#@@JOINED}"; got_joined=1; continue; fi
+    all[${#all[@]}]="$line"
+  done < <(printf '%s' "$text" | shell_words)
   n=${#all[@]}
-  i=0
-  while [ "$i" -lt "$n" ]; do
-    word="${all[$i]}"
-    case "$word" in
-      @@SEP) joined="$joined ;" ;;
-      @@REDIR) joined="$joined >" ;;
-      *) word="${word// /_}"; joined="$joined $word" ;;
-    esac
-    i=$((i + 1))
-  done
   text_rules "$joined"
   # Each simple command in turn, in order, so that an earlier cd is seen before a later push.
   cmdwords=()
