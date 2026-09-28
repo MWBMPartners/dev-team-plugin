@@ -25,7 +25,7 @@ work it does is then reviewed by Claude Code when Claude Code is back.
   so #41's changes are not reported as #47's. What it adds is in `.claude/HANDOFF.md`. Its last
   two reviews were done by fresh Opus agents because Codex was out of allowance, so a Codex review
   of the whole #47 range is still owed; the newest, unreviewed part is the second-review revision
-  (the three commits after `0c25209`, plus a notes commit).
+  (the commits after `0c25209`, up to and including the starter-config-file commit).
 - Earlier Codex review results: `.claude/plans/ledger-file-clashes/codex-review-3.md` and
   `codex-review-3-verification.md`.
 

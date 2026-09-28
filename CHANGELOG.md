@@ -84,8 +84,9 @@ This release builds on 1.5.0, which is itself not yet released (it is on the
   unless `.dev-team/config.yml` sets a value; an instruction that only says where notes live is
   asked about once (the answer is recorded in `.dev-team/config.yml`), or left at the default in an
   unattended run. The lead settles the value once per run and hands it to the scribe in its brief.
-  The starter `.dev-team/config.yml` leaves the key commented out, so `/dev-team-config init` does
-  not write an explicit `on` that would overrule such a project; `/dev-team-config show` says
+  The starter `.dev-team/config.yml` leaves the key commented out, like every other setting (see
+  "Changed"), so `/dev-team-config init` does not write an explicit `on` that would overrule such a
+  project; `/dev-team-config show` says
   plainly that it does not read instruction files. An unrecognised value (`Off`, `of`) is reported
   and ignored. *Why:* turning auto-handoff off only stops the refresh after each task; the plugin
   still rewrote the file at every checkpoint, so a project that allows only one handover document
@@ -93,6 +94,15 @@ This release builds on 1.5.0, which is itself not yet released (it is on the
 
 ### Changed
 
+- **`/dev-team-config init` writes an explicit value only for the keys the user chose** in that
+  `init` conversation — a value they asked for, or their answer to the pointer-sentence or
+  keep-`HANDOFF.md` question. Every other setting goes into the starter file commented out,
+  showing its default; the starter schema in `config-and-toggles.md` now sets nothing but
+  `version: 1`. *Why:* an explicit value in `.dev-team/config.yml` wins over the project's own
+  instruction files, so writing every default out would let a freshly initialised config silently
+  overrule a project's cautious instruction (a `CLAUDE.md` asking for a dry run first would have
+  lost to an unchosen `dry-run: off`). `/dev-team-config show` still tags every value with where it
+  came from; a commented-out line counts as not set, so it shows `(built-in default)`.
 - **Where a project's own instructions explicitly forbid a second handover**, `handoff-file` is
   `off` for that repository (above), and the scribe never writes into the project's own handover or
   notes file — updating that is project work for a builder (`conventions.md`, "Auto-handoff";
@@ -131,7 +141,7 @@ file, `show`, and a held-back `HANDOFF.md`); the ci-medic skill's `SKILL.md` and
 
 ### Tests
 
-- Ten tests in `tests/scripts.bats` guard the rule. The four added in the first draft of this
+- Eleven tests in `tests/scripts.bats` guard the rule. The four added in the first draft of this
   release still passed when the rule's meaning was reversed; the six that replaced them still passed
   when it was quietly weakened (a waiver added, the trusted base loosened, a clause deleted). Now
   steps 1 and 8 of the rule are compared word for word, after joining wrapped lines, so a sentence
@@ -139,8 +149,10 @@ file, `show`, and a held-back `HANDOFF.md`); the ci-medic skill's `SKILL.md` and
   `config-and-toggles.md` and at the end of the README's rule bullet; every place that writes
   `.dev-team/HANDOFF.md` (the orchestrator after a task and at the checkpoint, autopilot after a task
   and at RECORD, the documentarian protocol and brief, the scribe's agent file, the handoff
-  template) must carry the `off` condition on that very line; and the starter config must leave
-  `handoff-file` commented out. Other tests check the layering, unattended and own-discovery
+  template) must carry the `off` condition on that very line; and the starter config must set
+  nothing but `version: 1`, with every setting commented out showing its default, while
+  `/dev-team-config` says to write only the keys the user chose and to tag a commented-out key as
+  the built-in default. Other tests check the layering, unattended and own-discovery
   sentences, the brief template's fields, the exact agent sentence in every file in `agents/`, and
   the README's count of cross-cutting behaviours. Each named weakening was made in a throwaway copy
   of the repository and made at least one of these tests fail (`tests/README.md` lists which). They

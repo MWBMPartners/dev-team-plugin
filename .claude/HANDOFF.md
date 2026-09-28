@@ -6,8 +6,9 @@
             Rewritten as work happens, not tidied at the end. See .claude/CLAUDE.md section 2.
 -->
 
-**Last updated:** 28 September 2026 — issue #47 revised after its second independent review (local
-commits, not yet pushed or reviewed; see the #47 section straight below). The "START HERE"
+**Last updated:** 28 September 2026 — issue #47 revised after its second independent review; the
+lead pushed up to `d98a02c`, and one more local commit (the starter config file) follows it, not yet
+pushed. None of the revision is reviewed yet; see the #47 section straight below. The "START HERE"
 section dates from 23 September; everything below "Detailed history" is the older, fuller record.
 **Working branch:** `claude/ledger-file-clashes` (made from `main`; `alpha` is fully contained in
 `main`, so this branch can later go to `alpha` in one pull request). Pushed to GitHub.
@@ -58,10 +59,18 @@ see the section straight below.
       values are reported; `off` beats a per-run `auto-handoff=on`; move-ledgers holds back a legacy
       `HANDOFF.md` while `off`.
     - `c5dfd68` — CHANGELOG and `tests/README.md` (the 25-edit proof table).
-  - **These three commits are NOT yet independently reviewed.** Under rule 5 they need a Codex
-    review round (compare with `claude/ledger-file-clashes` / `413d570`, not `main`).
-- **Checks at `c5dfd68`:** bats 154 of 154, smoke test, both audits, shellcheck and actionlint all
-  pass. `25223c0` on its own was checked in a separate git worktree: bats 153 of 153.
+  - The lead re-ran all six checks and pushed up to `d98a02c` (154 of 154).
+  - **The starter config file (one more commit after `d98a02c`, local, not pushed).** The lead
+    decided the suggestion below: `/dev-team-config init` now writes an explicit value only for a
+    key the user chose in that `init` conversation; every other setting goes into the starter file
+    commented out, showing its default, as `handoff-file` already was. The starter schema in
+    `config-and-toggles.md` now sets nothing but `version: 1`; `show` tags a commented-out key
+    `(built-in default)`. A new test (11) fails if the starter writes any setting out explicitly or
+    `init` stops saying to write only chosen keys; 8 edits in a throwaway copy each made it fail.
+  - **None of the second-review revision is independently reviewed yet.** Under rule 5 it needs a
+    Codex review round (compare with `claude/ledger-file-clashes` / `413d570`, not `main`).
+- **Checks at the starter-file commit:** bats 155 of 155, smoke test, both audits, shellcheck and
+  actionlint all pass (at `c5dfd68`: 154 of 154). `25223c0` on its own was checked in a separate git worktree: bats 153 of 153.
 - **Proof the tests bite:** 25 edits, each made in a throwaway copy outside the clone, each made at
   least one test fail — the seven the review named (a waiver added to step 8, the trusted base
   loosened, the push/merge/secrets clause deleted, the symlink/DATA sentences deleted, RECORD or
@@ -85,11 +94,9 @@ see the section straight below.
   explicit config value, toward caution only); "says where notes live" turning the file off (too
   broad); letting the scribe write a project's own handover when asked (ownership is not
   overridable).
-- **Suggestion, not built:** `/dev-team-config init` still writes every other key explicitly
-  (`dry-run: off`, `gates: hybrid`, …), and an explicit value wins over an instruction file — so a
-  project whose `CLAUDE.md` asks for, say, a dry run first would be overruled by a freshly
-  initialised config. `init` now tells the user this; commenting out the whole starter file (or
-  only writing keys the user picks) would remove the trap. Needs the owner's say.
+- **Suggestion, now built:** `/dev-team-config init` used to write every other key explicitly
+  (`dry-run: off`, `gates: hybrid`, …), so a freshly initialised config could overrule a project's
+  cautious instruction. Decided by the lead and built in the starter-file commit (above).
 
 ## START HERE — for a fresh session with no chat history
 

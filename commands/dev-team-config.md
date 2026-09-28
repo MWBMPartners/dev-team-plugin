@@ -15,7 +15,9 @@ collaborator), not a per-session setting.
 2. Print the **effective** config: every key from the schema in `config-and-toggles.md`
    (`defaults.*`, `git.*`, `features.*`), each with its resolved value and a tag showing where that
    value came from — `(from .dev-team/config.yml)` or `(built-in default)`. Keys the file doesn't
-   set, or that failed to parse, are tagged `(built-in default)`.
+   set, or that failed to parse, are tagged `(built-in default)`. A commented-out line (as every
+   setting in the starter file is, until someone sets it) is not set, so its key is tagged
+   `(built-in default)` too.
 3. If a per-session env var is currently set that would override a `features:` toggle for this
    session (`DEV_TEAM_NO_UPDATE_CHECK`, `DEV_TEAM_NO_BRANCH_CHECK`, `DEV_TEAM_GUARD`,
    `DEV_TEAM_NO_AUTO_HANDOFF`, `DEV_TEAM_NO_AUTO_COMMIT`), note that
@@ -36,12 +38,18 @@ This is **read-only** — never create, edit, or touch the file for `show`.
 
 1. If `.dev-team/config.yml` already exists, **do not overwrite it**. Show its current content and
    ask the user to confirm before replacing it (or tell them to edit it directly).
-2. Otherwise, create `.dev-team/` (if needed) and write `.dev-team/config.yml` with the commented
-   starter schema from `config-and-toggles.md` verbatim (the same `version: 1` / `defaults:` /
-   `git:` / `features:` block, with its inline comments) so the file is self-documenting on first
-   read. The starter schema leaves `handoff-file` commented out on purpose: an explicit value in
-   this file wins over the project's instruction files, so writing `handoff-file: on` here would
-   silently overrule a project that forbids a second handover.
+2. Otherwise, create `.dev-team/` (if needed) and write `.dev-team/config.yml` from the starter
+   schema in `config-and-toggles.md`, verbatim (the same `version: 1` / `defaults:` / `git:` /
+   `features:` block, with its inline comments), so the file is self-documenting on first read.
+   In that schema every setting is commented out, showing its default. **Write an explicit value
+   only for a key the user actually chose in this `init` conversation** — a value they asked for,
+   or their answer to one of the questions below (the pointer sentence, or whether to keep
+   `.dev-team/HANDOFF.md`): replace that key's commented line with the chosen `key: value`. Leave
+   every other key commented out, even when its default is what the user will get anyway. *Why:*
+   an explicit value in this file wins over the project's own instruction files, which can
+   otherwise only move a setting toward its more cautious value; a default written out explicitly
+   by `init`, which nobody chose, would silently overrule a project's cautious instruction (a
+   `CLAUDE.md` asking for a dry run first would lose to an unchosen `dry-run: off`).
    In the same step, if `.dev-team/.gitignore` is absent, create it containing exactly one line,
    `loop.lock/`; and if `.dev-team/README.md` is absent, create it with the fixed text in
    `dev-team-orchestrator/references/conventions.md` ("Where the plugin writes, and the ownership
@@ -55,7 +63,8 @@ This is **read-only** — never create, edit, or touch the file for `show`.
    and normative documents", step 1): one that explicitly forbids a second handover makes it `off`;
    if one only says where the project's notes live, ask the user once whether the plugin should
    still keep `.dev-team/HANDOFF.md`, and write the answer as `handoff-file: on` or
-   `handoff-file: off` under `features:` in the file just written. If the value is `off` and a
+   `handoff-file: off` under `features:` in the file just written (in place of its commented
+   line). If the value is `off` and a
    `.dev-team/HANDOFF.md` or the pointer sentence is already there, offer to remove them as that
    section says ("Old traces when it is `off`") — never without a yes. Then offer the pointer sentence
    (`conventions.md`, "Where the plugin writes, and the ownership rule", point 8): when one of
@@ -65,15 +74,18 @@ This is **read-only** — never create, edit, or touch the file for `show`.
    written, and it is never offered to an instruction file that forbids a second handover), offer once — never add it silently — to add "Dev-team plugin state
    and the current handover live in `.dev-team/` — read `.dev-team/HANDOFF.md` first." word for word
    to each of those files that lacks it. If the user declines, set `pointer-sentence: declined`
-   under `features:` in the `.dev-team/config.yml` just written, and tell them. *Why here:* `init`
+   under `features:` in the `.dev-team/config.yml` just written (in place of its commented line),
+   and tell them. *Why here:* `init`
    often creates `.dev-team/` before any other run, and an earlier wording offered the sentence only
    on "the run that creates `.dev-team/`" — so after `init` no run ever offered it.
 3. Tell the user clearly: **this file is meant to be committed** — once it's in the repo, its
    defaults and toggles apply to every session and every collaborator who clones the repo, not
    just this one. Suggest `git add .dev-team/config.yml` and reviewing the values before
    committing; do not commit it yourself.
-4. Remind them every key is optional beyond `version: 1` — they can delete any block they don't
-   want to override and that key falls back to its built-in default. Tell them too that a value set
-   in this file wins over the project's own instruction files, which can otherwise move a switch
-   only toward its more cautious value — so deleting a line lets such an instruction apply again
-   (`config-and-toggles.md`, "Repository instruction files and these switches").
+4. Remind them every key is optional beyond `version: 1`, and that every setting they did not
+   choose was written commented out, showing its default — to set one, remove its `# ` and change
+   the value. Tell them too that a value set in this file wins over the project's own instruction
+   files, which can otherwise move a switch only toward its more cautious value — so set only what
+   they mean to set, and commenting a line out again lets such an instruction apply
+   (`config-and-toggles.md`, "Repository instruction files and these switches"). List the keys
+   this `init` wrote explicitly, or say that it wrote none.

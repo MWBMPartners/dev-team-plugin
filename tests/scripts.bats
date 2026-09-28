@@ -972,6 +972,55 @@ PINNED
   check "scribe agent file" "$(cat "$scribe")" 'You never write into the project'"'"'s own handover or notes file — updating that is project work for a builder with a brief.'
 }
 
+@test "config starter file: no setting is written out except version, and init writes only the keys the user chose" {
+  # What this guards: an explicit value in .dev-team/config.yml wins over the project's own
+  # instruction files, which can otherwise only move a setting toward its more cautious value. If
+  # "/dev-team-config init" wrote every default out explicitly, a freshly initialised config would
+  # silently overrule a project's cautious instruction — a CLAUDE.md asking for a dry run first
+  # would lose to an unchosen "dry-run: off". So the starter schema that init copies must set
+  # nothing but "version: 1": every setting is a commented-out line showing its default. And the
+  # init instructions must say to write an explicit value only for a key the user chose in that
+  # conversation, and that "show" tags a commented-out key as the built-in default.
+  toggles="$REPO_ROOT/skills/dev-team-orchestrator/references/config-and-toggles.md"
+  # The starter schema is the first fenced block after the "## The schema (verbatim)" heading.
+  schema="$(awk '/^## The schema \(verbatim\)/ { on = 1; next } on && /^```/ { if (inside) exit; inside = 1; next } inside { print }' "$toggles")"
+  [ -n "$schema" ]
+  # 1. Every line that is not blank and not a comment must be one of the four top-level lines.
+  #    Anything else — an indented "gates: hybrid", say — is a setting written out explicitly.
+  bad="$(printf '%s\n' "$schema" | awk '
+    /^[[:space:]]*$/ { next }
+    /^[[:space:]]*#/ { next }
+    /^version: 1([[:space:]]|$)/ || /^(defaults|git|features):([[:space:]]|$)/ { next }
+    { print }')"
+  if [ -n "$bad" ]; then
+    echo "the starter schema writes these settings out explicitly: $bad"
+    return 1
+  fi
+  # 2. Every setting is still there, commented out, showing its built-in default — so the file stays
+  #    self-documenting and a person can set one by removing its "# ".
+  for kv in 'models: balanced' 'gates: hybrid' 'cap: 30' 'cycles: 5' 'issues: off' \
+            'stack-prs: false' 'single-pr: true' 'default-branch: auto' \
+            'update-notifier: on' 'branch-notifier: on' 'guard: auto' 'notifications: on' \
+            'telemetry: on' 'dry-run: off' 'auto-handoff: on' 'handoff-file: on' \
+            'auto-commit: on' 'pointer-sentence: ask'; do
+    if ! printf '%s\n' "$schema" | grep -qE "^  # ${kv}( |\$)"; then
+      echo "the starter schema has no commented-out line showing: $kv"
+      return 1
+    fi
+  done
+  # 3. The init and show instructions, with wrapped lines joined.
+  cmd="$(join_words < "$REPO_ROOT/commands/dev-team-config.md")"
+  for want in \
+    '**Write an explicit value only for a key the user actually chose in this `init` conversation**' \
+    'Leave every other key commented out, even when its default is what the user will get anyway.' \
+    'A commented-out line (as every setting in the starter file is, until someone sets it) is not set, so its key is tagged `(built-in default)` too.'; do
+    if ! printf '%s\n' "$cmd" | grep -qF -- "$want"; then
+      echo "missing from commands/dev-team-config.md: $want"
+      return 1
+    fi
+  done
+}
+
 # ---------------------------------------------------------------------------
 # hooks/guard-dev-team.sh — default (no repo config) behavior
 # ---------------------------------------------------------------------------

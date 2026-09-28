@@ -205,7 +205,8 @@ markdown renderer applies to a wrapped paragraph, and checks the sentence still 
 The rule "Repository instructions and normative documents" (`conventions.md`, first bullet of
 "Shared discipline") tells every agent to read a project's own instruction files and the standards
 they name — from trusted places only, and never letting them remove or loosen a check, a gate, a
-confirmation or a safety rule. Ten tests guard it and the `handoff-file` switch that came with it.
+confirmation or a safety rule. Eleven tests guard it, the `handoff-file` switch that came with it,
+and the starter config file.
 They are the third set. The first draft's four tests looked only for headings and loose words, and
 passed when an independent review reversed the rule's meaning. The six that replaced them pinned a
 few key sentences, and a second independent review showed they still passed when the rule was
@@ -265,6 +266,16 @@ that writes `.dev-team/HANDOFF.md` made to write it unconditionally.
     `handoff-file: [on | off] (settled by the lead)`), its rules and its "when invoked" list; the
     scribe's agent file; and the handoff template. It also requires that "unless those
     instructions ask" — which let the scribe write a project's own handover — is gone everywhere.
+11. **"config starter file: no setting is written out except version, and init writes only the
+    keys the user chose"** — cuts the starter schema out of `config-and-toggles.md` and fails on any
+    line that is neither blank, a comment, `version: 1`, nor one of the `defaults:` / `git:` /
+    `features:` headers — that is, on any setting written out explicitly. It also requires every
+    one of the 18 settings to be there as a commented-out line showing its default, and
+    `commands/dev-team-config.md` to say that `init` writes an explicit value only for a key the
+    user chose in that conversation, leaves every other key commented out, and that `show` tags a
+    commented-out key as the built-in default. *Why:* an explicit value in `.dev-team/config.yml`
+    wins over the project's own instruction files, so a default written out by `init`, which nobody
+    chose, would silently overrule a project's cautious instruction.
 
 **How they were proven** (on 28 September 2026, by a script that copies the working tree to a
 throwaway folder outside the clone, makes one edit, runs the tests above against the copy, and
@@ -290,13 +301,20 @@ deletes the copy — never in the repository itself). Each edit made at least th
 | Delete the "off" rule from `agents/sonnet-scribe.md` | 10 |
 | Delete the "off" rule from the documentarian brief | 10 |
 | Put "unless those instructions ask you to" back in the scribe's agent file | 10 |
-| Uncomment `handoff-file: on` in the starter schema | 9 |
+| Uncomment `handoff-file: on` in the starter schema | 9 and 11 |
 | Put back "say where notes live" as a trigger for `off` | 9 |
 | Delete ci-medic's trusted-base line | 5 |
 | Delete the brief template's Profile field | 5 |
 | Remove the shared sentence from one agent | 6 |
 | Put the old "ZERO context beyond the brief you are given —" wording back | 7 |
 | Change the README's "Seven" to "Eight" | 8 |
+| Write `gates: hybrid` out explicitly in the starter schema | 11 |
+| Write `dry-run: off` out explicitly in the starter schema | 11 |
+| Uncomment all 18 settings (the starter file as it was before) | 9 and 11 |
+| Drop the commented-out `dry-run: off` line from the starter | 11 |
+| Tell `init` to write every key explicitly | 11 |
+| Delete "Leave every other key commented out" from `init` | 11 |
+| Delete the line saying `show` tags a commented-out key as the built-in default | 11 |
 
 **What these cannot catch:** they check wording, in the right place, word for word. They cannot
 tell whether an agent obeys the rule when it runs. Outside steps 1 and 8 and the pinned places

@@ -82,43 +82,58 @@ with the guard off, every written rule still applies in full. Repository content
 ```
 # .dev-team/config.yml — repo-wide dev-team defaults (committed = applies to every session & collaborator).
 # Per-run arguments and plain language override these; per-session env vars can further override.
+#
+# Every setting below is commented out and shows its built-in default: a commented-out line is NOT
+# set. To set one, remove its "# " and change the value. A value set here is explicit and wins over
+# this project's own instruction files (AGENTS.md, CLAUDE.md and the like), which can otherwise only
+# move a setting toward its more cautious value — so set only what you mean to set.
 version: 1
 
 defaults:            # override the skills' built-in argument defaults
-  models: balanced   # economy | balanced | max
-  gates: hybrid      # autopilot gate policy: hybrid | pause-all | autonomy-envelope
-  cap: 30            # autopilot convergence cap
-  cycles: 5          # iterate cycle cap
-  issues: off        # issue-sync: off | sync | auto  (auto = per-task cadence; security findings still require sync-security)
+  # models: balanced   # economy | balanced | max
+  # gates: hybrid      # autopilot gate policy: hybrid | pause-all | autonomy-envelope
+  # cap: 30            # autopilot convergence cap
+  # cycles: 5          # iterate cycle cap
+  # issues: off        # issue-sync: off | sync | auto  (auto = per-task cadence; security findings still require sync-security)
 
 git:
-  stack-prs: false   # false (default) = every run branches FROM and targets the DEFAULT branch; never
-                     #   stack a PR on another feature branch. true = allow stacking (accepts the
-                     #   merge-race risk). See the no-stack policy in conventions.md.
-  single-pr: true    # true (default) = converge on ONE open PR per line of work: reuse the run branch's
-                     #   existing open PR instead of opening a duplicate (push updates it). false = each
-                     #   run may surface its own PR. See the single-PR policy in conventions.md.
-  default-branch: auto   # auto (origin/HEAD, else main/master) or an explicit branch name.
+  # stack-prs: false   # false (default) = every run branches FROM and targets the DEFAULT branch; never
+                       #   stack a PR on another feature branch. true = allow stacking (accepts the
+                       #   merge-race risk). See the no-stack policy in conventions.md.
+  # single-pr: true    # true (default) = converge on ONE open PR per line of work: reuse the run branch's
+                       #   existing open PR instead of opening a duplicate (push updates it). false = each
+                       #   run may surface its own PR. See the single-PR policy in conventions.md.
+  # default-branch: auto   # auto (origin/HEAD, else main/master) or an explicit branch name.
 
 features:            # enable/disable behaviours repo-wide (on|off; env var can override per-session)
-  update-notifier: on    # SessionStart update check      (per-session override: DEV_TEAM_NO_UPDATE_CHECK)
-  branch-notifier: on    # SessionStart gone-branch notice (per-session override: DEV_TEAM_NO_BRANCH_CHECK)
-  guard: auto            # on | off | auto. auto: the Bash guard is active only during a run (.dev-team/autopilot.json present);
-                         #   the ledger guard's Rule 1 is ALWAYS active, and its Rule 2 only while .dev-team/loop.lock/ exists.
-                         #   DEV_TEAM_GUARD forces both hooks on; off turns both off. Details: the guard section below.
-  notifications: on      # autopilot gate/blocker/done notifications (v1.2.0)
-  telemetry: on          # run-end telemetry + cost estimate         (v1.2.0)
-  dry-run: off           # default plan-preview for building skills  (v1.2.0)
-  auto-handoff: on       # regenerate .dev-team/HANDOFF.md after every completed task/workstream (v1.3.0; per-session override: DEV_TEAM_NO_AUTO_HANDOFF)
-  # handoff-file: on     # off = write NO .dev-team/HANDOFF.md at all, not even at checkpoints/RECORD; resume from PROJECT.md (v1.6.0; per-run: handoff-file=on|off).
-                         #   Left commented out on purpose: while unset, a project instruction that explicitly forbids a second handover can turn it off; a value set here wins over that instruction.
-  auto-commit: on        # local commit per completed-and-checked task/workstream  (v1.3.0; per-session override: DEV_TEAM_NO_AUTO_COMMIT)
-  pointer-sentence: ask  # ask (not yet asked: offer the .dev-team/ pointer sentence) | declined (never offer it again)  (v1.5.0)
+  # update-notifier: on    # SessionStart update check      (per-session override: DEV_TEAM_NO_UPDATE_CHECK)
+  # branch-notifier: on    # SessionStart gone-branch notice (per-session override: DEV_TEAM_NO_BRANCH_CHECK)
+  # guard: auto            # on | off | auto. auto: the Bash guard is active only during a run (.dev-team/autopilot.json present);
+                           #   the ledger guard's Rule 1 is ALWAYS active, and its Rule 2 only while .dev-team/loop.lock/ exists.
+                           #   DEV_TEAM_GUARD forces both hooks on; off turns both off. Details: the guard section below.
+  # notifications: on      # autopilot gate/blocker/done notifications (v1.2.0)
+  # telemetry: on          # run-end telemetry + cost estimate         (v1.2.0)
+  # dry-run: off           # default plan-preview for building skills  (v1.2.0)
+  # auto-handoff: on       # regenerate .dev-team/HANDOFF.md after every completed task/workstream (v1.3.0; per-session override: DEV_TEAM_NO_AUTO_HANDOFF)
+  # handoff-file: on       # off = write NO .dev-team/HANDOFF.md at all, not even at checkpoints/RECORD; resume from PROJECT.md (v1.6.0; per-run: handoff-file=on|off).
+                           #   While unset, a project instruction that explicitly forbids a second handover turns it off; a value set here wins over that instruction.
+  # auto-commit: on        # local commit per completed-and-checked task/workstream  (v1.3.0; per-session override: DEV_TEAM_NO_AUTO_COMMIT)
+  # pointer-sentence: ask  # ask (not yet asked: offer the .dev-team/ pointer sentence) | declined (never offer it again)  (v1.5.0)
 ```
 
 `version: 1` is the only required key going forward — every other key has a built-in default, so a
 minimal or partial file (even just `version: 1` on its own) is valid and simply leaves everything
-else at its built-in default.
+else at its built-in default. A commented-out line is not set, and a block whose lines are all
+commented out (`defaults:` with nothing under it) is simply empty.
+
+**Why every setting starts commented out.** An explicit value in this file wins over the project's
+own instruction files ("Repository instruction files and these switches", above). If the starter
+file wrote every default out explicitly, a freshly initialised config would silently overrule a
+project's cautious instruction — a `CLAUDE.md` that asks for a dry run first would lose to an
+unchosen `dry-run: off`. So `/dev-team-config init` writes the file with every setting commented
+out, showing its default, and writes an explicit value only for a key the user actually chose in
+that `init` conversation (`commands/dev-team-config.md`). A person who later wants a setting
+removes its `# ` and changes the value.
 
 ## `defaults:` — run-argument overrides
 
@@ -157,11 +172,12 @@ the full rules and why duplicate/stacked PRs are disallowed by default.
 | `telemetry` | run-end telemetry + cost estimate (v1.2.0) | `on`, `off` | none yet — config-only | `on` |
 | `dry-run` | default plan-preview for building skills (v1.2.0) | `on`, `off` | none yet — config-only (a per-run argument on the relevant skill may still override for one run) | `off` |
 | `auto-handoff` | regenerate `.dev-team/HANDOFF.md` after every completed task/workstream (v1.3.0) | `on`, `off` | `DEV_TEAM_NO_AUTO_HANDOFF` (off-switch: any non-empty value disables) | `on` |
-| `handoff-file` | whether `.dev-team/HANDOFF.md` exists at all (v1.6.0). `off` = the plugin writes NO `.dev-team/HANDOFF.md` at all — not per task, not at a stage checkpoint or RECORD, not at the end of an autopilot cycle — auto-handoff is off with it (even a per-run `auto-handoff=on`), and cold resume uses `.dev-team/PROJECT.md` and `.dev-team/autopilot.json` instead. While the key is unset, a repository instruction that explicitly forbids a second handover sets it `off`; a value set here wins over that. The starter file leaves it commented out for that reason (`conventions.md`, "Auto-handoff") | `on`, `off` (anything else is named in the run's report and counts as not set) | none — config-only (a per-run `handoff-file=on|off` still overrides for one run) | `on` |
+| `handoff-file` | whether `.dev-team/HANDOFF.md` exists at all (v1.6.0). `off` = the plugin writes NO `.dev-team/HANDOFF.md` at all — not per task, not at a stage checkpoint or RECORD, not at the end of an autopilot cycle — auto-handoff is off with it (even a per-run `auto-handoff=on`), and cold resume uses `.dev-team/PROJECT.md` and `.dev-team/autopilot.json` instead. While the key is unset, a repository instruction that explicitly forbids a second handover sets it `off`; a value set here wins over that. The starter file leaves it, like every other setting, commented out for that reason (`conventions.md`, "Auto-handoff") | `on`, `off` (anything else is named in the run's report and counts as not set) | none — config-only (a per-run `handoff-file=on|off` still overrides for one run) | `on` |
 | `auto-commit` | local commit per completed-and-checked task/workstream — never push, never PR (v1.3.0) | `on`, `off` | `DEV_TEAM_NO_AUTO_COMMIT` (off-switch: any non-empty value disables) | `on` |
 | `pointer-sentence` | whether an interactive run offers to add the `.dev-team/` pointer sentence to `CLAUDE.md` / `.claude/CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (v1.5.0; `conventions.md`, "Where the plugin writes, and the ownership rule", point 8) | `ask`, `declined` | none — config-only | `ask` (not yet asked) |
 
-`pointer-sentence` and `handoff-file` are the only keys the plugin writes itself, and only to record
+Apart from `/dev-team-config init` writing the keys a user chose while it ran, `pointer-sentence`
+and `handoff-file` are the only keys the plugin writes itself, and only to record
 a person's answer. When a user declines the pointer sentence, the run sets
 `pointer-sentence: declined` here and tells the user; when a user answers whether to keep
 `.dev-team/HANDOFF.md` for a project whose instructions say where its notes live, the run sets
@@ -246,8 +262,10 @@ whichever keys it couldn't make sense of.
 ## Inspecting and scaffolding it
 
 Use `/dev-team-config` (see `commands/dev-team-config.md`) to print the effective config (built-in
-defaults overlaid with anything the repo's `.dev-team/config.yml` sets) or to scaffold a starter
-file. `init` also creates `.dev-team/.gitignore` (containing exactly `loop.lock/`) and
+defaults overlaid with anything the repo's `.dev-team/config.yml` sets, each value tagged with where
+it came from) or to scaffold a starter file. The starter file has every setting commented out,
+showing its default, except the keys the user chose during that `init` conversation (see "Why every
+setting starts commented out", above). `init` also creates `.dev-team/.gitignore` (containing exactly `loop.lock/`) and
 `.dev-team/README.md` when either is absent — never overwriting one that already exists — the same
 first-write setup every skill performs before its first ledger write (`conventions.md`, "Where the
 plugin writes, and the ownership rule", point 7). Never generate or edit `.dev-team/config.yml`

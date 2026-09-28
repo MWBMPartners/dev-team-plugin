@@ -35,7 +35,7 @@ bash scripts/audit-model-ids.sh        # no dated model names outside the model 
 bash scripts/audit-ledger-paths.sh     # no document points at the old top-level record files
 bash tests/smoke-structure.sh          # the plugin's folder layout is sound
 shellcheck scripts/*.sh hooks/*.sh tests/*.sh
-bats tests/scripts.bats                # needs bats 1.5.0 or newer; 144 tests on #41's branch, 154 on #47's
+bats tests/scripts.bats                # needs bats 1.5.0 or newer; 144 tests on #41's branch, 155 on #47's
 ```
 
 The automatic checks on GitHub (`plugin-audit`) run only on pull requests and on pushes to `main`,
