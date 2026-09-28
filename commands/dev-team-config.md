@@ -21,6 +21,14 @@ collaborator), not a per-session setting.
    `DEV_TEAM_NO_AUTO_HANDOFF`, `DEV_TEAM_NO_AUTO_COMMIT`), note that
    too, so the user can see the full precedence chain in effect right now, not just the file.
 4. If no `.dev-team/config.yml` exists, say so plainly and point to `/dev-team-config init`.
+5. End with this line, word for word, every time: "This view does not read the repository's own
+   instruction files (`AGENTS.md`, `CLAUDE.md` and the like). A run can still move a switch that is
+   not set in `.dev-team/config.yml` toward its more cautious value because of one — for example
+   `handoff-file: off` for a project whose instructions explicitly forbid a second handover — and
+   the run's report says so." *Why:* an instruction file can change what a run does (`config-and-toggles.md`,
+   "Repository instruction files and these switches"), and reading and weighing those files is a
+   judgement this read-only view does not make — so it says plainly that it cannot show them,
+   rather than showing a value a run would not use.
 
 This is **read-only** — never create, edit, or touch the file for `show`.
 
@@ -31,7 +39,9 @@ This is **read-only** — never create, edit, or touch the file for `show`.
 2. Otherwise, create `.dev-team/` (if needed) and write `.dev-team/config.yml` with the commented
    starter schema from `config-and-toggles.md` verbatim (the same `version: 1` / `defaults:` /
    `git:` / `features:` block, with its inline comments) so the file is self-documenting on first
-   read.
+   read. The starter schema leaves `handoff-file` commented out on purpose: an explicit value in
+   this file wins over the project's instruction files, so writing `handoff-file: on` here would
+   silently overrule a project that forbids a second handover.
    In the same step, if `.dev-team/.gitignore` is absent, create it containing exactly one line,
    `loop.lock/`; and if `.dev-team/README.md` is absent, create it with the fixed text in
    `dev-team-orchestrator/references/conventions.md` ("Where the plugin writes, and the ownership
@@ -40,11 +50,19 @@ This is **read-only** — never create, edit, or touch the file for `show`.
    never be committed, and the README tells a person browsing the repo what the folder is. Tell the
    user which of the two were created and which were already there. Never edit the project's own
    `.gitignore`.
-   Then offer the pointer sentence (`conventions.md`, "Where the plugin writes, and the ownership
-   rule", point 8): when one of `CLAUDE.md`, `.claude/CLAUDE.md`, `AGENTS.md` and `GEMINI.md`
-   exists and does not already contain it, the config does not already say
-   `pointer-sentence: declined`, and `handoff-file` is not `off` (the sentence names
-   `.dev-team/HANDOFF.md`, which is then never written), offer once — never add it silently — to add "Dev-team plugin state
+   Then work out `handoff-file` as `conventions.md`'s "Auto-handoff" says, reading the
+   repository's instruction files from the trusted base (`conventions.md`, "Repository instructions
+   and normative documents", step 1): one that explicitly forbids a second handover makes it `off`;
+   if one only says where the project's notes live, ask the user once whether the plugin should
+   still keep `.dev-team/HANDOFF.md`, and write the answer as `handoff-file: on` or
+   `handoff-file: off` under `features:` in the file just written. If the value is `off` and a
+   `.dev-team/HANDOFF.md` or the pointer sentence is already there, offer to remove them as that
+   section says ("Old traces when it is `off`") — never without a yes. Then offer the pointer sentence
+   (`conventions.md`, "Where the plugin writes, and the ownership rule", point 8): when one of
+   `CLAUDE.md`, `.claude/CLAUDE.md`, `AGENTS.md` and `GEMINI.md` exists and does not already contain
+   it, the config does not already say `pointer-sentence: declined`, and the `handoff-file` value
+   just worked out is not `off` (the sentence names `.dev-team/HANDOFF.md`, which is then never
+   written, and it is never offered to an instruction file that forbids a second handover), offer once — never add it silently — to add "Dev-team plugin state
    and the current handover live in `.dev-team/` — read `.dev-team/HANDOFF.md` first." word for word
    to each of those files that lacks it. If the user declines, set `pointer-sentence: declined`
    under `features:` in the `.dev-team/config.yml` just written, and tell them. *Why here:* `init`
@@ -55,4 +73,7 @@ This is **read-only** — never create, edit, or touch the file for `show`.
    just this one. Suggest `git add .dev-team/config.yml` and reviewing the values before
    committing; do not commit it yourself.
 4. Remind them every key is optional beyond `version: 1` — they can delete any block they don't
-   want to override and that key falls back to its built-in default.
+   want to override and that key falls back to its built-in default. Tell them too that a value set
+   in this file wins over the project's own instruction files, which can otherwise move a switch
+   only toward its more cautious value — so deleting a line lets such an instruction apply again
+   (`config-and-toggles.md`, "Repository instruction files and these switches").

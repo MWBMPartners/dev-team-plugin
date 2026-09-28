@@ -110,7 +110,8 @@ features:            # enable/disable behaviours repo-wide (on|off; env var can 
   telemetry: on          # run-end telemetry + cost estimate         (v1.2.0)
   dry-run: off           # default plan-preview for building skills  (v1.2.0)
   auto-handoff: on       # regenerate .dev-team/HANDOFF.md after every completed task/workstream (v1.3.0; per-session override: DEV_TEAM_NO_AUTO_HANDOFF)
-  handoff-file: on       # off = write NO .dev-team/HANDOFF.md at all, not even at checkpoints/RECORD; resume from PROJECT.md (v1.6.0; per-run: handoff-file=on|off)
+  # handoff-file: on     # off = write NO .dev-team/HANDOFF.md at all, not even at checkpoints/RECORD; resume from PROJECT.md (v1.6.0; per-run: handoff-file=on|off).
+                         #   Left commented out on purpose: while unset, a project instruction that explicitly forbids a second handover can turn it off; a value set here wins over that instruction.
   auto-commit: on        # local commit per completed-and-checked task/workstream  (v1.3.0; per-session override: DEV_TEAM_NO_AUTO_COMMIT)
   pointer-sentence: ask  # ask (not yet asked: offer the .dev-team/ pointer sentence) | declined (never offer it again)  (v1.5.0)
 ```
@@ -156,12 +157,15 @@ the full rules and why duplicate/stacked PRs are disallowed by default.
 | `telemetry` | run-end telemetry + cost estimate (v1.2.0) | `on`, `off` | none yet — config-only | `on` |
 | `dry-run` | default plan-preview for building skills (v1.2.0) | `on`, `off` | none yet — config-only (a per-run argument on the relevant skill may still override for one run) | `off` |
 | `auto-handoff` | regenerate `.dev-team/HANDOFF.md` after every completed task/workstream (v1.3.0) | `on`, `off` | `DEV_TEAM_NO_AUTO_HANDOFF` (off-switch: any non-empty value disables) | `on` |
-| `handoff-file` | whether `.dev-team/HANDOFF.md` exists at all (v1.6.0). `off` = the plugin writes NO `.dev-team/HANDOFF.md` at all — not per task, not at a stage checkpoint or RECORD, not at the end of an autopilot cycle — auto-handoff is off with it, and cold resume uses `.dev-team/PROJECT.md` and `.dev-team/autopilot.json` instead (`conventions.md`, "Auto-handoff") | `on`, `off` | none — config-only (a per-run `handoff-file=on|off` still overrides for one run) | `on` |
+| `handoff-file` | whether `.dev-team/HANDOFF.md` exists at all (v1.6.0). `off` = the plugin writes NO `.dev-team/HANDOFF.md` at all — not per task, not at a stage checkpoint or RECORD, not at the end of an autopilot cycle — auto-handoff is off with it (even a per-run `auto-handoff=on`), and cold resume uses `.dev-team/PROJECT.md` and `.dev-team/autopilot.json` instead. While the key is unset, a repository instruction that explicitly forbids a second handover sets it `off`; a value set here wins over that. The starter file leaves it commented out for that reason (`conventions.md`, "Auto-handoff") | `on`, `off` (anything else is named in the run's report and counts as not set) | none — config-only (a per-run `handoff-file=on|off` still overrides for one run) | `on` |
 | `auto-commit` | local commit per completed-and-checked task/workstream — never push, never PR (v1.3.0) | `on`, `off` | `DEV_TEAM_NO_AUTO_COMMIT` (off-switch: any non-empty value disables) | `on` |
 | `pointer-sentence` | whether an interactive run offers to add the `.dev-team/` pointer sentence to `CLAUDE.md` / `.claude/CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (v1.5.0; `conventions.md`, "Where the plugin writes, and the ownership rule", point 8) | `ask`, `declined` | none — config-only | `ask` (not yet asked) |
 
-`pointer-sentence` is the one key the plugin writes itself. When a user declines the pointer
-sentence, the run sets `pointer-sentence: declined` here and tells the user; if
+`pointer-sentence` and `handoff-file` are the only keys the plugin writes itself, and only to record
+a person's answer. When a user declines the pointer sentence, the run sets
+`pointer-sentence: declined` here and tells the user; when a user answers whether to keep
+`.dev-team/HANDOFF.md` for a project whose instructions say where its notes live, the run sets
+`handoff-file: on` or `off` here and tells the user (`conventions.md`, "Auto-handoff"). If
 `.dev-team/config.yml` does not exist yet, it creates a minimal file holding `version: 1` and
 that key, and says so. *Why here:* this is the file that already holds repo-wide choices a person
 made, and it is committed, so one decline holds for every collaborator and can be undone by

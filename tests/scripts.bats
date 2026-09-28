@@ -872,32 +872,104 @@ PINNED
   [ "$stated" = "$bullets" ]
 }
 
-@test "handoff-file: 'off' still means NO .dev-team/HANDOFF.md at all, in conventions.md and config-and-toggles.md" {
+@test "handoff-file: 'off' still means NO .dev-team/HANDOFF.md at all, and only an explicit ban turns it off" {
   # What this guards: a project may keep exactly one handover document of its own and forbid a
   # second. Switching auto-handoff off was not enough for that — it only stops the refresh after
   # each task, and the plugin still rewrote .dev-team/HANDOFF.md at every checkpoint and at the end
   # of every autopilot cycle. The handoff-file switch exists to close that gap, so its whole meaning
-  # is "off = no file, ever". If a later edit narrowed that back to "no file per task", or dropped
-  # the line saying a project's own "no second handover" instruction turns it off, a project that
-  # forbids a second handover would quietly get one again. Wrapped lines are joined with a single
-  # space first, as a markdown reader sees them, so the check does not depend on where a line breaks.
+  # is "off = no file, ever". The second review narrowed what turns it off: only an instruction that
+  # EXPLICITLY forbids a second handover; one that merely says where notes live is asked about (or,
+  # unattended, left at the default). And an explicit value in .dev-team/config.yml wins over an
+  # instruction file, so the starter file must leave the key commented out — otherwise
+  # "/dev-team-config init" would write an explicit "on" that silently overrules such a project.
+  # Wrapped lines are joined first, as a markdown reader sees them.
   conv="$REPO_ROOT/skills/dev-team-orchestrator/references/conventions.md"
-  auto_section="$(awk '/^## Auto-handoff/ { on = 1 } on && /^## / && !/^## Auto-handoff/ { exit } on { print }' "$conv" | tr '\n' ' ')"
+  auto_section="$(awk '/^## Auto-handoff/ { on = 1 } on && /^## / && !/^## Auto-handoff/ { exit } on { print }' "$conv" | join_words)"
   [ -n "$auto_section" ]
   for want in \
-    'When `handoff-file` is `off`, the plugin writes NO `.dev-team/HANDOFF.md` at all — not after a task, not at a stage checkpoint or RECORD, not at the end of an autopilot cycle' \
+    'When `handoff-file` is `off`, the plugin writes NO `.dev-team/HANDOFF.md` at all — not after a task, not at a stage checkpoint or RECORD, not at the end of an autopilot cycle — and auto-handoff is off with it: `off` wins over `auto-handoff`, even over a per-run `auto-handoff=on`.' \
     'Cold resume then uses `.dev-team/PROJECT.md` (the source of truth)' \
-    "When a repository's own instructions forbid a second handover or say where notes live, that maps to \`handoff-file: off\` for that repository"; do
+    'or a repository instruction that **explicitly forbids** a second handover or resume file, which maps to `handoff-file: off` for that repository' \
+    "An instruction that only says where the project's notes live does not turn it off." \
+    'In an unattended run, keep the default and say so in the report.' \
+    "an explicit \`features.handoff-file\` in \`.dev-team/config.yml\` (the user's own setting, so it wins over an instruction file)" \
+    "an unrecognised one (such as \`Off\` or \`of\`) is named in the run's report and also counts as not set" \
+    "no run moves a legacy top-level \`HANDOFF.md\` into \`.dev-team/\` — \`/dev-team-move-ledgers\` included"; do
     if ! printf '%s\n' "$auto_section" | grep -qF -- "$want"; then
       echo "missing from conventions.md, \"Auto-handoff\": $want"
       return 1
     fi
   done
+  # The old, wider trigger — an instruction that merely "says where notes live" turning the file
+  # off — must not come back anywhere a reader would take it as the rule.
+  run grep -rnE 'sa(y|ys|ying) where notes live' \
+    "$REPO_ROOT/agents" "$REPO_ROOT/commands" "$REPO_ROOT/skills" "$REPO_ROOT/README.md"
+  [ -z "$output" ]
   toggles="$REPO_ROOT/skills/dev-team-orchestrator/references/config-and-toggles.md"
   run grep -F '`off` = the plugin writes NO `.dev-team/HANDOFF.md` at all — not per task, not at a stage checkpoint or RECORD, not at the end of an autopilot cycle' "$toggles"
   [ "$status" -eq 0 ]
-  run grep -E '^  handoff-file: on +# off = write NO \.dev-team/HANDOFF\.md at all' "$toggles"
+  # The starter schema: the key is there, commented out, and no uncommented handoff-file line exists.
+  run grep -E '^  # handoff-file: on +# off = write NO \.dev-team/HANDOFF\.md at all' "$toggles"
   [ "$status" -eq 0 ]
+  run grep -E '^[[:space:]]*handoff-file:' "$toggles"
+  [ "$status" -eq 1 ]
+}
+
+@test "handoff-file: every place that writes .dev-team/HANDOFF.md carries the 'off' condition, and the scribe gets the settled value" {
+  # What this guards: the switch is only as good as the places that actually write the file. The
+  # second review found that making the autopilot RECORD step, or the orchestrator's stage
+  # checkpoint, regenerate the card unconditionally left every test passing — as did deleting the
+  # "off" rule from the scribe's own agent file or from the documentarian's brief. So each writer
+  # place is checked here, on the very line (or paragraph) that tells someone to write the file:
+  #   1-2. the orchestrator, after each accepted task and at the stage checkpoint (SKILL.md);
+  #   3-4. autopilot, after each task and at RECORD (loop-runtime.md);
+  #   5.   the documentarian protocol: its brief carries the value the lead settled, its rules say
+  #        to obey it, and its "when invoked" list says off means none at all;
+  #   6.   the scribe's own agent file;
+  #   7.   the handoff template.
+  # The value is settled once by the lead and handed to the scribe (review finding 4), because a
+  # scribe re-deriving it from config and instruction files on its own could reach a different
+  # answer from the lead's.
+  orch="$REPO_ROOT/skills/dev-team-orchestrator/SKILL.md"
+  loop="$REPO_ROOT/skills/dev-team-autopilot/references/loop-runtime.md"
+  doc="$REPO_ROOT/skills/dev-team-orchestrator/references/documentarian-protocol.md"
+  scribe="$REPO_ROOT/agents/sonnet-scribe.md"
+  tmpl="$REPO_ROOT/skills/dev-team-orchestrator/references/handoff-template.md"
+  check() { # $1 = where, $2 = the text of that place, $3 = the words it must contain
+    if ! printf '%s\n' "$2" | grep -qF -- "$3"; then
+      echo "$1 lacks: $3"
+      return 1
+    fi
+  }
+  per_task="$(line_starting "$orch" 'As each task/workstream is accepted (integrated + checked)')"
+  [ -n "$per_task" ]
+  check "orchestrator, after each task" "$per_task" 'no `.dev-team/HANDOFF.md` is written at all — not here and not at the stage checkpoint, even with a per-run `auto-handoff=on`'
+  checkpoint="$(line_starting "$orch" '- **On track** →')"
+  [ -n "$checkpoint" ]
+  check "orchestrator, stage checkpoint" "$checkpoint" '(and regenerates `.dev-team/HANDOFF.md`, unless `handoff-file` is `off`, when it writes none)'
+  ap_task="$(line_starting "$loop" '- **Auto-handoff** (repo config `features.auto-handoff`')"
+  [ -n "$ap_task" ]
+  check "autopilot, after each task" "$ap_task" 'NO `.dev-team/HANDOFF.md` is written at all, neither per task nor at RECORD'
+  check "autopilot, after each task" "$ap_task" 'every scribe brief carries it as `handoff-file: on|off (settled by the lead)`'
+  record="$(line_starting "$loop" 'Have the `sonnet-scribe` documentarian update `.dev-team/PROJECT.md`')"
+  [ -n "$record" ]
+  check "autopilot, RECORD" "$record" '**and (unless `features.handoff-file` is `off`) have the `sonnet-scribe` regenerate'
+  check "autopilot, RECORD" "$record" 'with `handoff-file` off, write no `.dev-team/HANDOFF.md` here either'
+  check "documentarian brief" "$(cat "$doc")" 'handoff-file: [on | off] (settled by the lead)'
+  rule_line="$(line_starting "$doc" '- Obey the `handoff-file` value under "Settled for this run"')"
+  check "documentarian brief, its rules" "$rule_line" 'When it is `off`, write NO `.dev-team/HANDOFF.md` at all, at any point. If that value is missing from this brief, write none and say so in your report.'
+  when="$(line_starting "$doc" '- **After every completed task/workstream (auto-handoff, default on) and at each checkpoint/RECORD:**')"
+  check "documentarian protocol, when invoked" "$when" '`sonnet-scribe` writes NO `.dev-team/HANDOFF.md` at all: not per task, not at a checkpoint, not at RECORD, even with `auto-handoff` on'
+  check "scribe agent file" "$(cat "$scribe")" 'Your brief states `handoff-file: on|off (settled by the lead)`; obey that value and never work it out again yourself. When it is `off`, you write no `.dev-team/HANDOFF.md` at all, at any point; if your brief does not state it, write none and say so in your report.'
+  check "handoff template" "$(join_words < "$tmpl")" 'this card is **never written at all** — not per task, not at a checkpoint or RECORD'
+  check "handoff template" "$(join_words < "$tmpl")" 'Rules (all of them apply only while `handoff-file` is `on`)'
+  # Review finding 7: the scribe may never write the project's OWN handover, whatever that
+  # project's instructions say — that is project work for a builder. The old "unless those
+  # instructions ask you to" clause must be gone everywhere.
+  run grep -rnF 'unless those instructions ask' \
+    "$REPO_ROOT/agents" "$REPO_ROOT/commands" "$REPO_ROOT/skills" "$REPO_ROOT/README.md"
+  [ -z "$output" ]
+  check "scribe agent file" "$(cat "$scribe")" 'You never write into the project'"'"'s own handover or notes file — updating that is project work for a builder with a brief.'
 }
 
 # ---------------------------------------------------------------------------

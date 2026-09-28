@@ -120,9 +120,10 @@ Optional run arguments (defaults in brackets):
   read it cold from; committed with the work, never auto-pushed). Per-session off-switch env
   `DEV_TEAM_NO_AUTO_HANDOFF`; repo config `features.auto-handoff`. [on]
 - `handoff-file=on|off` — `off` means NO `.dev-team/HANDOFF.md` is written at all: not per task, not at
-  RECORD, not at the end of a cycle (auto-handoff is off with it); resume uses `.dev-team/PROJECT.md`
-  and `autopilot.json`. Repo config `features.handoff-file`; repository instructions that forbid a
-  second handover set it `off`. No per-session env switch. [on]
+  RECORD, not at the end of a cycle (auto-handoff is off with it, even `auto-handoff=on`); resume uses
+  `.dev-team/PROJECT.md` and `autopilot.json`. Repo config `features.handoff-file`; while that is
+  unset, a repository instruction that explicitly forbids a second handover sets it `off`. Settled
+  once at bootstrap and passed to the scribe in its brief. No per-session env switch. [on]
 - `auto-commit=on|off` — commit each completed-and-checked task/workstream as its own LOCAL commit on
   the run branch (never push, never PR) — additional fine-grained rollback points between the per-cycle
   checkpoint commits, only for integrated+checked units. Per-session off-switch env

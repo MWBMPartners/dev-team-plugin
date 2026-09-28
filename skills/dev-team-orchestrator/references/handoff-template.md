@@ -13,8 +13,9 @@ describes** (it rides in the per-task auto-commit, or the checkpoint commit when
 it travels with the repo for the next session or teammate; these behaviors never auto-push it. Because it
 is regenerated from those sources after **every completed task/workstream** when `auto-handoff` is on
 (default; `config-and-toggles.md`) and at every checkpoint / RECORD (never hand-maintained), it cannot go
-stale on its own. When `features.handoff-file` is `off` (or the repository's own instructions forbid a
-second handover or say where notes live), this card is **never written at all** — not per task, not at a
+stale on its own. When `handoff-file` is `off` — the value the lead settled for the run and passed in
+the scribe's brief; a repository instruction that explicitly forbids a second handover sets it, unless
+`.dev-team/config.yml` sets a value — this card is **never written at all** — not per task, not at a
 checkpoint or RECORD — and a resuming agent reads `.dev-team/PROJECT.md` (and, under autopilot,
 `.dev-team/autopilot.json`) instead (`conventions.md`, "Auto-handoff").
 

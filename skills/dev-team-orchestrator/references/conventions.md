@@ -91,7 +91,7 @@ The nine points below say what that means, why it is this way, what was rejected
    - **There is no third branch.** No "it looks like ours, carry on", and no "it is probably the project's, so write next to it under another name". Either guess can damage a file the plugin does not own, and nobody would notice until much later.
    - **Unattended autopilot cycle** (nobody there to answer): write nothing, set `state: "BLOCKED"` with `blocked.reason` `ledger-ownership`, and make the report name the file, show its first three lines, and point the user at `/dev-team-move-ledgers`. The loop stops rather than guessing.
    - **Dry-run:** the check still runs, but nothing is stamped, moved, created or committed (dry-run makes no file or git changes); the report says which question would be asked.
-   - **Files this rule does not cover, and why.** `.dev-team/autopilot.json` keeps its own `"schema"` field and only the autopilot conductor writes it (point 3). `.dev-team/config.yml` is written only by `/dev-team-config init` or when a declined pointer sentence is recorded (point 8). `.dev-team/loop.lock/` is a folder that exists only while a cycle runs (`dev-team-autopilot/references/loop-runtime.md`). `.dev-team/.gitignore` holds exactly one line and is created once (point 7). None of these can carry a line-2 marker. JSON has no comment syntax, and a second line would break the one-line `.gitignore`, so applying the marker cases to them would corrupt them or stop the run for no reason. GitHub/GitLab issues are not files at all. *Earlier wording:* this rule used to say "any file in the Shared artifacts table", which read literally included all of these.
+   - **Files this rule does not cover, and why.** `.dev-team/autopilot.json` keeps its own `"schema"` field and only the autopilot conductor writes it (point 3). `.dev-team/config.yml` is written only by `/dev-team-config init`, or to record a person's answer: a declined pointer sentence (point 8), or whether to keep `.dev-team/HANDOFF.md` ("Auto-handoff"). `.dev-team/loop.lock/` is a folder that exists only while a cycle runs (`dev-team-autopilot/references/loop-runtime.md`). `.dev-team/.gitignore` holds exactly one line and is created once (point 7). None of these can carry a line-2 marker. JSON has no comment syntax, and a second line would break the one-line `.gitignore`, so applying the marker cases to them would corrupt them or stop the run for no reason. GitHub/GitLab issues are not files at all. *Earlier wording:* this rule used to say "any file in the Shared artifacts table", which read literally included all of these.
    - For `.dev-team/README.md`, a marked file that already exists is left as it is (point 7) — the "file present, marker present" case above never rewrites it.
 
 5. **Files from before v1.5.0 — the lookup order.** A reader looks for `.dev-team/<name>` first. Only if that is absent does it look in the legacy root location, at the top-level `<name>`.
@@ -114,7 +114,7 @@ The nine points below say what that means, why it is this way, what was rejected
    - If `.dev-team/README.md` is absent, create it with the fixed text below. It is itself a file the plugin writes, so it carries the marker and the ownership rule applies to it.
    - Neither file is ever overwritten once it exists.
    - Run `git check-ignore -q .dev-team/<file>`. If the file is ignored, put this warning in the run report: "`.dev-team/<file>` is ignored by this repo's `.gitignore`, so it will not be committed and will not travel with the repo." *Why:* otherwise the promise that ledgers are committed with the work fails silently.
-   - Never edit the project's own `.gitignore`. It is a repo-wide file that belongs to the project — the same posture as `.dev-team/config.yml`, which the plugin only scaffolds when asked, or to remember a declined pointer sentence (point 8).
+   - Never edit the project's own `.gitignore`. It is a repo-wide file that belongs to the project — the same posture as `.dev-team/config.yml`, which the plugin only scaffolds when asked, or writes to record a person's answer (a declined pointer sentence, point 8, or whether to keep `.dev-team/HANDOFF.md`, "Auto-handoff").
    - Under dry-run, none of these steps happen.
 
    The fixed `.dev-team/README.md` text:
@@ -132,7 +132,7 @@ The nine points below say what that means, why it is this way, what was rejected
    and nothing else.
    ```
 
-8. **Finding the folder without a top-level file.** In an interactive run that writes into `.dev-team/` — autopilot's bootstrap and `/dev-team-config init` both count — offer this sentence, word for word, once per run, when all four of these hold: one or more of `CLAUDE.md`, `.claude/CLAUDE.md`, `AGENTS.md` and `GEMINI.md` exists; at least one of those that exists does not already contain the sentence; `.dev-team/config.yml` does not record an earlier decline (`pointer-sentence: declined` under `features:`); and `handoff-file` is not `off` (the sentence names `.dev-team/HANDOFF.md`, which is then never written — see "Auto-handoff" below). The offer names each of those files that lacks the sentence:
+8. **Finding the folder without a top-level file.** In an interactive run that writes into `.dev-team/` — autopilot's bootstrap and `/dev-team-config init` both count — offer this sentence, word for word, once per run, when all four of these hold: one or more of `CLAUDE.md`, `.claude/CLAUDE.md`, `AGENTS.md` and `GEMINI.md` exists; at least one of those that exists does not already contain the sentence; `.dev-team/config.yml` does not record an earlier decline (`pointer-sentence: declined` under `features:`); and `handoff-file` is not `off` (the sentence names `.dev-team/HANDOFF.md`, which is then never written). Here `handoff-file` means the value worked out as "Auto-handoff" below says — which includes a repository instruction that explicitly forbids a second handover, so the sentence is never offered to an instruction file that forbids one. The offer names each of those files that lacks the sentence:
 
    > Dev-team plugin state and the current handover live in `.dev-team/` — read `.dev-team/HANDOFF.md` first.
 
@@ -250,17 +250,41 @@ regenerate still behaves as before. Purely additive and outward-effect-free: it 
 **The handoff file itself — `features.handoff-file`** (`on`, the default, or `off`; per-run
 `handoff-file=on|off`). When `handoff-file` is `off`, the plugin writes NO `.dev-team/HANDOFF.md` at
 all — not after a task, not at a stage checkpoint or RECORD, not at the end of an autopilot cycle —
-and auto-handoff is off with it. Cold resume then uses `.dev-team/PROJECT.md` (the source of truth)
-and, under autopilot, `.dev-team/autopilot.json` instead; the pointer sentence (point 8 above) is not
-offered, because it names the file. A `.dev-team/HANDOFF.md` already on disk is left as it is — never
-deleted without asking — and the run's report says it is no longer kept up to date. **When a
-repository's own instructions forbid a second handover or say where notes live, that maps to
-`handoff-file: off` for that repository** ("Repository instructions and normative documents", step 8,
-under "Shared discipline" below), and `sonnet-scribe` never writes into the project's own handover
-file unless those instructions ask it to. Precedence: per-run argument > plain language > repo config
-`features.handoff-file` (or a repository instruction, at the same level) > built-in default `on`.
-There is no per-session environment switch. Fail-open: a missing, unreadable or unrecognised value
-counts as `on`.
+and auto-handoff is off with it: `off` wins over `auto-handoff`, even over a per-run `auto-handoff=on`.
+Cold resume then uses `.dev-team/PROJECT.md` (the source of truth) and, under autopilot,
+`.dev-team/autopilot.json` instead. The pointer sentence (point 8 above) is not offered, because it
+names the file, and no run moves a legacy top-level `HANDOFF.md` into `.dev-team/` —
+`/dev-team-move-ledgers` included — because that would create the very file `off` rules out; the
+run reports it instead.
+
+- **What sets it `off`.** `.dev-team/config.yml`, a per-run argument, the user's own words — or a
+  repository instruction that **explicitly forbids** a second handover or resume file, which maps to
+  `handoff-file: off` for that repository ("Repository instructions and normative documents", step 8,
+  under "Shared discipline" below). An instruction that only says where the project's notes live does
+  not turn it off. Instead, unless `.dev-team/config.yml` already sets a value: in an attended run,
+  ask the user once whether the plugin should still keep `.dev-team/HANDOFF.md`, and record the
+  answer as `handoff-file: on` or `handoff-file: off` under `features:` in `.dev-team/config.yml` —
+  creating a minimal file holding `version: 1` and that key if none exists, and saying so — the same
+  way a declined pointer sentence is recorded (point 8). In an unattended run, keep the default and
+  say so in the report.
+- **Precedence.** Per-run argument > plain language > an explicit `features.handoff-file` in
+  `.dev-team/config.yml` (the user's own setting, so it wins over an instruction file) > a repository
+  instruction that explicitly forbids a second handover (which can only ever set `off`) > built-in
+  default `on`. There is no per-session environment switch. Fail-open: a missing or unreadable value
+  counts as not set; an unrecognised one (such as `Off` or `of`) is named in the run's report and
+  also counts as not set.
+- **The lead settles it once per run.** The lead works the value out once, at the start of the run,
+  records it in `.dev-team/PROJECT.md`'s House style, and passes it in every `sonnet-scribe` brief as
+  `handoff-file: on|off (settled by the lead)`. The scribe obeys the value in its brief and never
+  works it out again itself; a scribe brief without it writes no `.dev-team/HANDOFF.md` and says so.
+- **The project's own handover is never the scribe's to write.** `sonnet-scribe` never writes into
+  the project's own handover or notes file, whatever the value. Updating it is ordinary project work,
+  done by a builder with a brief.
+- **Old traces when it is `off`.** A `.dev-team/HANDOFF.md` still on disk, or a pointer sentence the
+  plugin once added to an instruction file, is no longer kept up to date. In an attended run, offer
+  to remove the pointer sentence and to delete the card (or mark it "no longer maintained" — the only
+  change the plugin makes to that file while `off`, and only after a yes). In an unattended run,
+  change nothing and name both in the report.
 
 ## Auto-commit
 

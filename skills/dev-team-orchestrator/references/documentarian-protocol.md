@@ -32,6 +32,7 @@ The documentarian maintains this file at `.dev-team/PROJECT.md`. Every record fi
 ## House style (existing-repo conventions)
 - [test framework + run command, lint/format config, directory layout, dependency manifest, key existing patterns — from the conventions scout; omit for greenfield]
 - [the **trusted base** commit instructions are read from (`conventions.md`, "Repository instructions and normative documents", step 1); the repository's own instruction files found (`AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md`, `GEMINI.md`, `.OpenAI/`/`.openai/`, `.github/copilot-instructions.md`, `CONTRIBUTING.md`), the path + specific rule IDs of any normative document one of them names for the work in hand, and the **profile** the lead decided applies to this repository — read from the repository, never copied here; omit the files if none exist]
+- [`handoff-file: on|off` — the value the lead settled for this run, and where it came from (`conventions.md`, "Auto-handoff")]
 
 ## Stage plan
 1. **[Stage name]** — goal: [...]; done when: [...]  — status: [planned/in-progress/done]
@@ -94,10 +95,14 @@ decisions or write code. Keep entries concise and factual.
 ## Content to record
 [paste the exact facts: the decision + reason, or the checkpoint result, etc.]
 
+## Settled for this run
+handoff-file: [on | off] (settled by the lead)
+
 ## Constraints
 - Edit only `.dev-team/PROJECT.md` — except on a project-start spawn, which may also create `.dev-team/.gitignore` and `.dev-team/README.md` if either is absent (never overwriting one that already exists; `conventions.md`, "Where the plugin writes, and the ownership rule", point 7). The ownership rule still applies to every file written.
 - Before writing, read the target and apply the ownership rule (`conventions.md`, "Where the plugin writes, and the ownership rule"); after writing, re-read line 2 and confirm the marker is there — report a missing marker as a failed write.
-- If `handoff-file` is `off` — including when the repository's own instructions forbid a second handover or say where notes live — write NO `.dev-team/HANDOFF.md` at all, at any point; and never write into the project's own handover file unless those instructions ask you to (`conventions.md`, "Auto-handoff").
+- Obey the `handoff-file` value under "Settled for this run" exactly as given; never work it out again yourself from `.dev-team/config.yml` or the repository's instruction files. When it is `off`, write NO `.dev-team/HANDOFF.md` at all, at any point. If that value is missing from this brief, write none and say so in your report.
+- Never write into the project's own handover or notes file, whatever the value. Updating it is ordinary project work for a builder with a brief, never for you (`conventions.md`, "Auto-handoff").
 - Preserve existing content; append to logs, but **keep "Current status" overwritten to reflect reality now** (it's the one section that's not append-only), and follow the ledger-retention rule in "Keep it lean" above.
 - Match the existing section structure.
 
@@ -111,6 +116,6 @@ Confirm what you wrote and where.
 - **After a decision/debate:** append a decision-log entry.
 - **After each stage checkpoint:** append a checkpoint entry, update the stage's status, and refresh Current status.
 - **Whenever state moves materially:** refresh Current status so the file is always a faithful snapshot to resume from.
-- **After every completed task/workstream (auto-handoff, default on) and at each checkpoint/RECORD:** `sonnet-scribe` (re)generates `.dev-team/HANDOFF.md` per `handoff-template.md` — a derived, assistant-agnostic one-glance resume card (readable cold by any LLM coding tool, at the fixed path `.dev-team/HANDOFF.md`), always overwritten in full (same discipline as "Keep it lean" above), never a source of truth. It is committed with the work it describes; the per-task cadence applies when `features.auto-handoff` is on (`config-and-toggles.md`; fail-open default on), and a per-session `DEV_TEAM_NO_AUTO_HANDOFF` drops back to checkpoint/RECORD-only regeneration. When `handoff-file` is `off` — which is what repository instructions that forbid a second handover or say where notes live amount to — `sonnet-scribe` writes NO `.dev-team/HANDOFF.md` at all: not per task, not at a checkpoint, not at RECORD. Resume then uses `.dev-team/PROJECT.md`'s Current status (and `autopilot.json` under autopilot). The scribe never writes into the project's own handover file unless those instructions ask it to (`conventions.md`, "Auto-handoff").
+- **After every completed task/workstream (auto-handoff, default on) and at each checkpoint/RECORD:** `sonnet-scribe` (re)generates `.dev-team/HANDOFF.md` per `handoff-template.md` — a derived, assistant-agnostic one-glance resume card (readable cold by any LLM coding tool, at the fixed path `.dev-team/HANDOFF.md`), always overwritten in full (same discipline as "Keep it lean" above), never a source of truth. It is committed with the work it describes; the per-task cadence applies when `features.auto-handoff` is on (`config-and-toggles.md`; fail-open default on), and a per-session `DEV_TEAM_NO_AUTO_HANDOFF` drops back to checkpoint/RECORD-only regeneration. The lead settles `handoff-file` once per run and passes it in every scribe brief ("Settled for this run" above). When it is `off` — which a repository instruction that explicitly forbids a second handover amounts to, unless `.dev-team/config.yml` sets a value — `sonnet-scribe` writes NO `.dev-team/HANDOFF.md` at all: not per task, not at a checkpoint, not at RECORD, even with `auto-handoff` on. Resume then uses `.dev-team/PROJECT.md`'s Current status (and `autopilot.json` under autopilot). The scribe never writes into the project's own handover file; updating that is a builder's job (`conventions.md`, "Auto-handoff").
 
 Builders and the checker get the relevant `.dev-team/PROJECT.md` slices pasted into their briefs — that's how decisions stay sticky across the team. The orchestrator reads Current status to rehydrate at stage boundaries instead of relying on its own (drifting) context.
