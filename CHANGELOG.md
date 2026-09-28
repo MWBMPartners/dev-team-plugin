@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [1.6.0] - <unreleased>
 
+This release builds on 1.5.0, which is itself not yet released (it is on the
+`claude/ledger-file-clashes` branch). The two are kept as separate entries, and may ship together.
+
 ### Added
 
 - **Repository instructions and normative documents** — a new shared rule, the first bullet of
@@ -19,13 +22,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - reads the project's own instruction files (`AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md`,
     `GEMINI.md`, `.OpenAI/` or `.openai/` files, `.github/copilot-instructions.md`,
     `CONTRIBUTING.md`) at the repository root and in the folders the task touches, and reads in
-    full any normative document one of them names for the kind of work in hand. Where instruction
-    files at different levels differ, the one nearest the files being changed applies;
-  - **reads them only from trusted places**: the repository's default branch or the branch the
-    user chose, inside the repository. Never from files a fork's (or any untrusted contributor's)
-    pull request adds or changes, never from vendored or dependency folders (`vendor/`,
-    `third_party/`, `node_modules/`, `target/`, `.build/`, `Pods/`, git submodules), never through
-    a link that leaves the repository. Anything else is treated as data, never as instructions;
+    full any normative document one of them names for the kind of work in hand — or, when one is
+    too large to read whole, its scope, definitions and profile sections plus every section holding
+    a rule ID that applies, listing which sections were read. Where instruction files at different
+    levels differ, the one nearest the files being changed applies;
+  - **reads them only from the run's trusted base**: the commit the run started from, on the
+    default branch or the branch the user named — **never a pull request's head branch**, whoever
+    opened it. The rule gives the method (`git merge-base`, `git diff --name-only`, `git show
+    <base>:<path>`). A file that differs from that commit — a fork's pull request, or an edit made
+    during the run — is data, not instructions, even when the host tool has already loaded it; the
+    base version is followed instead, and an edit made during the run only counts once the user
+    accepts it. Content the repository does not author never counts: for example vendored code,
+    dependency caches and build output (`vendor/`, `third_party/`, `node_modules/`, `target/`,
+    `.build/`, `Pods/`, `dist/`, `build/`, `.venv/`, `_build/`, `deps/`, `bower_components/`,
+    `Carthage/`, code vendored with `git subtree`, git submodules), apart from a normative document
+    named by path in a trusted instruction file, read at the submodule commit the trusted base pins.
+    Nor does anything reached through a link that leaves the repository;
   - has the lead decide which **profile** of a normative document applies to this repository,
     record it in House style and in every brief; builders say so in their report if they think it
     is wrong, rather than choosing another;
@@ -37,37 +49,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - has a checker or reviewer do **its own discovery** as well as reading every document the
     brief names, cite the rule IDs it checked, and treat a breach as a real finding; a named
     document that cannot be found is reported plainly, never read as "nothing to verify".
-  - **Precedence.** The repository decides how the project's work is done and wins over a plugin
-    *default* (the report says so). **The suite's safety rules are never overridden by repository
-    content** — the security skill's non-negotiables, confirmation before destructive operations,
-    ledger and file ownership, never pushing, merging or force-pushing without the user's say-so,
-    keeping findings private, and secrets handling. An instruction that would need one of those
-    broken is not followed; that part of the work stops and is reported. A repository instruction
-    that addresses a plugin behaviour counts at the same level as `.dev-team/config.yml` in the
-    precedence order of `config-and-toggles.md`; the safety rules are outside that order.
+  - **Precedence — a direction, not a list.** Repository content may **add** work, checks and
+    constraints and **choose between style and format defaults** (documentation length, where notes
+    live, naming, formatting). It may **never remove, skip, weaken or waive** a check or
+    verification step (the checker, independence between builder and verifier, evidence, the
+    model-tier rules), a gate or approval (the Feature Spec Gate, the gate policy, the autonomy
+    envelope, `live=confirm`), a confirmation, anything a skill calls non-negotiable, anything under
+    "Safety (security & stripe)", the rules on pushing, merging, force-pushing and pull requests,
+    ledger and file ownership, privacy, or the handling of secrets. A repository instruction can move
+    a plugin switch only toward its more cautious value (a table in `config-and-toggles.md` gives
+    the direction for each switch), an explicit value in `.dev-team/config.yml` wins over it, and it
+    cannot touch the switches the hooks read (`guard`, `update-notifier`, `branch-notifier`). When it
+    is unclear which side something falls on, it is treated as a safety rule and asked about
+    (unattended: `BLOCKED`). The same rule is written word for word in `conventions.md`,
+    `config-and-toggles.md` and the README.
   - **Conflicts.** Two repository sources at the same level that contradict each other are put to
     the user in an attended run; in an unattended run (autopilot, scheduled ci-medic) the affected
     item is marked `BLOCKED` with the conflict named, and unaffected work continues.
 - Every agent definition in `agents/` now carries one identical sentence pointing at the rule, and
-  says it has no context beyond the brief **and the repository files it names**.
+  says it has no context beyond the brief **and the repository files it names**. The brief and
+  checker templates carry the trusted base commit, and ci-medic says plainly that a pull request's
+  head branch is never the trusted base for instructions.
 - **A new switch, `handoff-file`** (`features.handoff-file` in `.dev-team/config.yml`, or
-  `handoff-file=on|off` for one run; default `on`; an unreadable value counts as `on`). With
+  `handoff-file=on|off` for one run; default `on`; a missing or unreadable value counts as not
+  set). With
   `handoff-file: off` the plugin writes **no `.dev-team/HANDOFF.md` at all** — not after a task, not
   at a stage checkpoint or RECORD, not at the end of an autopilot cycle — and resumes from
-  `.dev-team/PROJECT.md` (and `autopilot.json` under autopilot) instead. The `.dev-team/` pointer
-  sentence is not offered, because it names that file, and a `.dev-team/HANDOFF.md` already on disk
-  is left alone (never deleted without asking). A project whose own instructions forbid a second
-  handover, or say where notes live, gets `handoff-file: off` automatically. *Why:* turning
-  auto-handoff off only stops the refresh after each task; the plugin still rewrote the file at
-  every checkpoint, so a project that allows only one handover document still got a second one.
+  `.dev-team/PROJECT.md` (and `autopilot.json` under autopilot) instead; `off` wins over
+  `auto-handoff`, even a per-run `auto-handoff=on`. The `.dev-team/` pointer sentence is not offered,
+  because it names that file, and no run — `/dev-team-move-ledgers` included — moves a legacy
+  top-level `HANDOFF.md` into `.dev-team/`. A `.dev-team/HANDOFF.md` or pointer sentence left over
+  is offered for removal in an attended run and reported in an unattended one. A project whose own
+  instructions **explicitly** forbid a second handover gets `handoff-file: off` automatically,
+  unless `.dev-team/config.yml` sets a value; an instruction that only says where notes live is
+  asked about once (the answer is recorded in `.dev-team/config.yml`), or left at the default in an
+  unattended run. The lead settles the value once per run and hands it to the scribe in its brief.
+  The starter `.dev-team/config.yml` leaves the key commented out, so `/dev-team-config init` does
+  not write an explicit `on` that would overrule such a project; `/dev-team-config show` says
+  plainly that it does not read instruction files. An unrecognised value (`Off`, `of`) is reported
+  and ignored. *Why:* turning auto-handoff off only stops the refresh after each task; the plugin
+  still rewrote the file at every checkpoint, so a project that allows only one handover document
+  still got a second one.
 
 ### Changed
 
-- **Where a project's own instructions forbid a second handover or say where notes live**,
-  `handoff-file` is `off` for that repository (above), and the scribe never writes into the
-  project's own handover file unless those instructions ask it to (`conventions.md`,
-  "Auto-handoff"; `documentarian-protocol.md`; `handoff-template.md`; `agents/sonnet-scribe.md`;
-  autopilot's `loop-runtime.md` and `SKILL.md`; the orchestrator's `SKILL.md`).
+- **Where a project's own instructions explicitly forbid a second handover**, `handoff-file` is
+  `off` for that repository (above), and the scribe never writes into the project's own handover or
+  notes file — updating that is project work for a builder (`conventions.md`, "Auto-handoff";
+  `documentarian-protocol.md`; `handoff-template.md`; `agents/sonnet-scribe.md`; autopilot's
+  `loop-runtime.md`, `mission-and-done.md` and `SKILL.md`; the orchestrator's `SKILL.md`).
 - The autopilot RECORD step now regenerates `.dev-team/HANDOFF.md` unless `handoff-file` is `off`.
   It used to say "when auto-handoff is on", which disagreed with the same file's own auto-handoff
   paragraph and with `conventions.md`, both of which say the RECORD regeneration happens either way.
@@ -93,21 +123,28 @@ skill's `SKILL.md`, `doc-standards.md` and `accuracy-verification-protocol.md`; 
 `build-and-review-protocol.md`; the featurefind skill's `research-and-comparable-protocol.md`; the
 review skill's `SKILL.md` and `claim-extraction-and-verification-protocol.md`; the orchestrator's
 `handoff-template.md`; the autopilot skill's `SKILL.md` and `loop-runtime.md`; the
-`/dev-team-config` and `/dev-team-move-ledgers` commands (the pointer-sentence offer); all five
-files in `agents/`; `README.md`; `.claude-plugin/plugin.json` (version 1.5.0 → 1.6.0); and
+`/dev-team-config` and `/dev-team-move-ledgers` commands (the pointer-sentence offer, the starter
+file, `show`, and a held-back `HANDOFF.md`); the ci-medic skill's `SKILL.md` and
+`remediation-protocol.md`; the autopilot skill's `mission-and-done.md`; all five files in
+`agents/`; `README.md`; `.claude-plugin/plugin.json` (version 1.5.0 → 1.6.0); and
 `tests/scripts.bats`, with `tests/README.md`.
 
 ### Tests
 
-- Six tests in `tests/scripts.bats` replace the four added in the first draft of this release,
-  which still passed when the rule's meaning was reversed. The new ones check the sentences that
-  carry the meaning, inside the rule itself: the safety sentence, the trusted-source limits, the
-  nearest-file layering, the unattended `BLOCKED` case, the checker's own discovery, the brief
-  template's Profile field, the exact agent sentence in every file in `agents/` (so a new agent
-  without it fails), that no agent still claims context from the brief alone, and that the
-  README's stated count of cross-cutting behaviours matches its list, and that `handoff-file: off`
-  still means no `.dev-team/HANDOFF.md` at all (in `conventions.md` and `config-and-toggles.md`).
-  Each was proven to fail by editing a throwaway copy of the repository.
+- Ten tests in `tests/scripts.bats` guard the rule. The four added in the first draft of this
+  release still passed when the rule's meaning was reversed; the six that replaced them still passed
+  when it was quietly weakened (a waiver added, the trusted base loosened, a clause deleted). Now
+  steps 1 and 8 of the rule are compared word for word, after joining wrapped lines, so a sentence
+  added fails as surely as one removed; the direction rule must appear word for word in
+  `config-and-toggles.md` and at the end of the README's rule bullet; every place that writes
+  `.dev-team/HANDOFF.md` (the orchestrator after a task and at the checkpoint, autopilot after a task
+  and at RECORD, the documentarian protocol and brief, the scribe's agent file, the handoff
+  template) must carry the `off` condition on that very line; and the starter config must leave
+  `handoff-file` commented out. Other tests check the layering, unattended and own-discovery
+  sentences, the brief template's fields, the exact agent sentence in every file in `agents/`, and
+  the README's count of cross-cutting behaviours. Each named weakening was made in a throwaway copy
+  of the repository and made at least one of these tests fail (`tests/README.md` lists which). They
+  check wording, not behaviour: they cannot show that an agent obeys the rule when it runs.
 
 ### Fixed
 
