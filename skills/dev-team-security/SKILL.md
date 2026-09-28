@@ -124,7 +124,7 @@ A later `dev-team-security` run reads `.dev-team/SECURITY.md` and resumes from t
 
 Optional run arguments (defaults in brackets):
 
-- `dry-run=on|off` — run Phase 0 (threat model, attack-surface map, coverage ledger) and write the briefs each red/blue-team wave WOULD receive, but spawn no red-team/validator/builder agents and make no file or git changes; stop after planning and report the plan for approval. Precedence: this argument > `features.dry-run` in `.dev-team/config.yml` > built-in default [off]. Plain language ("just show me the plan", "dry run first") also sets it. See `dev-team-orchestrator/references/conventions.md` ("Dry-run / plan-preview").
+- `dry-run=on|off` — run Phase 0 (threat model, attack-surface map, coverage ledger) and write the briefs each red/blue-team wave WOULD receive, but spawn no red-team/validator/builder agents and make no file or git changes in the project; stop after planning and report the plan for approval. Precedence: this argument > `features.dry-run` in `.dev-team/config.yml` > built-in default [off]. Plain language ("just show me the plan", "dry run first") also sets it. See `dev-team-orchestrator/references/conventions.md` ("Dry-run / plan-preview").
 - `severity-floor=critical|high|medium|low` — the lowest severity to **fix** this run; below it is documented only [high → fix Critical+High, document the rest].
 - `scope=full|surface-list` — audit the whole checklist or a named subset (e.g. `scope=authz,injection,secrets`) [full].
 - `rounds=N` — max red-team rounds before stopping [until-dry, cap 4].

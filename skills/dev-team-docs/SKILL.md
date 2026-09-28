@@ -190,7 +190,7 @@ Optional run arguments (defaults in brackets):
 - `scope=readme|api|reference|docstrings|changelog|guides|architecture|all` — which doc
   area(s) to work on; accepts a comma list (e.g. `scope=readme,changelog`) [all].
 - `dry-run=on|off` — produce the full doc-area plan and the drafter/checker briefs you WOULD
-  issue, but spawn no drafters or checkers and make no file or git changes; report the plan
+  issue, but spawn no drafters or checkers and make no file or git changes in the project; report the plan
   for approval. Precedence: this argument > `features.dry-run` in `.dev-team/config.yml` >
   built-in default [off]. Plain language ("just show me the plan", "dry run first") also sets
   it. See `dev-team-orchestrator/references/conventions.md` ("Dry-run / plan-preview"). (Not

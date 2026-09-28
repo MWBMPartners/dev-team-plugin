@@ -204,7 +204,7 @@ Optional run arguments (defaults in brackets):
   strongly discouraged and only runs after the Migration Plan Gate surfaces its risk explicitly and
   the user signs off — never the default, never silently accepted].
 - `dry-run=on|off` — inside `execute` mode, produce the per-stage builder briefs you WOULD issue for
-  the (already-approved) stages, spawn no builders, and make no file or git changes; report the
+  the (already-approved) stages, spawn no builders, and make no file or git changes in the project; report the
   plan for approval. (`mode=plan` already stops for approval by design — this flag adds nothing
   there.) Precedence: this argument > `features.dry-run` in `.dev-team/config.yml` > built-in
   default [off]. Plain language ("just show me the plan", "dry run first") also sets it. See

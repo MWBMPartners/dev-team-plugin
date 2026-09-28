@@ -79,7 +79,7 @@ Follow `references/build-and-review-protocol.md` (review half). It's a Stripe-sc
 ## Arguments
 
 - `mode=build|review` — pick the mode [infer from the request; ask if ambiguous].
-- `dry-run=on|off` — produce the full plan and stop, spawning no builders/red-team agents and making no file or git changes (BUILD: the stage/workstream plan + builder briefs; REVIEW: the pathway map + audit/red-team briefs); report the plan for approval. Precedence: this argument > `features.dry-run` in `.dev-team/config.yml` > built-in default [off]. Plain language ("just show me the plan", "dry run first") also sets it. See `dev-team-orchestrator/references/conventions.md` ("Dry-run / plan-preview").
+- `dry-run=on|off` — produce the full plan and stop, spawning no builders/red-team agents and making no file or git changes in the project (BUILD: the stage/workstream plan + builder briefs; REVIEW: the pathway map + audit/red-team briefs); report the plan for approval. Precedence: this argument > `features.dry-run` in `.dev-team/config.yml` > built-in default [off]. Plain language ("just show me the plan", "dry run first") also sets it. See `dev-team-orchestrator/references/conventions.md` ("Dry-run / plan-preview").
 - `surface=checkout|payment-element|payment-intents|billing|connect|webhooks|ios-native|android-native|auto` — the Stripe surface in scope [auto-detect the platform from the repo].
 - `severity-floor=critical|high|medium|low` — (review) lowest severity to fix this run [high].
 - `live=confirm` — explicit, one-time acknowledgement required before ANY live-mode action [absent → test mode only].
