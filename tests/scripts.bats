@@ -885,6 +885,53 @@ pinned_handoff_block() {
 PINNED
 }
 
+# The table of which way is the more cautious for each switch, and the two paragraphs that give the
+# full precedence order (third review, finding 9): changing a row (dry-run's cautious value to
+# "off", say) or reordering the precedence passed every test before.
+pinned_config_fields() {
+  cat <<'PINNED'
+@@ skills/dev-team-orchestrator/references/config-and-toggles.md | is
+| Switch | More cautious value | |---|---| | `defaults.gates` | toward `pause-all`
+  (`autonomy-envelope` → `hybrid` → `pause-all`) | | `defaults.cap`, `defaults.cycles` | a lower
+  number | | `defaults.issues` | toward `off` (`auto` → `sync` → `off`) | | `defaults.models` | none
+  — it is a cost choice either way, and verification never goes below its tier whatever the value;
+  an instruction file cannot move it (ask the user; unattended, keep the value and say so) | |
+  `git.stack-prs` | `false` | | `git.single-pr` | `true` | | `git.default-branch` | none — it
+  decides which branch runs start from and target, which the branch rules protect, so an instruction
+  file can never move it | | `features.notifications` | `on` | | `features.telemetry` | `on` (it
+  only reports to the user) | | `features.dry-run` | `on` | | `features.auto-handoff` | `off` | |
+  `features.handoff-file` | `off` — and only for an instruction that explicitly forbids a second
+  handover or resume file (`conventions.md`, "Auto-handoff") | | `features.auto-commit` | `off`
+  (fewer writes to the project's history; the checkpoint commits are unaffected) | |
+  `features.pointer-sentence` | `declined` | | `features.guard`, `features.update-notifier`,
+  `features.branch-notifier` | none — read by the hook scripts, which never read instruction files |
+@@ skills/dev-team-orchestrator/references/config-and-toggles.md | is
+So the full order, highest first, is: per-run argument > plain language > per-session environment
+  variable > an explicit value in `.dev-team/config.yml` > a repository instruction, toward the more
+  cautious value only > built-in default. Where a single switch's precedence is written out
+  elsewhere without the repository-instruction level, that level still sits just above the built-in
+  default. Instructions count only as they were in the run-start snapshot (`conventions.md`, same
+  rule, step 1), and `.dev-team/config.yml` itself is read as snapshotted (see "How skills and hooks
+  load it", below).
+@@ skills/dev-team-orchestrator/references/conventions.md | is
+`.dev-team/config.yml`, when the user commits it in their project repo, is the **repo-scoped**
+  source of run defaults (`models`, `gates`, `cap`, `cycles`, `issues`) and feature toggles
+  (`update-notifier`, `branch-notifier`, `guard`, `notifications`, `telemetry`, `dry-run`,
+  `auto-handoff`, `handoff-file`, `auto-commit`, `pointer-sentence`) — applying to every session and
+  every collaborator, not just the current one. It is the intended **primary switch mechanism**;
+  per-run arguments, plain language, and per-session env vars (e.g. `DEV_TEAM_NO_UPDATE_CHECK`) are
+  overrides layered on top of it. Precedence, highest first: per-run argument > plain language >
+  per-session env var > an explicit value in repo `.dev-team/config.yml` > a repository instruction,
+  which can only move a switch toward its more cautious value ("Repository instructions and
+  normative documents", step 8, under "Shared discipline" below) > built-in default. Loading is
+  **best-effort and fail-open** everywhere — an absent or malformed file is never an error; every
+  skill and hook simply falls back to its built-in default. Full schema, the toggle → env-override
+  table, and `/dev-team-config` (show the effective config, or scaffold a starter file) live in
+  `references/config-and-toggles.md` — read it before you build anything that reads a default or a
+  toggle.
+PINNED
+}
+
 pinned_step8_lead() {
   cat <<'PINNED'
 8. **Precedence — which way repository content may move things.** The repository decides how the
@@ -1361,12 +1408,14 @@ PINNED
   # The starter schema is the first fenced block after the "## The schema (verbatim)" heading.
   schema="$(awk '/^## The schema \(verbatim\)/ { on = 1; next } on && /^```/ { if (inside) exit; inside = 1; next } inside { print }' "$toggles")"
   [ -n "$schema" ]
-  # 1. Every line that is not blank and not a comment must be one of the four top-level lines.
-  #    Anything else — an indented "gates: hybrid", say — is a setting written out explicitly.
+  # 1. Every line that is not blank and not a comment must be one of the four top-level lines, with
+  #    nothing after it but an optional comment. Anything else — an indented "gates: hybrid", or a
+  #    flow-style "defaults: {gates: autonomy-envelope}" on the header line itself (which the first
+  #    version of this pattern let through) — is a setting written out explicitly.
   bad="$(printf '%s\n' "$schema" | awk '
     /^[[:space:]]*$/ { next }
     /^[[:space:]]*#/ { next }
-    /^version: 1([[:space:]]|$)/ || /^(defaults|git|features):([[:space:]]|$)/ { next }
+    /^version: 1[[:space:]]*(#.*)?$/ || /^(defaults|git|features):[[:space:]]*(#.*)?$/ { next }
     { print }')"
   if [ -n "$bad" ]; then
     echo "the starter schema writes these settings out explicitly: $bad"
@@ -1389,12 +1438,22 @@ PINNED
   for want in \
     '**Write an explicit value only for a key the user actually chose in this `init` conversation**' \
     'Leave every other key commented out, even when its default is what the user will get anyway.' \
-    'A commented-out line (as every setting in the starter file is, until someone sets it) is not set, so its key is tagged `(built-in default)` too.'; do
+    'A commented-out line (as every setting in the starter file is, until someone sets it) is not set, so its key is tagged `(built-in default)` too.' \
+    '"This file looks like one written by `/dev-team-config init` before 1.6.0, with every setting written out. A value set here wins over the project'"'"'s own instruction files, so comment out (put `# ` in front of) every setting you did not choose on purpose."'; do
     if ! printf '%s\n' "$cmd" | grep -qF -- "$want"; then
       echo "missing from commands/dev-team-config.md: $want"
       return 1
     fi
   done
+}
+
+@test "config-and-toggles and conventions: the cautious-direction table and both precedence paragraphs are word for word as pinned" {
+  # What this guards: the table says which value of each switch is the more cautious one — the only
+  # way a repository instruction file may move it — and the two paragraphs give the full precedence
+  # order. The third review changed a row and reordered a precedence line, and nothing failed.
+  run check_pinned pinned_config_fields 3
+  echo "$output"
+  [ "$status" -eq 0 ]
 }
 
 # ---------------------------------------------------------------------------

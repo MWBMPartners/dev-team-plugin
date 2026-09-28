@@ -31,6 +31,14 @@ collaborator), not a per-session setting.
    "Repository instruction files and these switches"), and reading and weighing those files is a
    judgement this read-only view does not make — so it says plainly that it cannot show them,
    rather than showing a value a run would not use.
+6. If the file sets ten or more settings explicitly, each at its built-in default — the shape a file
+   written by `/dev-team-config init` in versions 1.2 to 1.5 has — also print this line, word for
+   word: "This file looks like one written by `/dev-team-config init` before 1.6.0, with every
+   setting written out. A value set here wins over the project's own instruction files, so comment
+   out (put `# ` in front of) every setting you did not choose on purpose." *Why:* before 1.6.0,
+   `init` wrote every default out explicitly; from 1.6.0 an explicit value outranks the project's
+   cautious instructions (`config-and-toggles.md`, "Why every setting starts commented out"), so an
+   old file silently overrules them until those lines are commented out.
 
 This is **read-only** — never create, edit, or touch the file for `show`.
 
