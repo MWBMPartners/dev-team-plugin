@@ -6,8 +6,9 @@
             Rewritten as work happens, not tidied at the end. See .claude/CLAUDE.md section 2.
 -->
 
-**Last updated:** 23 September 2026, about 21:40 (UK time). Standing rules revised; this "START HERE"
-section added for a fresh session. Everything below "Detailed history" is the older, fuller record.
+**Last updated:** 28 September 2026 — issue #47 revised after its second independent review (local
+commits, not yet pushed or reviewed; see the #47 section straight below). The "START HERE"
+section dates from 23 September; everything below "Detailed history" is the older, fuller record.
 **Working branch:** `claude/ledger-file-clashes` (made from `main`; `alpha` is fully contained in
 `main`, so this branch can later go to `alpha` in one pull request). Pushed to GitHub.
 **28 September 2026:** a second branch, `feature/bcp47-language-policy` (issue #47), is in flight —
@@ -21,24 +22,74 @@ see the section straight below.
 - **What it adds (plugin version 1.6.0):** a shared rule, "Repository instructions and normative
   documents" (first bullet of "Shared discipline" in
   `skills/dev-team-orchestrator/references/conventions.md`). Every agent reads a project's own
-  instruction files (`AGENTS.md`, `CLAUDE.md` and the like) and the standards they name — from the
-  repository's trusted base only, never from a fork's pull request or a vendored folder — and the
-  suite's safety rules are never overridden by repository content. All five agents carry one
-  identical sentence pointing at it; the brief template, checker, review, iterate, security,
-  migrate, ship, docs, stripe, featurefind and debate briefs point at it.
+  instruction files (`AGENTS.md`, `CLAUDE.md` and the like) and the standards they name, only as
+  they are at the run's **trusted base** — the commit the run started from, never a pull request's
+  head branch; a file changed since then, even one the host tool already loaded, is data. Repository
+  content may **add** work and checks and choose between style defaults, but may **never remove,
+  skip, weaken or waive** a check, a gate, a confirmation or a safety rule, and moves a plugin
+  switch only toward its more cautious value (the "direction rule", step 8, written word for word
+  in `conventions.md`, `config-and-toggles.md` and the README). All five agents carry one identical
+  sentence pointing at it; the brief template, checker, review, iterate, security, migrate, ship,
+  docs, stripe, featurefind and debate briefs point at it. A `handoff-file` switch (`off` = no
+  `.dev-team/HANDOFF.md` at all) is set `off` by an instruction that explicitly forbids a second
+  handover, unless `.dev-team/config.yml` sets it.
 - **Waits on `claude/ledger-file-clashes`** (#41, below): this branch was cut from it at `413d570`
-  and must not go to `alpha` before it.
-- **Review state:** first build `af39817`; an independent review by a fresh Opus agent found it
-  unsafe and incomplete; every finding was acted on in the next commit (safety precedence,
-  trusted sources, unattended conflicts, the nine missed briefing places, the profile, one exact
-  agent sentence, tests that fail when the meaning is removed — proven by edits in a throwaway
-  copy), in `79a2c20`. A follow-up commit then fixed two wording slips in the rule (a pointer to
-  "Handover" below, which is really "Auto-handoff" above; a paraphrase quoted as the docs skill's
-  words) and added the **`handoff-file` switch**: `off` means no `.dev-team/HANDOFF.md` is written at
-  all, and a project whose instructions forbid a second handover gets `off` automatically. Before
-  this, "auto-handoff off" still rewrote the file at every checkpoint. **Not yet re-reviewed** — it
-  needs another review round, by Codex under rule 5.
-- Checks at the latest commit: bats 150 of 150, smoke test, both audits and shellcheck all pass.
+  and must not go to `alpha` before it. The CHANGELOG's 1.6.0 entry says it builds on the
+  unreleased 1.5.0 and that the two may ship together (they are deliberately not folded).
+- **Review history:**
+  - First build `af39817`. First independent review (fresh Opus agent) found it unsafe and
+    incomplete; acted on in `79a2c20`. Then `0c25209` fixed two wording slips and added
+    `handoff-file`.
+  - **Second independent review** (a fresh Opus agent standing in, because Codex was out of
+    allowance) found 12 problems. The lead checked them and took final decisions (brief:
+    `brief-plugin-r3.md` in the lead's session scratchpad — not in the repository; the decisions are
+    summarised in the three commit messages). All were acted on in three commits, **committed
+    locally and NOT pushed** (the lead pushes), followed by one commit for these notes:
+    - `25223c0` — the direction rule replaces the closed list in step 8; step 1 defines the trusted
+      base with a method, loaded files count only if unchanged, files changed during the run are
+      not instructions, an open "for example" list of content the repository does not author;
+      step 3's limit for a document too large to read whole; ci-medic's line that a pull request's
+      head branch is never the trusted base; Trusted base fields in the brief and checker templates.
+    - `9cb5532` — `handoff-file`: only an explicit ban turns it off ("notes live elsewhere" is asked
+      once and recorded, or left at the default unattended); the lead settles it once and hands it
+      to the scribe in its brief; an explicit `.dev-team/config.yml` value wins over an instruction
+      file; the starter schema leaves the key commented out; `/dev-team-config show` says it does not
+      read instruction files; the scribe never writes the project's own handover; unrecognised
+      values are reported; `off` beats a per-run `auto-handoff=on`; move-ledgers holds back a legacy
+      `HANDOFF.md` while `off`.
+    - `c5dfd68` — CHANGELOG and `tests/README.md` (the 25-edit proof table).
+  - **These three commits are NOT yet independently reviewed.** Under rule 5 they need a Codex
+    review round (compare with `claude/ledger-file-clashes` / `413d570`, not `main`).
+- **Checks at `c5dfd68`:** bats 154 of 154, smoke test, both audits, shellcheck and actionlint all
+  pass. `25223c0` on its own was checked in a separate git worktree: bats 153 of 153.
+- **Proof the tests bite:** 25 edits, each made in a throwaway copy outside the clone, each made at
+  least one test fail — the seven the review named (a waiver added to step 8, the trusted base
+  loosened, the push/merge/secrets clause deleted, the symlink/DATA sentences deleted, RECORD or
+  the orchestrator checkpoint writing the card unconditionally, the "off" rule deleted from the
+  scribe file and from the documentarian brief) plus 18 more. Table in `tests/README.md`.
+- **Decisions the builder took inside the lead's decisions** (a reviewer may want to look at these):
+  - A per-switch table in `config-and-toggles.md` says which value is the more cautious one. Two
+    switches have none, so an instruction file cannot move them: `models` (a cost choice; the
+    verification tier never drops anyway) and `git.default-branch` (it decides the trusted base).
+    `auto-commit: off`, `auto-handoff: off` and `telemetry: on` are counted as the cautious values.
+  - `/dev-team-config show` says plainly that it does not read instruction files, rather than
+    trying to reflect them.
+  - `/dev-team-move-ledgers` does not ask the "notes live elsewhere" question (its questions and its
+    single commit are fixed); in that case it keeps `on`, does not offer the pointer sentence, and
+    says so in its report.
+  - A scribe brief with no `handoff-file` value writes no card and says so.
+- **Rejected on the way:** testing a few key phrases (the second review showed a rule can be
+  weakened by ADDING words, which such tests never see — so steps 1 and 8 are compared whole); a
+  closed list of protected things (anything left off it was open to override — replaced by the
+  direction rule); ranking an instruction file beside `.dev-team/config.yml` (it now sits below an
+  explicit config value, toward caution only); "says where notes live" turning the file off (too
+  broad); letting the scribe write a project's own handover when asked (ownership is not
+  overridable).
+- **Suggestion, not built:** `/dev-team-config init` still writes every other key explicitly
+  (`dry-run: off`, `gates: hybrid`, …), and an explicit value wins over an instruction file — so a
+  project whose `CLAUDE.md` asks for, say, a dry run first would be overruled by a freshly
+  initialised config. `init` now tells the user this; commenting out the whole starter file (or
+  only writing keys the user picks) would remove the trap. Needs the owner's say.
 
 ## START HERE — for a fresh session with no chat history
 

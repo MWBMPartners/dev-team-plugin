@@ -5,7 +5,8 @@
   Purpose:  Things learned the hard way while working on this repository, kept in the repository so
             they survive a new session, a new machine or a different assistant. Add to it when a
             lesson is learned; do not remove entries that still hold.
-  Updated:  23 September 2026 (gathered from the handover history of 13–14 September).
+  Updated:  28 September 2026 (three lessons from #47's second review added; the rest
+            gathered from the handover history of 13–14 September).
 -->
 
 ## Running Codex reviews
@@ -54,6 +55,17 @@
 - A test that only looks for a heading or a loose word can pass while the rule under it says the
   opposite (#47's first four tests did). Test the sentence that carries the meaning, and prove the
   test by editing a throwaway copy of the repository — outside the working clone — so it fails.
+- A test that looks for a few key sentences also passes when the rule is weakened by ADDING words
+  ("… unless an instruction file explicitly waives one") — #47's second set of tests did. For a
+  safety rule, compare the whole step word for word (join wrapped lines first), and check each
+  place that acts on a switch on the very line that tells it to act.
+- To check an intermediate commit, use `git worktree add --detach <scratch-dir> <commit>`, not an
+  export such as `git checkout-index`: the export is not a git repository, so the branch-hygiene
+  test fails there for a reason that has nothing to do with the change.
+- To split one working tree into several topic commits without `git stash`: list the changed
+  blocks with `git diff -U0 -- <file>`, stage chosen blocks with `git apply --cached
+  --unidiff-zero <patch>`, and stage a hand-made in-between version of a file with
+  `git hash-object -w` then `git update-index --cacheinfo 100644,<blob>,<path>`.
 
 ## The owner's machine
 

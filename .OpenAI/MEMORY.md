@@ -5,7 +5,7 @@
   Purpose:  Lessons that matter when Codex works on, or reviews, this repository. The fuller shared
             list is .claude/MEMORY.md (its "Running Codex reviews" section is about how Codex is
             started here). Add new lessons to whichever file fits, and keep them in step.
-  Updated:  28 September 2026.
+  Updated:  28 September 2026 (after #47's second independent review).
 -->
 
 - When reviewing, compare the working branch with `main` (`git diff main...HEAD`). Text that
@@ -17,6 +17,7 @@
   serious it is (high, medium, low), and whether it was new on this branch or already on `main`.
 - The tests need bats 1.5.0 or newer. If they cannot be run, say so.
 - A test that only looks for a heading or a loose word can pass while the rule under it says the
-  opposite. When reviewing a test, ask whether it would fail if the rule's meaning were reversed.
+  opposite. When reviewing a test, ask whether it would fail if the rule's meaning were reversed —
+  and whether it would fail if words were ADDED to the rule (a new exception), not only removed.
 - A record identifier such as `F-001` can run past 999 (`F-1000`); patterns must allow three or
   more digits.

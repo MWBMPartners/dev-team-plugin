@@ -5,7 +5,7 @@
   Purpose:  The background an AI assistant needs before working here: what this repository is, how
             it is laid out, how to check it, and where the live work stands. Short on purpose; the
             detail lives in .claude/HANDOFF.md and .claude/plans/.
-  Updated:  28 September 2026 (issue #47 branch added).
+  Updated:  28 September 2026 (issue #47 revised after its second independent review).
 -->
 
 ## What this repository is
@@ -35,7 +35,7 @@ bash scripts/audit-model-ids.sh        # no dated model names outside the model 
 bash scripts/audit-ledger-paths.sh     # no document points at the old top-level record files
 bash tests/smoke-structure.sh          # the plugin's folder layout is sound
 shellcheck scripts/*.sh hooks/*.sh tests/*.sh
-bats tests/scripts.bats                # needs bats 1.5.0 or newer; 144 tests on #41's branch, 150 on #47's
+bats tests/scripts.bats                # needs bats 1.5.0 or newer; 144 tests on #41's branch, 154 on #47's
 ```
 
 The automatic checks on GitHub (`plugin-audit`) run only on pull requests and on pushes to `main`,
@@ -56,5 +56,5 @@ not on pushes to the working branch — so run them yourself.
 | [#41](https://github.com/MWBMPartners/dev-team-plugin/issues/41) | Move all the plugin's record files into `.dev-team/` so they stop clashing with a project's own `FEATURES.md`, `SECURITY.md` and similar. Version 1.5.0. | Built and fixed over five rounds; waiting for a clean Codex review. |
 | [#46](https://github.com/MWBMPartners/dev-team-plugin/issues/46) | A smarter orchestrator that works across AI providers. | Analysis and plan done; waiting on owner decisions D1–D4. |
 | [#45](https://github.com/MWBMPartners/dev-team-plugin/issues/45) | Build the owner's standard working practices into the plugin. | Mapped; waiting for the owner to pick which to build. |
-| [#47](https://github.com/MWBMPartners/dev-team-plugin/issues/47) | Agents read a project's own instruction files and the standards they name — from trusted places only, never overriding the suite's safety rules. Version 1.6.0, on `feature/bcp47-language-policy`. | Revised after one independent review; needs another review round. Waits on #41. |
+| [#47](https://github.com/MWBMPartners/dev-team-plugin/issues/47) | Agents read a project's own instruction files and the standards they name — only as they were at the run's starting commit, and only to add checks or choose style, never to remove or loosen a check, gate, confirmation or safety rule. Version 1.6.0, on `feature/bcp47-language-policy`. | Revised after a second independent review (Opus stand-in; Codex was out of allowance); the revision is not yet reviewed and needs a Codex round. Waits on #41. |
 | #42, #43, #44 | Follow-ups found during #41. | Not started. |
