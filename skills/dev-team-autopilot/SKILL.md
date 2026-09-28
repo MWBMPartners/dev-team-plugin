@@ -119,6 +119,10 @@ Optional run arguments (defaults in brackets):
   completed task/workstream (owned by `sonnet-scribe`; the fixed path any LLM coding tool can
   read it cold from; committed with the work, never auto-pushed). Per-session off-switch env
   `DEV_TEAM_NO_AUTO_HANDOFF`; repo config `features.auto-handoff`. [on]
+- `handoff-file=on|off` — `off` means NO `.dev-team/HANDOFF.md` is written at all: not per task, not at
+  RECORD, not at the end of a cycle (auto-handoff is off with it); resume uses `.dev-team/PROJECT.md`
+  and `autopilot.json`. Repo config `features.handoff-file`; repository instructions that forbid a
+  second handover set it `off`. No per-session env switch. [on]
 - `auto-commit=on|off` — commit each completed-and-checked task/workstream as its own LOCAL commit on
   the run branch (never push, never PR) — additional fine-grained rollback points between the per-cycle
   checkpoint commits, only for integrated+checked units. Per-session off-switch env
@@ -131,7 +135,7 @@ Optional run arguments (defaults in brackets):
 - **Failed/stuck agents:** diagnose, re-brief, two strikes then re-scope or escalate (and two strikes is a hard-pause trigger).
 - **Debate mode** for consequential, contested decisions surfaced mid-loop.
 - **Composing other skills** — route the user's UI/testing/style skills to the relevant agents and have the checker verify conformance (unchanged).
-- **Documentarian** (`sonnet-scribe`, Sonnet tier) owns `.dev-team/PROJECT.md` and the assistant-agnostic `.dev-team/HANDOFF.md` resume card (regenerated after every completed task/workstream when `features.auto-handoff` is on — a file at the fixed path any LLM tool can cold-resume from, committed with the work); the conductor additionally owns `autopilot.json`.
+- **Documentarian** (`sonnet-scribe`, Sonnet tier) owns `.dev-team/PROJECT.md` and the assistant-agnostic `.dev-team/HANDOFF.md` resume card (regenerated after every completed task/workstream when `features.auto-handoff` is on — a file at the fixed path any LLM tool can cold-resume from, committed with the work; never written at all when `features.handoff-file` is `off`); the conductor additionally owns `autopilot.json`.
 
 ## References (read at the matching step)
 

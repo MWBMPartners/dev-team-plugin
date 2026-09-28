@@ -50,13 +50,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     item is marked `BLOCKED` with the conflict named, and unaffected work continues.
 - Every agent definition in `agents/` now carries one identical sentence pointing at the rule, and
   says it has no context beyond the brief **and the repository files it names**.
+- **A new switch, `handoff-file`** (`features.handoff-file` in `.dev-team/config.yml`, or
+  `handoff-file=on|off` for one run; default `on`; an unreadable value counts as `on`). With
+  `handoff-file: off` the plugin writes **no `.dev-team/HANDOFF.md` at all** — not after a task, not
+  at a stage checkpoint or RECORD, not at the end of an autopilot cycle — and resumes from
+  `.dev-team/PROJECT.md` (and `autopilot.json` under autopilot) instead. The `.dev-team/` pointer
+  sentence is not offered, because it names that file, and a `.dev-team/HANDOFF.md` already on disk
+  is left alone (never deleted without asking). A project whose own instructions forbid a second
+  handover, or say where notes live, gets `handoff-file: off` automatically. *Why:* turning
+  auto-handoff off only stops the refresh after each task; the plugin still rewrote the file at
+  every checkpoint, so a project that allows only one handover document still got a second one.
 
 ### Changed
 
 - **Where a project's own instructions forbid a second handover or say where notes live**,
-  auto-handoff is treated as off for that repository and the scribe never writes into the
+  `handoff-file` is `off` for that repository (above), and the scribe never writes into the
   project's own handover file unless those instructions ask it to (`conventions.md`,
-  "Auto-handoff"; `documentarian-protocol.md`; `agents/sonnet-scribe.md`).
+  "Auto-handoff"; `documentarian-protocol.md`; `handoff-template.md`; `agents/sonnet-scribe.md`;
+  autopilot's `loop-runtime.md` and `SKILL.md`; the orchestrator's `SKILL.md`).
+- The autopilot RECORD step now regenerates `.dev-team/HANDOFF.md` unless `handoff-file` is `off`.
+  It used to say "when auto-handoff is on", which disagreed with the same file's own auto-handoff
+  paragraph and with `conventions.md`, both of which say the RECORD regeneration happens either way.
+- The fixed text of a newly created `.dev-team/README.md` now says "read HANDOFF.md first, or
+  PROJECT.md if there is no HANDOFF.md". An existing `.dev-team/README.md` is never rewritten, so
+  older copies keep the old sentence.
 - **"Be concise"** in the docs skill's `doc-standards.md` now gives way when a project's own
   instructions ask for fuller explanations.
 - The orchestrator reads a project's instruction files straight after its cold-resume check (it
@@ -74,20 +91,23 @@ iterate skill's `SKILL.md` and `audit-and-backlog-protocol.md`; the security ski
 and `migration-plan-protocol.md`; the ship skill's `SKILL.md` and `ci-setup-protocol.md`; the docs
 skill's `SKILL.md`, `doc-standards.md` and `accuracy-verification-protocol.md`; the stripe skill's
 `build-and-review-protocol.md`; the featurefind skill's `research-and-comparable-protocol.md`; the
-review skill's `SKILL.md` and `claim-extraction-and-verification-protocol.md`; all five files in
-`agents/`; `README.md`; `.claude-plugin/plugin.json` (version 1.5.0 → 1.6.0); and
+review skill's `SKILL.md` and `claim-extraction-and-verification-protocol.md`; the orchestrator's
+`handoff-template.md`; the autopilot skill's `SKILL.md` and `loop-runtime.md`; the
+`/dev-team-config` and `/dev-team-move-ledgers` commands (the pointer-sentence offer); all five
+files in `agents/`; `README.md`; `.claude-plugin/plugin.json` (version 1.5.0 → 1.6.0); and
 `tests/scripts.bats`, with `tests/README.md`.
 
 ### Tests
 
-- Five tests in `tests/scripts.bats` replace the four added in the first draft of this release,
+- Six tests in `tests/scripts.bats` replace the four added in the first draft of this release,
   which still passed when the rule's meaning was reversed. The new ones check the sentences that
   carry the meaning, inside the rule itself: the safety sentence, the trusted-source limits, the
   nearest-file layering, the unattended `BLOCKED` case, the checker's own discovery, the brief
   template's Profile field, the exact agent sentence in every file in `agents/` (so a new agent
   without it fails), that no agent still claims context from the brief alone, and that the
-  README's stated count of cross-cutting behaviours matches its list. Each was proven to fail by
-  editing a throwaway copy of the repository.
+  README's stated count of cross-cutting behaviours matches its list, and that `handoff-file: off`
+  still means no `.dev-team/HANDOFF.md` at all (in `conventions.md` and `config-and-toggles.md`).
+  Each was proven to fail by editing a throwaway copy of the repository.
 
 ### Fixed
 

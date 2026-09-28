@@ -205,7 +205,7 @@ markdown renderer applies to a wrapped paragraph, and checks the sentence still 
 The rule "Repository instructions and normative documents" (`conventions.md`, first bullet of
 "Shared discipline") tells every agent to read a project's own instruction files and the standards
 they name — from trusted places only, and never letting them override the suite's safety rules.
-Five tests guard it. They replace four tests from the first draft (commit af39817), which looked
+Six tests guard it. They replace four tests from the first draft (commit af39817), which looked
 only for headings and loose words and still passed when an independent review reversed the rule's
 meaning.
 
@@ -233,6 +233,16 @@ meaning.
    — works out both numbers: the number word the README's "Cross-cutting behaviors" section opens
    with, and the count of `- **` bullets under it. The count had drifted twice ("Five" over six
    bullets, then "Six" over seven).
+6. **"handoff-file: 'off' still means NO .dev-team/HANDOFF.md at all, …"** — the `handoff-file`
+   switch exists for projects that keep a single handover of their own, so `off` must mean no
+   `.dev-team/HANDOFF.md` ever, not merely none per task (turning auto-handoff off had only ever
+   stopped the per-task refresh). The test joins the wrapped lines of `conventions.md`'s
+   "Auto-handoff" section and requires the "writes NO `.dev-team/HANDOFF.md` at all — not after a
+   task, not at a stage checkpoint or RECORD, not at the end of an autopilot cycle" sentence, the
+   "resume from `PROJECT.md`" sentence, and the sentence mapping a project's "no second handover"
+   instruction to `handoff-file: off`; the same mapping in the rule's precedence step; and in
+   `config-and-toggles.md`, the table row's "writes NO … at all" wording and the `handoff-file: on`
+   line of the config example.
 
 **How they were proven** (on 28 September 2026, in a throwaway copy of the repository outside the
 working clone, deleted afterwards — never in the repository itself): each edit below was made in the
@@ -242,7 +252,10 @@ trusted-source sentence → test 1. Removing the shared sentence from one agent 
 sixth agent file without the sentence → test 3 (and adding one WITH it passed). Putting the old
 "ZERO context beyond the brief you are given —" wording back into `opus-builder.md` → test 4.
 Deleting the brief template's Profile field → test 2. Changing the README's "Seven" to "Eight" →
-test 5.
+test 5. For test 6: deleting the "writes NO … at all" sentence from `conventions.md`; narrowing it
+back to "no file after a task, but still at a checkpoint"; deleting the sentence that maps a "no
+second handover" instruction to `handoff-file: off`; deleting the `handoff-file` row from
+`config-and-toggles.md`; and weakening that row to "no per-task file" — each made test 6 fail.
 
 **What these cannot catch:** they check that the sentences are present, word for word, in the right
 place. They cannot tell whether an agent actually obeys them when it runs, and a new sentence added

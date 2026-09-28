@@ -13,9 +13,12 @@ describes** (it rides in the per-task auto-commit, or the checkpoint commit when
 it travels with the repo for the next session or teammate; these behaviors never auto-push it. Because it
 is regenerated from those sources after **every completed task/workstream** when `auto-handoff` is on
 (default; `config-and-toggles.md`) and at every checkpoint / RECORD (never hand-maintained), it cannot go
-stale on its own.
+stale on its own. When `features.handoff-file` is `off` (or the repository's own instructions forbid a
+second handover or say where notes live), this card is **never written at all** — not per task, not at a
+checkpoint or RECORD — and a resuming agent reads `.dev-team/PROJECT.md` (and, under autopilot,
+`.dev-team/autopilot.json`) instead (`conventions.md`, "Auto-handoff").
 
-Rules: overwrite on every update (never append); keep it under ~40 lines; regenerate after every
+Rules (all of them apply only while `handoff-file` is `on`): overwrite on every update (never append); keep it under ~40 lines; regenerate after every
 completed task/workstream when `auto-handoff` is on (default; per-session off-switch
 `DEV_TEAM_NO_AUTO_HANDOFF` drops to checkpoint/RECORD-only), and always whenever `.dev-team/PROJECT.md`'s
 `Current status` changes. Keep it assistant-agnostic — plain markdown any LLM coding tool can act on,

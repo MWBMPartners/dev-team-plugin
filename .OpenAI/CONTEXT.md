@@ -22,7 +22,8 @@ work it does is then reviewed by Claude Code when Claude Code is back.
   `.claude/plans/ledger-file-clashes/codex-review-prompt-5.md`.
 - A second branch, `feature/bcp47-language-policy` (issue #47), needs its own review round —
   compare it with `claude/ledger-file-clashes` (where it was cut, at `413d570`), not with `main`,
-  so #41's changes are not reported as #47's. What it adds is in `.claude/HANDOFF.md`.
+  so #41's changes are not reported as #47's. What it adds is in `.claude/HANDOFF.md` (including
+  the new `handoff-file` switch).
 - Earlier Codex review results: `.claude/plans/ledger-file-clashes/codex-review-3.md` and
   `codex-review-3-verification.md`.
 

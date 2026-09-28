@@ -31,7 +31,8 @@ A repository instruction file (`AGENTS.md`, `CLAUDE.md` and the like) that addre
 plugin behaviours counts at level 4, beside `.dev-team/config.yml` — below per-run arguments and the
 user's own words; the suite's safety rules sit outside this precedence order entirely, and no level
 of it, repository content included, can switch one off (`conventions.md`, "Repository instructions
-and normative documents", step 8).
+and normative documents", step 8). For example, an instruction that forbids a second handover, or
+says where notes live, sets `handoff-file: off` for that repository (and so auto-handoff off).
 
 ## The schema (verbatim)
 
@@ -66,6 +67,7 @@ features:            # enable/disable behaviours repo-wide (on|off; env var can 
   telemetry: on          # run-end telemetry + cost estimate         (v1.2.0)
   dry-run: off           # default plan-preview for building skills  (v1.2.0)
   auto-handoff: on       # regenerate .dev-team/HANDOFF.md after every completed task/workstream (v1.3.0; per-session override: DEV_TEAM_NO_AUTO_HANDOFF)
+  handoff-file: on       # off = write NO .dev-team/HANDOFF.md at all, not even at checkpoints/RECORD; resume from PROJECT.md (v1.6.0; per-run: handoff-file=on|off)
   auto-commit: on        # local commit per completed-and-checked task/workstream  (v1.3.0; per-session override: DEV_TEAM_NO_AUTO_COMMIT)
   pointer-sentence: ask  # ask (not yet asked: offer the .dev-team/ pointer sentence) | declined (never offer it again)  (v1.5.0)
 ```
@@ -111,6 +113,7 @@ the full rules and why duplicate/stacked PRs are disallowed by default.
 | `telemetry` | run-end telemetry + cost estimate (v1.2.0) | `on`, `off` | none yet — config-only | `on` |
 | `dry-run` | default plan-preview for building skills (v1.2.0) | `on`, `off` | none yet — config-only (a per-run argument on the relevant skill may still override for one run) | `off` |
 | `auto-handoff` | regenerate `.dev-team/HANDOFF.md` after every completed task/workstream (v1.3.0) | `on`, `off` | `DEV_TEAM_NO_AUTO_HANDOFF` (off-switch: any non-empty value disables) | `on` |
+| `handoff-file` | whether `.dev-team/HANDOFF.md` exists at all (v1.6.0). `off` = the plugin writes NO `.dev-team/HANDOFF.md` at all — not per task, not at a stage checkpoint or RECORD, not at the end of an autopilot cycle — auto-handoff is off with it, and cold resume uses `.dev-team/PROJECT.md` and `.dev-team/autopilot.json` instead (`conventions.md`, "Auto-handoff") | `on`, `off` | none — config-only (a per-run `handoff-file=on|off` still overrides for one run) | `on` |
 | `auto-commit` | local commit per completed-and-checked task/workstream — never push, never PR (v1.3.0) | `on`, `off` | `DEV_TEAM_NO_AUTO_COMMIT` (off-switch: any non-empty value disables) | `on` |
 | `pointer-sentence` | whether an interactive run offers to add the `.dev-team/` pointer sentence to `CLAUDE.md` / `.claude/CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (v1.5.0; `conventions.md`, "Where the plugin writes, and the ownership rule", point 8) | `ask`, `declined` | none — config-only | `ask` (not yet asked) |
 

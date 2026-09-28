@@ -32,11 +32,13 @@ see the section straight below.
   unsafe and incomplete; every finding was acted on in the next commit (safety precedence,
   trusted sources, unattended conflicts, the nine missed briefing places, the profile, one exact
   agent sentence, tests that fail when the meaning is removed — proven by edits in a throwaway
-  copy). **Not yet re-reviewed** — it needs another review round, by Codex under rule 5.
-- **Open design point for that review:** "auto-handoff treated as off" still leaves the plugin
-  regenerating `.dev-team/HANDOFF.md` at checkpoints, so a repository that forbids any second
-  handover is not fully honoured yet.
-- Checks at the revision: bats 149 of 149, smoke test, both audits and shellcheck all pass.
+  copy), in `79a2c20`. A follow-up commit then fixed two wording slips in the rule (a pointer to
+  "Handover" below, which is really "Auto-handoff" above; a paraphrase quoted as the docs skill's
+  words) and added the **`handoff-file` switch**: `off` means no `.dev-team/HANDOFF.md` is written at
+  all, and a project whose instructions forbid a second handover gets `off` automatically. Before
+  this, "auto-handoff off" still rewrote the file at every checkpoint. **Not yet re-reviewed** — it
+  needs another review round, by Codex under rule 5.
+- Checks at the latest commit: bats 150 of 150, smoke test, both audits and shellcheck all pass.
 
 ## START HERE — for a fresh session with no chat history
 

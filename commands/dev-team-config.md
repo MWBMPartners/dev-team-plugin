@@ -42,8 +42,9 @@ This is **read-only** — never create, edit, or touch the file for `show`.
    `.gitignore`.
    Then offer the pointer sentence (`conventions.md`, "Where the plugin writes, and the ownership
    rule", point 8): when one of `CLAUDE.md`, `.claude/CLAUDE.md`, `AGENTS.md` and `GEMINI.md`
-   exists and does not already contain it, and the config does not already say
-   `pointer-sentence: declined`, offer once — never add it silently — to add "Dev-team plugin state
+   exists and does not already contain it, the config does not already say
+   `pointer-sentence: declined`, and `handoff-file` is not `off` (the sentence names
+   `.dev-team/HANDOFF.md`, which is then never written), offer once — never add it silently — to add "Dev-team plugin state
    and the current handover live in `.dev-team/` — read `.dev-team/HANDOFF.md` first." word for word
    to each of those files that lacks it. If the user declines, set `pointer-sentence: declined`
    under `features:` in the `.dev-team/config.yml` just written, and tell them. *Why here:* `init`

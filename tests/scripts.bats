@@ -506,9 +506,10 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
 # ---------------------------------------------------------------------------
 # "Repository instructions and normative documents" — the shared rule (issue #47), the agent
 # sentence that points every endpoint agent at it, the brief-template and checker pieces that carry
-# it into real work, and the README's count of cross-cutting behaviours.
+# it into real work, the README's count of cross-cutting behaviours, and the handoff-file switch
+# that lets a project which keeps its own single handover have no .dev-team/HANDOFF.md at all.
 # ---------------------------------------------------------------------------
-# Why these five tests exist, and why they look at MEANING rather than headings: the first version
+# Why these tests exist, and why they look at MEANING rather than headings: the first version
 # of this rule (commit af39817) was guarded by four tests that only looked for headings and loose
 # words — "Discover.", a count of agent files containing the word "repository", and so on. An
 # independent review showed they all still passed when the rule's meaning was turned upside down:
@@ -663,6 +664,38 @@ repo_rule_block() {
   echo "README states: $stated; bullets listed: $bullets"
   [ "$bullets" -gt 0 ]
   [ "$stated" = "$bullets" ]
+}
+
+@test "handoff-file: 'off' still means NO .dev-team/HANDOFF.md at all, in conventions.md and config-and-toggles.md" {
+  # What this guards: a project may keep exactly one handover document of its own and forbid a
+  # second. Switching auto-handoff off was not enough for that — it only stops the refresh after
+  # each task, and the plugin still rewrote .dev-team/HANDOFF.md at every checkpoint and at the end
+  # of every autopilot cycle. The handoff-file switch exists to close that gap, so its whole meaning
+  # is "off = no file, ever". If a later edit narrowed that back to "no file per task", or dropped
+  # the line saying a project's own "no second handover" instruction turns it off, a project that
+  # forbids a second handover would quietly get one again. Wrapped lines are joined with a single
+  # space first, as a markdown reader sees them, so the check does not depend on where a line breaks.
+  conv="$REPO_ROOT/skills/dev-team-orchestrator/references/conventions.md"
+  auto_section="$(awk '/^## Auto-handoff/ { on = 1 } on && /^## / && !/^## Auto-handoff/ { exit } on { print }' "$conv" | tr '\n' ' ')"
+  [ -n "$auto_section" ]
+  for want in \
+    'When `handoff-file` is `off`, the plugin writes NO `.dev-team/HANDOFF.md` at all — not after a task, not at a stage checkpoint or RECORD, not at the end of an autopilot cycle' \
+    'Cold resume then uses `.dev-team/PROJECT.md` (the source of truth)' \
+    "When a repository's own instructions forbid a second handover or say where notes live, that maps to \`handoff-file: off\` for that repository"; do
+    if ! printf '%s\n' "$auto_section" | grep -qF -- "$want"; then
+      echo "missing from conventions.md, \"Auto-handoff\": $want"
+      return 1
+    fi
+  done
+  # The shared rule's precedence step must name the same mapping, so an agent reading only the rule
+  # still turns the file off for such a project.
+  run repo_rule_block
+  printf '%s\n' "$output" | grep -qF -- 'for example `handoff-file`, which an instruction forbidding a second handover or saying where notes live sets to `off`'
+  toggles="$REPO_ROOT/skills/dev-team-orchestrator/references/config-and-toggles.md"
+  run grep -F '`off` = the plugin writes NO `.dev-team/HANDOFF.md` at all — not per task, not at a stage checkpoint or RECORD, not at the end of an autopilot cycle' "$toggles"
+  [ "$status" -eq 0 ]
+  run grep -E '^  handoff-file: on +# off = write NO \.dev-team/HANDOFF\.md at all' "$toggles"
+  [ "$status" -eq 0 ]
 }
 
 # ---------------------------------------------------------------------------
