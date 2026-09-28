@@ -129,8 +129,9 @@ not reviewing prose quality — you are auditing truth.
 - Scope: [readme|api|reference|docstrings|changelog|guides|architecture]
 - Repository instructions and normative documents that apply (e.g. a documentation or naming
   standard the repository's own instructions point to): [paths + rule IDs — you read the
-  document itself, in full, from the repository; if a named one cannot be found, say so plainly
-  rather than treating it as nothing to check; or "none named"]
+  document itself, in full (or, if it is too large to read whole, as step 3 of the rule allows), from the repository's trusted base; if a
+  named one cannot be found, say so plainly rather than treating it as nothing to check; or
+  "none named"]
 
 ## Do
 1. Extract every claim from the draft (signatures, flags, config keys, endpoints, behaviors,

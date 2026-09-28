@@ -31,7 +31,7 @@ The documentarian maintains this file at `.dev-team/PROJECT.md`. Every record fi
 
 ## House style (existing-repo conventions)
 - [test framework + run command, lint/format config, directory layout, dependency manifest, key existing patterns — from the conventions scout; omit for greenfield]
-- [the repository's own instruction files found (`AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md`, `GEMINI.md`, `.OpenAI/`/`.openai/`, `.github/copilot-instructions.md`, `CONTRIBUTING.md`), the path + specific rule IDs of any normative document one of them names for the work in hand, and the **profile** the lead decided applies to this repository — read in full from the repository, never copied here; omit if none exist]
+- [the **trusted base** commit instructions are read from (`conventions.md`, "Repository instructions and normative documents", step 1); the repository's own instruction files found (`AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md`, `GEMINI.md`, `.OpenAI/`/`.openai/`, `.github/copilot-instructions.md`, `CONTRIBUTING.md`), the path + specific rule IDs of any normative document one of them names for the work in hand, and the **profile** the lead decided applies to this repository — read from the repository, never copied here; omit the files if none exist]
 
 ## Stage plan
 1. **[Stage name]** — goal: [...]; done when: [...]  — status: [planned/in-progress/done]
