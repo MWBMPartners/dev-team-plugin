@@ -504,6 +504,88 @@ TMP_LEDGER_AUDIT="skills/dev-team-orchestrator/references/.tmp-ledger-audit.md"
 }
 
 # ---------------------------------------------------------------------------
+# "Repository instructions are authoritative" — the shared rule, the
+# brief-template item, and the checker instruction that carry it.
+# ---------------------------------------------------------------------------
+# Without this rule, a builder or checker only ever knows what a lead happened to paste into its
+# brief — a repository's own instructions (AGENTS.md, CLAUDE.md, ...) and the normative documents
+# they point at (a standard, a policy, a spec a whole class of work "MUST follow") are invisible
+# unless someone copies them in by hand, and a pasted copy is a copy that can drift from the
+# original. These three tests each pin one load-bearing piece of the mechanism in the file where
+# it actually lives, so a future edit that quietly drops the rule — while leaving the plugin
+# looking otherwise intact — fails loudly here instead of shipping unnoticed.
+
+@test "conventions: the repository-instructions rule exists, with its seven-point discipline intact" {
+  # What this guards: conventions.md is the one canonical home every skill in the suite reads
+  # (CONTRIBUTING.md: "a contradiction between that file and a sibling is treated as a bug in the
+  # sibling"). If the rule vanished from here, every pointer to it elsewhere in the plugin
+  # ("see conventions.md, 'Repository instructions are authoritative'") would resolve to nothing,
+  # and no agent would ever look for a repository's own instructions again.
+  f="$REPO_ROOT/skills/dev-team-orchestrator/references/conventions.md"
+  run grep -F 'Repository instructions are authoritative' "$f"
+  [ "$status" -eq 0 ]
+  # The seven points of the discipline itself, not just the heading — a heading with an empty or
+  # gutted body would still pass a bare title search.
+  run grep -F 'Discover.' "$f"
+  [ "$status" -eq 0 ]
+  run grep -F 'Read, in full, from the repository.' "$f"
+  [ "$status" -eq 0 ]
+  run grep -F 'Work out which part applies.' "$f"
+  [ "$status" -eq 0 ]
+  run grep -F 'Carry it forward by reference, not by copy.' "$f"
+  [ "$status" -eq 0 ]
+  run grep -F 'Run what the repository requires, and report the real result.' "$f"
+  [ "$status" -eq 0 ]
+  run grep -F 'A checker or reviewer verifies this independently.' "$f"
+  [ "$status" -eq 0 ]
+  run grep -F 'The repository wins.' "$f"
+  [ "$status" -eq 0 ]
+}
+
+@test "task-brief-template: the project-context item and the acceptance-criteria line for repository instructions are present" {
+  # What this guards: this is the ONE place every builder/scout brief in the suite is assembled
+  # from (task-brief-template.md, line 3: "Every worker agent gets a brief in this shape"). If the
+  # "Repository instructions and normative documents" project-context item disappeared, a lead
+  # would have nowhere in the standard brief shape to name the paths and rule IDs a builder needs
+  # — the builder would be back to zero context beyond whatever the lead happened to paste, which
+  # is exactly the gap this rule exists to close. If the acceptance-criteria line disappeared, a
+  # repository's own required (including conformance) tests could pass unrun with nothing in the
+  # brief format to ask for their measured results.
+  f="$REPO_ROOT/skills/dev-team-orchestrator/references/task-brief-template.md"
+  run grep -F 'Repository instructions and normative documents:' "$f"
+  [ "$status" -eq 0 ]
+  run grep -F 'Every test the repository requires for this kind of change has been run' "$f"
+  [ "$status" -eq 0 ]
+}
+
+@test "checker-protocol: the independent-verification instruction for repository instructions is present" {
+  # What this guards: checker-protocol.md is what turns "the lead said it follows the rules" into
+  # an independently-checked claim. Without this instruction, a checker could accept a builder's
+  # own say-so that a normative document was followed — exactly the "builder grades own work"
+  # failure the suite's evidence-not-claims discipline exists to forbid everywhere else. The
+  # escalation line matters too: without it, a real conflict with a normative document could be
+  # silently fixed (or silently ignored) instead of being treated as the same weight as a failing
+  # test.
+  f="$REPO_ROOT/skills/dev-team-orchestrator/references/checker-protocol.md"
+  run grep -F 'Verify repository-instruction / normative-document compliance independently.' "$f"
+  [ "$status" -eq 0 ]
+  run grep -F 'a change that conflicts with a named repository instruction or normative document' "$f"
+  [ "$status" -eq 0 ]
+}
+
+@test "agents: every endpoint agent is told to read repository files the brief names, not just the brief" {
+  # What this guards: agents/*.md is what the Task tool actually spawns. Even a perfectly-written
+  # brief accomplishes nothing if the agent receiving it was never told to act on the repository
+  # paths named inside it. Each of the five endpoint agents must say so in its own words — a count
+  # of 5 rather than a single combined grep, so dropping the sentence from any ONE agent (not just
+  # all of them at once) fails this test.
+  count="$(grep -lF 'repository' "$REPO_ROOT"/agents/*.md | wc -l | tr -d ' ')"
+  [ "$count" -eq 5 ]
+  count="$(grep -lF 'normative document' "$REPO_ROOT"/agents/*.md | wc -l | tr -d ' ')"
+  [ "$count" -eq 5 ]
+}
+
+# ---------------------------------------------------------------------------
 # hooks/guard-dev-team.sh — default (no repo config) behavior
 # ---------------------------------------------------------------------------
 

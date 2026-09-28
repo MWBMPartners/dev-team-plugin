@@ -27,6 +27,9 @@ has authorized you to test. Goal: find real, exploitable vulnerabilities in
 - Surface / vuln-class: [e.g. "authZ on the /api/orders endpoints" or "SQL injection across the data layer"]
 - Files / entry points to focus: [list from the attack-surface map]
 - Threat-model context: [paste the relevant assets, trust boundary, adversary]
+- Repository security policy / normative documents that apply: [paths + rule IDs of any
+  organisation security standard the repository's own instructions name for this work — you
+  read the document itself, in full, from the repository; or "none named"]
 - Local sandbox: how to run it: [command]; test command: [command]
 
 ## Scanner leads (starting point, not gospel)

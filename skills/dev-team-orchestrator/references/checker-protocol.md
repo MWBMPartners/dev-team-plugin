@@ -19,6 +19,10 @@ ONLY what you escalate, so your triage must be trustworthy.
 - Project conventions / prior decisions that apply: [paste relevant bits]
 - Skills governing this work: [name + path of any applicable skill — verify the
   output conforms to its conventions, e.g. "UI must follow ~/.claude/skills/ui-design/SKILL.md"; or "none"]
+- Repository instructions and normative documents that apply: [paths + specific rule IDs — you
+  read the named document(s) yourself, in full, from the repository, not from this brief's
+  summary of them; if a named document cannot be found, say so plainly rather than treating it
+  as nothing to check; or "none named"]
 
 ## Do
 1. Verify each acceptance criterion against the actual code; mark pass/fail with evidence (file:line).
@@ -27,7 +31,8 @@ ONLY what you escalate, so your triage must be trustworthy.
 4. Fix routine issues yourself if safe and unambiguous (typos, dead code, obvious
    lint, a clearly-wrong import). Note what you fixed.
 5. **Flag duplication and over-engineering.** Note code that duplicates an existing function or another agent's work (should be factored into a shared module), dead code, and needless complexity or gold-plating. Trivial duplication you can collapse yourself; a structural duplication (two agents built the same subsystem) goes to NEEDS LEAD REVIEW.
-6. Do NOT touch: [files owned by other in-flight work].
+6. **Verify repository-instruction / normative-document compliance independently.** Read the named document(s) yourself, in full, from the repository — never take the lead's or the builder's word for what they say. Check the change against them, cite the specific rule IDs you checked, and treat a conflict with a normative document as a real finding, the same weight as a failing test. If a named document cannot be found, say so plainly in your report — that is a finding to state, never "nothing to verify."
+7. Do NOT touch: [files owned by other in-flight work].
 
 ## Report back in exactly these three buckets
 - **CLEAN**: criteria met, ran green, nothing to discuss.
@@ -41,7 +46,7 @@ ONLY what you escalate, so your triage must be trustworthy.
 
 ## What counts as "needs lead review"
 
-Escalate (don't just fix): architecture or interface decisions, security/auth/data-loss risk, anything that contradicts a prior decision, requirement ambiguity, a criterion that is wrong, infeasible, or self-contradictory (escalate it; don't grade against it), performance tradeoffs, "this works but smells like the wrong approach", and irreversible operations.
+Escalate (don't just fix): architecture or interface decisions, security/auth/data-loss risk, anything that contradicts a prior decision, requirement ambiguity, a criterion that is wrong, infeasible, or self-contradictory (escalate it; don't grade against it), performance tradeoffs, "this works but smells like the wrong approach", irreversible operations, and a change that conflicts with a named repository instruction or normative document (a real finding, not a style note — cite the rule ID).
 
 Handle silently: formatting, obvious typos, dead code, trivially-correct fixes, missing-but-unambiguous error handling.
 

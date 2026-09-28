@@ -17,10 +17,12 @@ Read `.dev-team/PROJECT.md` (and `.dev-team/SECURITY.md` if present) — found t
 | **Findings register** (security) | each `fixed-verified` finding is closed; nothing unresolved is mislabeled | Per terminal status (guidance, not a rigid checklist): `fixed-verified` → regression test exists+passes, re-run PoC at `depth=deep`; ROTATE-flagged → confirm rotation happened (secret absent from current code AND git history, old key invalidated) else DRIFTED; `analysis-confirmed` → spot-re-attack at `depth=deep` to confirm the PoC is genuinely impractical, not actually exploitable; `accepted-documented` → rationale present and severity still genuinely Low; `proposed` → confirm the remediation was NOT silently built without user sign-off |
 | **Decision log** | each decision is reflected in the code | Read the code; confirm the choice is actually present |
 | **Codebase Map** (iterate) | the map matches reality | Spot-check entries against the real files/surfaces |
+| **House style — repository instructions / normative documents** (`.dev-team/PROJECT.md`'s House style, or named in a build's own briefs) | the change follows the cited rule IDs from each named document | Read the named document(s) yourself, in full, from the repository — never the House-style summary or a builder's word for it — check the change against them, and cite the specific rule IDs you checked |
 
 Also record, as first-class claims to report on:
 - **Evidence-less claims** — anything `.dev-team/PROJECT.md` marks done/fixed/verified **without pasted evidence**. Unverified by construction; they go on the report no matter what.
 - **Undocumented reality** — if you notice the code does something significant `.dev-team/PROJECT.md` never mentions, that's drift in the other direction; note it.
+- **A named normative document that cannot be found.** State it plainly on the report as its own line — never read a missing document as "nothing to verify" for that claim; it is UNVERIFIABLE, the same as any other claim you cannot check (see "Verdict definitions" below).
 
 Give each claim: `id (V-001)`, `source` (section + line), `statement` (what's asserted), `type` (criterion / stage / feature / fix / decision / metric / map / purpose), and `how-to-verify`.
 
@@ -62,6 +64,9 @@ to test, not proof. You are read-only — change nothing.
 - Repo / working dir: [path]
 - How to run the app / sandbox: [command]   Test/build/lint: [commands]
 - User skills to use: [verify/run skill paths — use them to launch & exercise the app]
+- Repository instructions and normative documents named for this work: [paths + rule IDs — you
+  read the document(s) yourself, in full, from the repository; if a named one cannot be found,
+  say so plainly rather than treating it as nothing to check; or "none named"]
 - Depth for this pass: [quick | standard | deep]
 - Prior report (regression baseline): [`.dev-team/VERIFICATION.md` path, or none]
 
@@ -84,6 +89,11 @@ to test, not proof. You are read-only — change nothing.
 8. Judge test quality: a passing test that asserts nothing meaningful is HOLLOW, not VERIFIED.
 9. Note any INEFFICIENCY you pass (works but slow / wasteful / redundant) as an
    improvement finding with a measurement — do NOT fix it; you are read-only.
+10. For a REPOSITORY-INSTRUCTION / NORMATIVE-DOCUMENT claim, read the named document yourself, in
+    full, from the repository — never the House-style summary — check the change against it, and
+    cite the specific rule IDs you checked. A conflict is FAILED or DRIFTED, not a note in
+    passing. If the named document cannot be found, that claim is UNVERIFIABLE and you say so —
+    never silently treat a missing document as nothing to verify.
 
 ## Report back — one entry per claim
 - id, statement

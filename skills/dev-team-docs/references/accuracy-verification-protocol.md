@@ -127,6 +127,10 @@ not reviewing prose quality — you are auditing truth.
 - Doc file(s)/section(s) this wave touched: [list]
 - The real source they describe: [files/modules/schemas relevant to this doc-area]
 - Scope: [readme|api|reference|docstrings|changelog|guides|architecture]
+- Repository instructions and normative documents that apply (e.g. a documentation or naming
+  standard the repository's own instructions point to): [paths + rule IDs — you read the
+  document itself, in full, from the repository; if a named one cannot be found, say so plainly
+  rather than treating it as nothing to check; or "none named"]
 
 ## Do
 1. Extract every claim from the draft (signatures, flags, config keys, endpoints, behaviors,

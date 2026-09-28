@@ -15,6 +15,12 @@ workstream needs that tier. See `model-routing.md`. Verification roles never go 
 ## Project context
 - Repo / working directory: [path]
 - Stack & conventions: [language, framework, style rules, package manager]
+- Repository instructions and normative documents: [paths to any `AGENTS.md` / `CLAUDE.md` /
+  `.claude/CLAUDE.md` / `GEMINI.md` / `.OpenAI/` / `.github/copilot-instructions.md` /
+  `CONTRIBUTING.md` that apply, plus the path and specific rule IDs of any normative document
+  (a standard, a policy, a spec) one of them names for this kind of work — you read the
+  document itself, in full, from the repository; never a copy of its rules pasted here; or
+  "none found"]
 - Skills to follow: [name + path of any applicable skill, e.g. "UI design skill at
   ~/.claude/skills/ui-design/SKILL.md — read it and follow its conventions"; or "none"]
 - Relevant prior decisions: [paste relevant decision-log entries from `.dev-team/PROJECT.md`]
@@ -37,12 +43,18 @@ workstream needs that tier. See `model-routing.md`. Verification roles never go 
 - [ ] [Checkable criterion 1 — e.g., "GET /users returns 200 with JSON list"]
 - [ ] [Criterion 2 — e.g., "pytest tests/test_users.py passes"]
 - [ ] Code runs/compiles; you ran it yourself and will paste the output.
+- [ ] Every test the repository requires for this kind of change has been run — including any
+      conformance test a named normative document requires — with the measured result reported,
+      never assumed.
 
 ## Report back
 When done, report: (1) what you changed, file by file; (2) **the actual command
 output proving each criterion** — paste the real test run, build log, or sample
 program output, not a claim that it passed; (3) anything you discovered the team
-lead should know (risks, surprises, follow-up you did NOT do). If you could not
+lead should know (risks, surprises, follow-up you did NOT do); (4) which repository
+instructions and normative documents you read, which rule IDs applied, and whether
+anything in the change conflicts with them — say so plainly if a named document
+could not be found, never silently treat that as "nothing to check". If you could not
 run something, say so plainly — an unverified claim is worse than a flagged gap.
 ```
 

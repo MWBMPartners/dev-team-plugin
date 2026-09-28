@@ -6,6 +6,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.6.0] - <unreleased>
+
+### Added
+
+- **Repository instructions are authoritative.** Every agent in the suite now looks for a
+  project's own developer/agent instructions — `AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md`,
+  `GEMINI.md`, `.OpenAI/`/`.openai/`, `.github/copilot-instructions.md`, `CONTRIBUTING.md`, and
+  anything similar those point to — at the repository root and in the folders a task touches, and
+  reads in full, from the repository itself, whatever normative document (a standard, a policy, a
+  spec) one of them names for the kind of work in hand. Before this release, only what a lead
+  happened to paste into a brief ever reached a builder — `opus-builder`'s own description says it
+  has "ZERO context beyond the brief" — so a repository rule was invisible to the plugin unless
+  someone copied it in by hand, and a pasted copy is a copy that can drift from the original the
+  moment it changes. Now the lead's brief names the document's path and the specific rule IDs that
+  apply, and the agent doing the work reads the document itself; a normative document's rules are
+  never pasted into a brief or a plugin prompt. When a normative document splits into profiles or
+  hands different responsibilities to different projects, the agent works out which one applies
+  and builds only to that. A checker or reviewer verifies this independently — it reads the named
+  documents itself, cites the specific rule IDs it checked, and treats a conflict with a normative
+  document as a real finding, the same weight as a failing test; a named document that cannot be
+  found is stated plainly, never silently read as "nothing to verify." Repository-required tests,
+  including any conformance test a normative document names, are run and their measured results
+  reported. Where a repository's own instructions or a normative document conflict with one of
+  this plugin's own defaults, the repository wins and the report says so; if two of a repository's
+  own sources conflict with each other, the run stops and puts the conflict to the user rather
+  than picking one. Deliberately generic: this release adds the discovery mechanism only, with no
+  particular standard or policy named anywhere in the plugin's own files. Full rule:
+  `conventions.md`, "Repository instructions are authoritative"; touches every builder/scout/
+  checker/reviewer brief format in the suite (`task-brief-template.md`,
+  `checker-protocol.md`, `claim-extraction-and-verification-protocol.md`,
+  `documentarian-protocol.md`, `red-team-protocol.md`, `accuracy-verification-protocol.md`), the
+  orchestrator's own project-understanding and conventions-scout steps, and every agent definition
+  in `agents/*.md`.
+
 ## [1.5.0] - <unreleased>
 
 ### Changed

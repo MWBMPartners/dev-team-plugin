@@ -4,6 +4,8 @@ The documentarian is spawned as the **`sonnet-scribe`** agent (Sonnet tier; mode
 
 `PROJECT.md` is the orchestrator's **external memory**. Its job is not just to log history but to answer, at any moment, "where does this project stand and what's next" — so a fresh orchestrator with no prior context could read it and resume correctly. That means a **Current status** section that is kept up to date, not only append-only logs.
 
+**House style comes from the repository, not just the codebase.** When recording House style, the documentarian records the repository's own instruction files that were found (`AGENTS.md`, `CLAUDE.md`, etc.) and the path + rule IDs of any normative document one of them names — the same standing as the test framework, the lint config, and the directory layout — never a copy of the document's rules. See `conventions.md`, "Repository instructions are authoritative".
+
 **Schema:** line 2, right under the title, carries the dev-team marker `<!-- dev-team: ledger=project schema=1.0 -->` — one line that is both this document's format version and the plugin's proof that the file is its own (see `conventions.md`, "Where the plugin writes, and the ownership rule"). The legacy marker `<!-- dev-team-schema: 1.0 -->`, written before v1.5.0, is still accepted as proof of ownership when reading, and is replaced by the new form the next time the file is written. A missing marker means different things depending on what is about to happen — see `conventions.md`'s "Schema versioning" subsection for the shared rule.
 
 ## PROJECT.md structure
@@ -29,6 +31,7 @@ The documentarian maintains this file at `.dev-team/PROJECT.md`. Every record fi
 
 ## House style (existing-repo conventions)
 - [test framework + run command, lint/format config, directory layout, dependency manifest, key existing patterns — from the conventions scout; omit for greenfield]
+- [the repository's own instruction files found (`AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md`, `GEMINI.md`, `.OpenAI/`/`.openai/`, `.github/copilot-instructions.md`, `CONTRIBUTING.md`), and the path + specific rule IDs of any normative document one of them names for the work in hand — read in full from the repository, never copied here; omit if none exist]
 
 ## Stage plan
 1. **[Stage name]** — goal: [...]; done when: [...]  — status: [planned/in-progress/done]
