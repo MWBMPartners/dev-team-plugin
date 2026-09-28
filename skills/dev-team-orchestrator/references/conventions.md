@@ -96,7 +96,7 @@ The nine points below say what that means, why it is this way, what was rejected
    - For `.dev-team/README.md`, a marked file that already exists is left as it is (point 7) — the "file present, marker present" case above never rewrites it.
 
 5. **Files from before v1.5.0 — the lookup order.** A reader looks for `.dev-team/<name>` first. Only if that is absent does it look in the legacy root location, at the top-level `<name>`.
-   - **Legacy root file with a marker** (either form) → it is ours. A run that writes ledgers `git mv`s it into `.dev-team/`, rewrites the marker to the new form, and commits that as `dev-team: move <name> into .dev-team/ (v1.5.0)`, before any other work.
+   - **Legacy root file with a marker** (either form) → it is ours. A run that writes ledgers `git mv`s it into `.dev-team/`, rewrites the marker to the new form, and commits that as `dev-team: move <name> into .dev-team/ (v1.5.0)`, before any other work — except `HANDOFF.md` while `handoff-file` is `off`: moving it would create the very `.dev-team/HANDOFF.md` that `off` rules out, so it stays where it is and the run reports it instead ("Auto-handoff" below).
      - *Which branch:* the move is the first commit on the run's own branch, made once that branch exists or has been adopted — never directly on the default branch without asking. *Why:* the move changes the project's history, so it belongs with the run's other work, where it is reviewed in the same pull request. An earlier wording said only "on the current run branch", which left room to commit it on whatever branch happened to be checked out, the default branch included.
      - *Dry-run:* read it where it is, move nothing, and report the move as pending.
      - *Read-only commands and phases:* a command or phase that does not write ledgers — `/dev-team-status`, `/dev-team-report`, `/dev-team-approve` (which edits one field of `.dev-team/autopilot.json` and nothing else), the review skill's verification phase, and docs audit mode — reads a marked legacy root file where it is, moves and commits nothing, and reports the move as pending with this sentence: "`<name>` is still at the top level of the project — run `/dev-team-move-ledgers` to move it into `.dev-team/`." *Why:* each of these promises to change nothing (or one named thing), and a move-and-commit would break that promise the first time it ran on a project from before v1.5.0.
@@ -280,16 +280,22 @@ run reports it instead.
 - **Precedence.** Per-run argument > plain language > an explicit `features.handoff-file` in
   `.dev-team/config.yml` (the user's own setting, so it wins over an instruction file) > a repository
   instruction that explicitly forbids a second handover (which can only ever set `off`) > built-in
-  default `on`. There is no per-session environment switch. Fail-open: a missing or unreadable value
-  counts as not set; an unrecognised one (such as `Off` or `of`) is named in the run's report and
-  also counts as not set.
+  default `on`. There is no per-session environment switch. **Values:** `off`, `false` and `no`,
+  in any mix of capitals, mean off; `on`, `true` and `yes` mean on. A missing or unreadable file
+  counts as not set. Any other value (a typo such as `of`) is named in the run's report and treated
+  as `off`, the cautious value — a typo on this line is most likely a failed attempt to turn the file
+  off, and writing a handover the project forbids is the harm this switch exists to prevent.
 - **The lead settles it once per run.** The lead works the value out once, at the start of the run,
-  records it in `.dev-team/PROJECT.md`'s House style, and passes it in every `sonnet-scribe` brief as
-  `handoff-file: on|off (settled by the lead)`. The scribe obeys the value in its brief and never
-  works it out again itself; a scribe brief without it writes no `.dev-team/HANDOFF.md` and says so.
+  records it in `.dev-team/PROJECT.md`'s House style, and passes it in every documentarian brief — a
+  `sonnet-scribe` brief to keep the plugin's record files — as
+  `handoff-file: on|off (settled by the lead)`. A docs drafter's brief does not carry it, because a
+  drafter never writes `.dev-team/HANDOFF.md`. The scribe obeys the value in its brief and never
+  works it out again itself; a scribe asked to write `.dev-team/HANDOFF.md` without that value
+  writes none and says so.
 - **The project's own handover is never the scribe's to write.** `sonnet-scribe` never writes into
-  the project's own handover or notes file, whatever the value. Updating it is ordinary project work,
-  done by a builder with a brief.
+  the handover or session-notes file the project's own instructions name, whatever the value.
+  Updating it is ordinary project work, done by a builder with a brief. (This is that one file, not
+  project documentation in general, which docs drafters write as their job.)
 - **Old traces when it is `off`.** A `.dev-team/HANDOFF.md` still on disk, or a pointer sentence the
   plugin once added to an instruction file, is no longer kept up to date. In an attended run, offer
   to remove the pointer sentence and to delete the card (or mark it "no longer maintained" — the only

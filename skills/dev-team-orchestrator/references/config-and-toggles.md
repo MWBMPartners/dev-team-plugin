@@ -175,7 +175,7 @@ the full rules and why duplicate/stacked PRs are disallowed by default.
 | `telemetry` | run-end telemetry + cost estimate (v1.2.0) | `on`, `off` | none yet — config-only | `on` |
 | `dry-run` | default plan-preview for building skills (v1.2.0) | `on`, `off` | none yet — config-only (a per-run argument on the relevant skill may still override for one run) | `off` |
 | `auto-handoff` | regenerate `.dev-team/HANDOFF.md` after every completed task/workstream (v1.3.0) | `on`, `off` | `DEV_TEAM_NO_AUTO_HANDOFF` (off-switch: any non-empty value disables) | `on` |
-| `handoff-file` | whether `.dev-team/HANDOFF.md` exists at all (v1.6.0). `off` = the plugin writes NO `.dev-team/HANDOFF.md` at all — not per task, not at a stage checkpoint or RECORD, not at the end of an autopilot cycle — auto-handoff is off with it (even a per-run `auto-handoff=on`), and cold resume uses `.dev-team/PROJECT.md` and `.dev-team/autopilot.json` instead. While the key is unset, a repository instruction that explicitly forbids a second handover sets it `off`; a value set here wins over that. The starter file leaves it, like every other setting, commented out for that reason (`conventions.md`, "Auto-handoff") | `on`, `off` (anything else is named in the run's report and counts as not set) | none — config-only (a per-run `handoff-file=on|off` still overrides for one run) | `on` |
+| `handoff-file` | whether `.dev-team/HANDOFF.md` exists at all (v1.6.0). `off` = the plugin writes NO `.dev-team/HANDOFF.md` at all — not per task, not at a stage checkpoint or RECORD, not at the end of an autopilot cycle — auto-handoff is off with it (even a per-run `auto-handoff=on`), and cold resume uses `.dev-team/PROJECT.md` and `.dev-team/autopilot.json` instead. While the key is unset, a repository instruction that explicitly forbids a second handover sets it `off`; a value set here wins over that. The starter file leaves it, like every other setting, commented out for that reason (`conventions.md`, "Auto-handoff") | `on`, `off` — also `true`/`yes` and `false`/`no`, in any mix of capitals; anything else is named in the run's report and treated as `off`, the cautious value | none — config-only (a per-run `handoff-file=on|off` still overrides for one run) | `on` |
 | `auto-commit` | local commit per completed-and-checked task/workstream — never push, never PR (v1.3.0) | `on`, `off` | `DEV_TEAM_NO_AUTO_COMMIT` (off-switch: any non-empty value disables) | `on` |
 | `pointer-sentence` | whether an interactive run offers to add the `.dev-team/` pointer sentence to `CLAUDE.md` / `.claude/CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (v1.5.0; `conventions.md`, "Where the plugin writes, and the ownership rule", point 8) | `ask`, `declined` | none — config-only | `ask` (not yet asked) |
 
@@ -246,7 +246,9 @@ Loading `.dev-team/config.yml` is **best-effort and fail-open**, everywhere it's
   absent: proceed on the built-in default. Never fail a session, block a hook, or throw a parse
   error at the user.
 - **A key present but with an unrecognized value** → ignore that key and fall back to its
-  built-in default; don't let one bad line take down the rest of the file's valid keys.
+  built-in default; don't let one bad line take down the rest of the file's valid keys. One
+  exception: an unrecognised `handoff-file` value is reported and treated as `off`, the cautious
+  value (`conventions.md`, "Auto-handoff").
 - **Hooks use a tolerant grep-based line match**, not a real YAML parser (hooks are shell, keeping
   a YAML dependency out of a PreToolUse/SessionStart hot path is deliberate) — e.g.
   `grep -Eq '^[[:space:]]*update-notifier:[[:space:]]*(off|false|no)([[:space:]]|$)' .dev-team/config.yml`.

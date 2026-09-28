@@ -765,6 +765,126 @@ field_body() {
   ' "$1"
 }
 
+# Checks every record printed by the function named $1 (records as in pinned_fields: "@@ <file> | is"
+# followed by the pinned text) and fails unless exactly $2 records were checked and all matched.
+check_pinned() {
+  local file="" exp="" bad="" checked=0 line want prefix got
+  check_one() {
+    checked=$((checked + 1))
+    want="$(printf '%s\n' "$2" | join_words)"
+    prefix="${want:0:30}"
+    got="$(field_body "$REPO_ROOT/$1" "$prefix" | join_words)"
+    if [ "$got" != "$want" ]; then
+      bad="$bad
+$1: expected: $want
+$1: found:    $got"
+    fi
+  }
+  while IFS= read -r line; do
+    case "$line" in
+      "@@ "*)
+        [ -n "$file" ] && check_one "$file" "$exp"
+        file="${line#@@ }"; file="${file% | is}"; exp="" ;;
+      *) exp="$exp
+$line" ;;
+    esac
+  done < <("$1")
+  [ -n "$file" ] && check_one "$file" "$exp"
+  echo "records checked: $checked"
+  if [ -n "$bad" ]; then
+    printf '%s\n' "not word for word as pinned:$bad"
+    return 1
+  fi
+  [ "$checked" -eq "$2" ]
+}
+
+# The places that say what happens to an old top-level HANDOFF.md while handoff-file is off (third
+# review, finding 8): conventions point 5, the README's upgrade notes, and /dev-team-move-ledgers.
+pinned_handoff_fields() {
+  cat <<'PINNED'
+@@ skills/dev-team-orchestrator/references/conventions.md | is
+- **Legacy root file with a marker** (either form) → it is ours. A run that writes ledgers `git
+  mv`s it into `.dev-team/`, rewrites the marker to the new form, and commits that as `dev-team:
+  move <name> into .dev-team/ (v1.5.0)`, before any other work — except `HANDOFF.md` while
+  `handoff-file` is `off`: moving it would create the very `.dev-team/HANDOFF.md` that `off` rules
+  out, so it stays where it is and the run reports it instead ("Auto-handoff" below).
+@@ README.md | is
+- **A legacy top-level file that already carries the dev-team marker** is moved into `.dev-team/`
+  and committed **on its own, before any other work** — the first commit on the run's own branch,
+  made once that branch exists or has been adopted, never straight onto the default branch without
+  asking (see [conventions.md][conventions], "Files from before v1.5.0 — the lookup order"). The one
+  exception is `HANDOFF.md` while `handoff-file` is `off`: it stays where it is and is reported,
+  because moving it would create the `.dev-team/HANDOFF.md` that `off` rules out
+  (`/dev-team-move-ledgers` holds it back too).
+@@ commands/dev-team-move-ledgers.md | is
+**`HANDOFF.md` while `handoff-file` is `off`.** Sort a legacy root `HANDOFF.md` as usual so the
+  report can describe it, but never move it, whatever its group: moving it would create the very
+  `.dev-team/HANDOFF.md` that `off` rules out. Mark it **not moved — `handoff-file` is `off`**,
+  leave it exactly where and as it is, and say in the report that it is no longer kept up to date
+  and can be deleted by hand if it is not wanted. This command never deletes it.
+@@ commands/dev-team-move-ledgers.md | is
+6. **Work out `handoff-file` once, before sorting**, as `conventions.md`'s "Auto-handoff" says: an
+  explicit value in `.dev-team/config.yml` wins; otherwise a repository instruction file, read as it
+  is when this command starts (`conventions.md`, "Repository instructions and normative documents",
+  step 1), that explicitly forbids a second handover makes it `off`; otherwise it is `on`. If an
+  instruction file only says where the project's notes live and `.dev-team/config.yml` sets no
+  value, this command does not ask about it — its questions and its one commit are fixed below — so
+  it keeps `on` for sorting, does not offer the pointer sentence (question 3), and says in the
+  report: "Whether to keep `.dev-team/HANDOFF.md` is not settled for this project: its instructions
+  say where its notes live. The next dev-team run asks, or set `handoff-file` under `features:` in
+  `.dev-team/config.yml`."
+PINNED
+}
+
+# The whole "The handoff file itself" part of conventions.md's "Auto-handoff" section (third review:
+# a sentence added there — "unless auto-handoff is on", say — passed every test that only looked for
+# a few of its sentences).
+pinned_handoff_block() {
+  cat <<'PINNED'
+**The handoff file itself — `features.handoff-file`** (`on`, the default, or `off`; per-run
+  `handoff-file=on|off`). When `handoff-file` is `off`, the plugin writes NO `.dev-team/HANDOFF.md`
+  at all — not after a task, not at a stage checkpoint or RECORD, not at the end of an autopilot
+  cycle — and auto-handoff is off with it: `off` wins over `auto-handoff`, even over a per-run
+  `auto-handoff=on`. Cold resume then uses `.dev-team/PROJECT.md` (the source of truth) and, under
+  autopilot, `.dev-team/autopilot.json` instead. The pointer sentence (point 8 above) is not
+  offered, because it names the file, and no run moves a legacy top-level `HANDOFF.md` into
+  `.dev-team/` — `/dev-team-move-ledgers` included — because that would create the very file `off`
+  rules out; the run reports it instead. - **What sets it `off`.** `.dev-team/config.yml`, a per-run
+  argument, the user's own words — or a repository instruction that **explicitly forbids** a second
+  handover or resume file, which maps to `handoff-file: off` for that repository ("Repository
+  instructions and normative documents", step 8, under "Shared discipline" below). An instruction
+  that only says where the project's notes live does not turn it off. Instead, unless
+  `.dev-team/config.yml` already sets a value: in an attended run, ask the user once whether the
+  plugin should still keep `.dev-team/HANDOFF.md`, and record the answer as `handoff-file: on` or
+  `handoff-file: off` under `features:` in `.dev-team/config.yml` — creating a minimal file holding
+  `version: 1` and that key if none exists, and saying so — the same way a declined pointer sentence
+  is recorded (point 8). In an unattended run, keep the default and say so in the report. -
+  **Precedence.** Per-run argument > plain language > an explicit `features.handoff-file` in
+  `.dev-team/config.yml` (the user's own setting, so it wins over an instruction file) > a
+  repository instruction that explicitly forbids a second handover (which can only ever set `off`) >
+  built-in default `on`. There is no per-session environment switch. **Values:** `off`, `false` and
+  `no`, in any mix of capitals, mean off; `on`, `true` and `yes` mean on. A missing or unreadable
+  file counts as not set. Any other value (a typo such as `of`) is named in the run's report and
+  treated as `off`, the cautious value — a typo on this line is most likely a failed attempt to turn
+  the file off, and writing a handover the project forbids is the harm this switch exists to
+  prevent. - **The lead settles it once per run.** The lead works the value out once, at the start
+  of the run, records it in `.dev-team/PROJECT.md`'s House style, and passes it in every
+  documentarian brief — a `sonnet-scribe` brief to keep the plugin's record files — as
+  `handoff-file: on|off (settled by the lead)`. A docs drafter's brief does not carry it, because a
+  drafter never writes `.dev-team/HANDOFF.md`. The scribe obeys the value in its brief and never
+  works it out again itself; a scribe asked to write `.dev-team/HANDOFF.md` without that value
+  writes none and says so. - **The project's own handover is never the scribe's to write.**
+  `sonnet-scribe` never writes into the handover or session-notes file the project's own
+  instructions name, whatever the value. Updating it is ordinary project work, done by a builder
+  with a brief. (This is that one file, not project documentation in general, which docs drafters
+  write as their job.) - **Old traces when it is `off`.** A `.dev-team/HANDOFF.md` still on disk, or
+  a pointer sentence the plugin once added to an instruction file, is no longer kept up to date. In
+  an attended run, offer to remove the pointer sentence and to delete the card (or mark it "no
+  longer maintained" — the only change the plugin makes to that file while `off`, and only after a
+  yes). In an unattended run, change nothing and name both in the report.
+PINNED
+}
+
 pinned_step8_lead() {
   cat <<'PINNED'
 8. **Precedence — which way repository content may move things.** The repository decides how the
@@ -945,34 +1065,9 @@ PINNED
   # compared WHOLE: the Repository-instructions and Profile fields, the required-tests criterion,
   # the checker's run-what's-runnable and own-discovery steps, ci-medic's snapshot paragraph,
   # autopilot's pre-flight step and its rehydrate check.
-  file="" exp="" bad="" checked=0
-  check_record() {
-    checked=$((checked + 1))
-    want="$(printf '%s\n' "$2" | join_words)"
-    prefix="${want:0:30}"
-    got="$(field_body "$REPO_ROOT/$1" "$prefix" | join_words)"
-    if [ "$got" != "$want" ]; then
-      bad="$bad
-$1: expected: $want
-$1: found:    $got"
-    fi
-  }
-  while IFS= read -r line; do
-    case "$line" in
-      "@@ "*)
-        [ -n "$file" ] && check_record "$file" "$exp"
-        file="${line#@@ }"; file="${file% | is}"; exp="" ;;
-      *) exp="$exp
-$line" ;;
-    esac
-  done < <(pinned_fields)
-  [ -n "$file" ] && check_record "$file" "$exp"
-  echo "records checked: $checked"
-  [ "$checked" -eq 9 ]
-  if [ -n "$bad" ]; then
-    printf '%s\n' "not word for word as pinned:$bad"
-    return 1
-  fi
+  run check_pinned pinned_fields 9
+  echo "$output"
+  [ "$status" -eq 0 ]
   # The checker's step 6 opens with its own-discovery instruction.
   run grep -F 'and do your own discovery.' "$REPO_ROOT/skills/dev-team-orchestrator/references/checker-protocol.md"
   [ "$status" -eq 0 ]
@@ -1143,7 +1238,8 @@ $line" ;;
     "An instruction that only says where the project's notes live does not turn it off." \
     'In an unattended run, keep the default and say so in the report.' \
     "an explicit \`features.handoff-file\` in \`.dev-team/config.yml\` (the user's own setting, so it wins over an instruction file)" \
-    "an unrecognised one (such as \`Off\` or \`of\`) is named in the run's report and also counts as not set" \
+    "Any other value (a typo such as \`of\`) is named in the run's report and treated as \`off\`, the cautious value" \
+    "\`off\`, \`false\` and \`no\`, in any mix of capitals, mean off; \`on\`, \`true\` and \`yes\` mean on." \
     "no run moves a legacy top-level \`HANDOFF.md\` into \`.dev-team/\` — \`/dev-team-move-ledgers\` included"; do
     if ! printf '%s\n' "$auto_section" | grep -qF -- "$want"; then
       echo "missing from conventions.md, \"Auto-handoff\": $want"
@@ -1200,7 +1296,7 @@ $line" ;;
   ap_task="$(line_starting "$loop" '- **Auto-handoff** (repo config `features.auto-handoff`')"
   [ -n "$ap_task" ]
   check "autopilot, after each task" "$ap_task" 'NO `.dev-team/HANDOFF.md` is written at all, neither per task nor at RECORD'
-  check "autopilot, after each task" "$ap_task" 'every scribe brief carries it as `handoff-file: on|off (settled by the lead)`'
+  check "autopilot, after each task" "$ap_task" 'every documentarian brief carries it as `handoff-file: on|off (settled by the lead)`'
   record="$(line_starting "$loop" 'Have the `sonnet-scribe` documentarian update `.dev-team/PROJECT.md`')"
   [ -n "$record" ]
   check "autopilot, RECORD" "$record" '**and (unless `features.handoff-file` is `off`) have the `sonnet-scribe` regenerate'
@@ -1210,7 +1306,7 @@ $line" ;;
   check "documentarian brief, its rules" "$rule_line" 'When it is `off`, write NO `.dev-team/HANDOFF.md` at all, at any point. If that value is missing from this brief, write none and say so in your report.'
   when="$(line_starting "$doc" '- **After every completed task/workstream (auto-handoff, default on) and at each checkpoint/RECORD:**')"
   check "documentarian protocol, when invoked" "$when" '`sonnet-scribe` writes NO `.dev-team/HANDOFF.md` at all: not per task, not at a checkpoint, not at RECORD, even with `auto-handoff` on'
-  check "scribe agent file" "$(cat "$scribe")" 'Your brief states `handoff-file: on|off (settled by the lead)`; obey that value and never work it out again yourself. When it is `off`, you write no `.dev-team/HANDOFF.md` at all, at any point; if your brief does not state it, write none and say so in your report.'
+  check "scribe agent file" "$(cat "$scribe")" 'A documentarian brief — one asking you to keep the plugin'"'"'s record files — states `handoff-file: on|off (settled by the lead)`; obey that value and never work it out again yourself. When it is `off`, you write no `.dev-team/HANDOFF.md` at all, at any point; if you are asked to write `.dev-team/HANDOFF.md` and your brief does not state the value, write none and say so in your report.'
   check "handoff template" "$(join_words < "$tmpl")" 'this card is **never written at all** — not per task, not at a checkpoint or RECORD'
   check "handoff template" "$(join_words < "$tmpl")" 'Rules (all of them apply only while `handoff-file` is `on`)'
   # Review finding 7: the scribe may never write the project's OWN handover, whatever that
@@ -1219,7 +1315,37 @@ $line" ;;
   run grep -rnF 'unless those instructions ask' \
     "$REPO_ROOT/agents" "$REPO_ROOT/commands" "$REPO_ROOT/skills" "$REPO_ROOT/README.md"
   [ -z "$output" ]
-  check "scribe agent file" "$(cat "$scribe")" 'You never write into the project'"'"'s own handover or notes file — updating that is project work for a builder with a brief.'
+  check "scribe agent file" "$(cat "$scribe")" 'You never write into the handover or session-notes file the project'"'"'s own instructions name — updating that is project work for a builder with a brief.'
+  own="$(line_starting "$doc" '- Never write into the handover or session-notes file the project')"
+  check "documentarian brief, the project's own handover" "$own" '- Never write into the handover or session-notes file the project'"'"'s own instructions name, whatever the value. Updating it is ordinary project work for a builder with a brief, never for you'
+  check "conventions, the project's own handover" "$(join_words < "$REPO_ROOT/skills/dev-team-orchestrator/references/conventions.md")" '`sonnet-scribe` never writes into the handover or session-notes file the project'"'"'s own instructions name, whatever the value.'
+}
+
+@test "handoff-file: the conventions.md paragraph that defines the switch is word for word as pinned" {
+  # What this guards: the third review added a sentence to this paragraph — the kind of exception
+  # that quietly undoes the switch — and every test still passed, because they only looked for a
+  # few of its sentences. The whole paragraph, with its bullets, is now compared.
+  conv="$REPO_ROOT/skills/dev-team-orchestrator/references/conventions.md"
+  actual="$(block_between "$conv" '**The handoff file itself' '## Auto-commit' | join_words)"
+  expected="$(pinned_handoff_block | join_words)"
+  [ -n "$expected" ]
+  if [ "$actual" != "$expected" ]; then
+    echo "the handoff-file paragraph in conventions.md is not word for word the pinned text"
+    echo "found:    $actual"
+    echo "expected: $expected"
+    return 1
+  fi
+}
+
+@test "handoff-file: an old top-level HANDOFF.md is held back while off, in conventions point 5, the README and move-ledgers" {
+  # What this guards: moving a legacy top-level HANDOFF.md into .dev-team/ creates the very
+  # .dev-team/HANDOFF.md that "off" rules out. The third review found the exception written only in
+  # "Auto-handoff", while conventions point 5 (the rule a writing run follows) and the README's
+  # upgrade notes still said every marked legacy file is moved — and deleting move-ledgers' own
+  # hold-back rule left every test passing. Each of the four places is compared whole.
+  run check_pinned pinned_handoff_fields 4
+  echo "$output"
+  [ "$status" -eq 0 ]
 }
 
 @test "config starter file: no setting is written out except version, and init writes only the keys the user chose" {
