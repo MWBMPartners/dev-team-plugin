@@ -27,6 +27,9 @@ routine, one watch pass is always the same shape:
 6. **Put the starting branch back** before the pass ends, whenever the pass checked anything out;
    if it cannot, stop and say so (below).
 
+Every pass re-triages from scratch — it does not trust a previous pass's classification, since
+the PR may have new commits, new checks, or a since-resolved flake.
+
 ## One snapshot per run, and the starting branch put back
 
 A watch pass checks pull requests out, and a pull request's own instruction files are someone
@@ -44,8 +47,8 @@ never let a later pass read that checkout as the user's own.
    run id, the starting branch (or `detached` when the checkout is not on a branch) and the starting
    commit. Begin the pass report with the line above.
 3. **The line is there: a later pass of that run.** Take no new snapshot. Read the run record and
-   check that it names this repository and this run id; then check the snapshot as step 1's
-   "Resuming reuses the snapshot" says (manifest first). A failed check stops the pass with a plain
+   check that it names this repository and this run id; then check the snapshot as orchestrator
+   `conventions.md` step 1, "Resuming reuses the snapshot", says (manifest first). A failed check stops the pass with a plain
    message, and never falls back to a new snapshot. Next make sure the recorded starting branch (or,
    for `detached`, the recorded commit) is checked out: if an earlier pass could not put it back,
    check it out now; if that fails too, stop and say so. Then work from the run's snapshot, and from
@@ -63,9 +66,6 @@ shows the line — for example after older messages have been summarised away �
 tell that it is a later pass, and takes the checkout it starts on as a new run's starting point.
 That is the starting branch whenever every earlier pass put it back; a pass that could not put it
 back said so, and the loop should then be stopped and started again from your own branch.
-
-Every pass re-triages from scratch — it does not trust a previous pass's classification, since
-the PR may have new commits, new checks, or a since-resolved flake.
 
 ## Running it once, interactively
 
