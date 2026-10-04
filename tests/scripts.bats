@@ -1454,6 +1454,119 @@ cpu_below() { awk -v c="$1" -v m="$2" 'BEGIN { exit !(c + 0 < m + 0) }'; }
   done
 }
 
+# ---------------------------------------------------------------------------
+# hooks/guard-dev-team.sh — one test per planted fault that used to survive
+# ---------------------------------------------------------------------------
+# The stand-in review of 42bd45e..b39f40d planted 30 faults, one at a time, in a copy of the hook
+# (its mutate2.py) and ran these tests; 8 faults changed nothing any test looked at. Each test
+# below fails with one of them planted — the fault it guards is in its name. $'...' handling is
+# covered by the "other spellings" test above (its escapes), and M23 (the detached-HEAD early
+# return removed) changes nothing: with no current branch every later step prints nothing
+# anyway, so no test can see it.
+
+@test "guard (planted faults): a push three eval levels deep is read; four are not (nesting depth 3)" {
+  # Each eval level removes one level of backslashes: bash itself reads the innermost word as main.
+  # Neither the text rule nor the words at levels 0 to 2 contain "main", so only reading the third
+  # level finds it.
+  run run_guard_cmd "$SCRATCH" 'eval eval eval git push origin ma\\\\\\\\in'
+  [ "$status" -eq 2 ]
+  # Four levels: past the depth this hook reads (a stated limit).
+  run run_guard_cmd "$SCRATCH" 'eval eval eval eval git push origin ma\\\\\\\\\\\\\\\\in'
+  [ "$status" -eq 0 ]
+}
+
+@test "guard (planted faults): the rule on the words joined together catches what only it can see" {
+  # After a cd the push that names a branch is not worked out through git, and "ma\"i\"n" has no
+  # "main" in the command text as written: only the words with their quotes removed show it.
+  for c in "cd . && git push origin ma\"i\"n" "cd . && git push origin HEAD:ma'i'n"; do
+    run run_guard_cmd "$SCRATCH" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 2 ]
+  done
+}
+
+@test "guard (planted faults): branch.<name>.pushRemote and remote.pushDefault choose the remote whose push setting is read" {
+  make_push_repo feature
+  git -C "$SCRATCH/repo" remote add other ../elsewhere.git
+  git -C "$SCRATCH/repo" config remote.other.push refs/heads/feature:refs/heads/main
+  git -C "$SCRATCH/repo" config remote.pushDefault other
+  run run_guard_cmd "$SCRATCH/repo" "git push"
+  [ "$status" -eq 2 ]
+  git -C "$SCRATCH/repo" config --unset remote.pushDefault
+  run run_guard_cmd "$SCRATCH/repo" "git push"
+  [ "$status" -eq 0 ]
+  git -C "$SCRATCH/repo" config branch.feature.pushRemote other
+  run run_guard_cmd "$SCRATCH/repo" "git push"
+  [ "$status" -eq 2 ]
+}
+
+@test "guard (planted faults): --git-dir=<dir> and --work-tree=<dir> are passed to git" {
+  make_push_repo main
+  mkdir -p "$SCRATCH/plain"
+  run run_guard_cmd "$SCRATCH/plain" "git --git-dir=$SCRATCH/repo/.git push"
+  [ "$status" -eq 2 ]
+  run run_guard_cmd "$SCRATCH/plain" "git --git-dir=$SCRATCH/repo/.git --work-tree=$SCRATCH/repo push"
+  [ "$status" -eq 2 ]
+}
+
+@test "guard (planted faults): git named by its path (/usr/bin/git) is resolved like git" {
+  # The hook never runs this path; it only has to recognise the word as git.
+  make_push_repo main
+  run run_guard_cmd "$SCRATCH/repo" "/usr/bin/git push"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"git would push to 'main'"* ]]
+}
+
+@test "guard (planted faults): a backslash inside double quotes does not end the quotes" {
+  # \" inside "..." is a quote character, not the end of the string. Read wrongly, the rest of the
+  # command shifts into and out of quotes and the push to main disappears into one long word.
+  run run_guard_cmd "$SCRATCH" 'echo "a\"b"; git push origin ma"i"n'
+  [ "$status" -eq 2 ]
+}
+
+@test "guard (planted faults): an eval string is read even when no other word in the command is git" {
+  # Only reading the string finds main: bash turns ma\in into main when eval runs it, while the
+  # command text as written, and its words, hold "ma\in". So the reader must keep a command for its
+  # eval word alone. (Found by this round's own sweep: with that kept only for git, the older eval
+  # test still passed, because the text rule now reads through the quotes of "git push origin main".)
+  run run_guard_cmd "$SCRATCH" "eval 'git push origin ma\\in'"
+  [ "$status" -eq 2 ]
+  run run_guard_cmd "$SCRATCH" "eval 'git push origin feature'"
+  [ "$status" -eq 0 ]
+}
+
+@test "guard (planted faults): a brace list whose word is quoted inside is read as the shell reads it" {
+  # bash expands {ma'i'n,x} to "main x". The quotes hide main from the command text as written, so
+  # only the words, with quotes removed and braces taken as separators, show it. (Found by this
+  # round's own sweep: the brace tests above are also caught by the text rule, so taking the braces
+  # out of the per-word separators went unnoticed.)
+  run run_guard_cmd "$SCRATCH" "git push origin {ma'i'n,x}"
+  [ "$status" -eq 2 ]
+}
+
+@test "guard (planted faults): more than 10 pushes are refused before git is asked anything" {
+  # The pushes are counted first, without running git, so a command with too many is refused at
+  # once. Counted only as they are worked out, the first push would ask a git that does not answer
+  # and the command would be refused on time instead. (Found by this round's own sweep.)
+  make_push_repo main
+  mkdir -p "$SCRATCH/slowbin"
+  printf '#!/bin/sh\nsleep 30\nexit 1\n' > "$SCRATCH/slowbin/git"
+  chmod +x "$SCRATCH/slowbin/git"
+  eleven="git push; git push; git push; git push; git push; git push; git push; git push; git push; git push; git push"
+  run env PATH="$SCRATCH/slowbin:$PATH" DEV_TEAM_GUARD_TIME_LIMIT=5 bash -c 'cd "$1" && printf "%s" "$2" | DEV_TEAM_GUARD=1 bash "$3"' _ "$SCRATCH/repo" "$(guard_payload "$eleven")" "$REPO_ROOT/hooks/guard-dev-team.sh" 3>&-
+  echo "status $status: $output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"more than 10"* ]]
+}
+
+@test "guard (planted faults): a bare push on master is resolved like one on main" {
+  make_push_repo main
+  git -C "$SCRATCH/repo" branch -q -m main master
+  run run_guard_cmd "$SCRATCH/repo" "git push"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"git would push to 'master'"* ]]
+}
+
 @test "guard (no branch named): with no active run and no DEV_TEAM_GUARD, a bare push on main is allowed (the hook is off)" {
   make_push_repo main
   unset DEV_TEAM_GUARD
