@@ -6,10 +6,11 @@
             Rewritten as work happens, not tidied at the end. See .claude/CLAUDE.md section 2.
 -->
 
-**Last updated:** 28 September 2026 — issue #47's fourth round, acting on Codex's review of
-`748e87c..42bd45e`. The lead pushed up to `42bd45e`; nine commits follow it locally (`8ea4c12` to
-the notes commit), not yet pushed or reviewed; see the #47 section straight below. The "START HERE"
-section dates from 23 September; everything below "Detailed history" is the older, fuller record.
+**Last updated:** 4 October 2026 — issue #47's fifth round, acting on the stand-in review of
+`42bd45e..b39f40d`. The lead pushed the fourth round up to `b39f40d`; the fifth round's commits
+follow it locally (`c084708` to the notes commit), not yet pushed or reviewed; see the #47 section
+straight below. The "START HERE" section dates from 23 September; everything below "Detailed
+history" is the older, fuller record.
 **Working branch:** `claude/ledger-file-clashes` (made from `main`; `alpha` is fully contained in
 `main`, so this branch can later go to `alpha` in one pull request). Pushed to GitHub.
 **28 September 2026:** a second branch, `feature/bcp47-language-policy` (issue #47), is in flight —
@@ -34,8 +35,10 @@ see the section straight below.
   one run with one snapshot, and every pass puts the starting branch back. The limits are stated
   plainly: start from your own branch; the snapshot is safe from git operations but not from
   commands the run executes; this is not an enforcement boundary — only the plugin's two guard
-  hooks enforce anything, and only what they cover (each described exactly: the Bash guard now
-  reads quoted and escaped words and resolves a push that names no branch). Repository
+  hooks enforce anything, and only what they cover (each described with the limits known: the
+  Bash guard reads the ordinary spellings of a command — quotes, escapes, `$'…'`, brace lists,
+  `sh -c` and `eval` strings — but does not run the shell, resolves a push that names no branch,
+  and refuses what it cannot finish checking in 20 seconds or more than 10 pushes). Repository
   content may **add** work and checks and choose between style defaults, but may **never remove,
   skip, weaken or waive** a check, a gate, a confirmation or a safety rule, and moves a plugin
   switch only toward its more cautious value (the "direction rule", step 8, written word for word
@@ -154,8 +157,8 @@ see the section straight below.
     overstated it ("This written rule is the real protection"; "already blocks pushes to main");
     (5) the smoke test passed with the Bash registration removed or the ledger matcher narrowed;
     (6) `.OpenAI/CONTEXT.md` gave stale review history. The lead took final decisions
-    (`brief-plugin-r4.md` in the lead's scratchpad) and a fresh builder acted on all six, in
-    commits **committed locally and NOT pushed** (the lead pushes):
+    (`brief-plugin-r4.md` in the lead's scratchpad) and a fresh builder acted on all six, in these
+    commits (the lead pushed them, up to `b39f40d`):
     - `8ea4c12` — the smoke test checks each registration: Bash to `guard-dev-team.sh`, and Write,
       Edit and MultiEdit to `guard-ledgers.sh`, by exact command path, a matcher read as a
       whole-name pattern (empty or `*` = every tool). Proved in throwaway copies: Bash removed,
@@ -167,7 +170,8 @@ see the section straight below.
       names no branch by asking git in the folder the command runs in (hook input `cwd`, then
       `-C`); the descriptions in `conventions.md` (step 1 "What this cannot do", and point 9 of the
       ownership rule), the README (cross-cutting bullet, hooks table, security note), ci-medic rule
-      2 and `guard-ledgers.sh`'s header now say exactly what it covers. 15 new tests. (Its message
+      2 and `guard-ledgers.sh`'s header now say exactly what it covers (the fifth round found that
+      claimed too much, and reworded it). 15 new tests. (Its message
       says "10 of the 15" fail against the old hook; it was 11 of 15 — a miscount.)
     - `7769558` — snapshot layout: `snapshot/files/<path>`, `snapshot/manifest.txt` beside it,
       `snapshot/pr/<n>/files/` and `snapshot/pr/<n>/manifest.txt`; the snapshot field in all 13
@@ -198,14 +202,90 @@ see the section straight below.
     - The notes commit: CHANGELOG 1.6.0, `tests/README.md`, `CONTRIBUTING.md` (what the smoke test
       checks), these notes, `.claude/CONTEXT.md`, `.OpenAI/CONTEXT.md` (finding 6: the outstanding
       range is now `42bd45e..HEAD`) and both MEMORY files.
-  - **None of the fourth round is reviewed yet.** Under rule 5 it needs a Codex round — of
-    `42bd45e..HEAD` only (everything before `42bd45e` has had Codex's review and each round's
-    findings were acted on). Set `TMPDIR` to a writable folder when asking Codex to run bats (its
-    sandbox's default was not writable).
+  - The lead pushed up to `b39f40d`.
+  - **Stand-in review of `42bd45e..b39f40d`** (a fresh Opus agent standing in for Codex): NOT
+    clean — ten items (two medium, seven low, one information): git's matching refspec `:`; the
+    guard too slow to be waited for; other spellings of `main`; a named branch mapped by
+    `remote.<name>.push`; `env -C` and the reader's marker words; 8 of its 30 planted faults
+    surviving; an interrupted ci-medic pass; the pass line not naming the repository; the short
+    resume wording; these notes. The lead's decisions are in `brief-plugin-r5.md` (scratchpad).
+  - **The fifth round was built twice.** The first build (nine local commits) was lost unpushed
+    when the machine restarted on 2 October and emptied the temporary folder holding the clone,
+    the sandbox and most of the review's evidence. It was rebuilt from the builder's record of
+    every edit, each item reproduced and proved again, in these commits, **committed locally and
+    NOT pushed** (the lead pushes):
+    - `c084708` — (1) git's matching refspec `:` / `+:` (command line or `remote.<name>.push`) is
+      read exactly as `push.default=matching`; the header's wrong "limit" about push settings
+      corrected.
+    - `4aad76f` — (2) speed: the reader is two awk programs working line by line, never building
+      one long string (the old one used `substr` over the whole text, quadratic on macOS awk); at
+      most 10 pushes per command, counted before git is asked anything, more refused; all checking
+      under a 20-second limit (`DEV_TEAM_GUARD_TIME_LIMIT` can only shorten it) — past it the
+      command is refused and the check's whole process group stopped. macOS bash 3.2, before →
+      after: 10,000-line heredoc 21.8 s → 0.49 s, 129 KB message 1.8-2.7 s → 0.39-0.44 s, 200
+      pushes 39.8 s (allowed) → refused in 0.07 s; Linux (mawk) 4.3 → 0.20, 0.7-1.0 → 0.06-0.10,
+      14.1 → 0.03 s. The reader's lines start with a letter (w, s, r, R, v), so a command's word
+      can never equal a marker.
+    - `b3a7e1c` — (3) other spellings of `main`: `$'…'` escapes decoded as bash 5 does; `{`, `}`
+      and `'` added to the separators; `git … push` also looked for through quotes (catches
+      `echo '…' | sh`, `sh <<< '…'`); a shell's options read properly (`bash -c -- '…'`);
+      `/usr/bin/git` after a `cd`. Limits stated honestly in the header, README and
+      `conventions.md` (and its pinned copy): the guard reads ordinary spellings and does not run
+      the shell. Stated over-block: text that only spells out a push to main in single quotes is
+      refused (the double-quoted form already was; the single-quoted one was allowed before — the
+      first build's notes said otherwise, wrongly).
+    - `3e5e468` — (4) a named branch with no destination is mapped the way git does
+      (`remote.<name>.push`, then `push.default=upstream`), checked against `git push --dry-run`.
+    - `46547ca` — found while timing (4): bash 3.2 saves a copy of a function's arguments on every
+      call made from inside it, so a `git add` of 5,000 files was refused on time; the arguments
+      are cleared after copying and the per-word helpers asked only when a word could match. A
+      trap avoided: `${word%sh}` (suffix removal) grows with the square of the word's length —
+      the first build used it, slowing a 129 KB message to 6 s of processor time, and its later
+      test failures were wrongly put down to machine load; the rebuild uses a `case` pattern and
+      gives the 129 KB message test a tighter bound (now 3 seconds of processor time, since
+      `c55b862`), which fails with `${word%sh}` planted back.
+    - `b29a2f7` — (5) `env -C` / `--chdir` treated exactly like `cd`; the marker test
+      (`git --work-tree @@SEP push`).
+    - `fada4df` — (7, 8) ci-medic writes `left checked out: <branch>` into `run.txt` before
+      checking a pull request out and removes it when the starting branch is back; a new run
+      refuses to start (asks; unattended BLOCKED) while a run record for this repository names the
+      branch checked out now; the pass-report line names the repository, a line for another
+      repository counts as none, and the user can ask for a new run. Pinned records rewritten;
+      each word difference checked to be only the added wording.
+    - `2076ecc` — (9) "(a run recorded before 1.6.0 has none: see step 1)" in the eight
+      skills' run-start lines, the orchestrator's setup step, conventions' Cold-resume and the
+      README.
+    - `c55b862` — (2, the tests) the speed tests judge the processor time the hook uses,
+      not the clock (on this machine, loaded to 300-430 by other work, a 2-second check took 17 on
+      the clock and was refused), and a run the hook stopped at its limit is skipped, never passed;
+      the 129 KB payload goes to the hook through a file, because Linux refuses one argument over
+      128 KB (found in the Ubuntu container: the test could not run there at all).
+    - `a44171e` — (6) seven tests, one per surviving planted fault (M17, M18, M19, M20, M24,
+      M26, M29; M03 is caught by (3)'s test; M23 is an equivalent change no test can see), and
+      three more found by this round's own sweep (M25's `eval` filter, the per-word brace
+      separators, the push count taken before git is asked). Sweeps: the reviewer's own driver
+      (re-typed after the restart, and checked on b39f40d, where it gave the review's result again:
+      21 caught, 9 survived) catches 20 of the 21 of its faults that still apply on the round-5 tree
+      (9 target replaced code), M23 surviving; the round-5 driver (the 30 re-expressed plus 13
+      undoing each fix) catches 41 of 43, M23 and N02 surviving (N02 is a backstop behind the count
+      taken first).
+    - The notes commit — CHANGELOG, `tests/README.md`, these notes (item 10: the fourth round is
+      pushed at `b39f40d`).
+  - **None of the fifth round is reviewed yet**, and `42bd45e..b39f40d` has had only the stand-in's
+    review (a fresh Opus agent, not Codex). Under rule 5 the next Codex round should cover
+    `42bd45e..HEAD` — the stand-in's range as the catch-up review, and the fifth round — or, if
+    the lead decides the stand-in round counts, `b39f40d..HEAD`. Set `TMPDIR` to a writable folder
+    when asking Codex to run bats (its sandbox's default was not writable).
   - Note: the lead's decision named "review/verify when given `pr=`" as a second skill that checks
     pull requests out; the review skill has no `pr=` argument today, so the text says "a skill that
     checks one out itself — today, ci-medic".
-- **Checks at the latest commit:** bats 170 of 170 (154 before this round, plus the 16 Bash-guard
+- **Checks at the fifth round:** each commit's own tree was checked before it was committed (the
+  commit messages give the counts): both audits, the smoke test, shellcheck, actionlint and bats —
+  193 at the last code commit (170 before the round, plus 23 Bash-guard tests) — and the guard
+  tests also under the Mac's `/bin/bash` 3.2 and in an Ubuntu 24.04 container (mawk). A copy of the
+  tree without `.git` fails `branch-hygiene: --no-fetch` (it needs a git repository): the builder's
+  check runner made each copy a throwaway repository of its own.
+- **Checks at the fourth round:** bats 170 of 170 (154 before this round, plus the 16 Bash-guard
   tests; the #47 group is still 10 tests, now checking 30 sections, 11 items and 13 fields), run
   with `TMPDIR` set to a writable scratch folder; the Bash-guard tests also pass with the Mac's
   `/bin/bash` 3.2; smoke test, both audits, shellcheck and actionlint all pass. Earlier: 154 at
@@ -282,6 +362,32 @@ see the section straight below.
     - **Pinning.** Two more whole sections are pinned — conventions "Cold-resume" and ci-medic's
       "One snapshot per run, and the starting branch put back" — so both rules are guarded like the
       rest (30 sections).
+  - Fifth round (the stand-in review of `42bd45e..b39f40d`):
+    - **Time limit.** Wall-clock, 20 seconds, in the hook itself: the checking runs as a background
+      worker in its own process group (`set -m` only for that), a timer stops the whole group, and
+      the hook refuses with "took longer than 20 seconds … Split it into smaller commands". The
+      timer's output goes nowhere so it can never hold the hook open. `DEV_TEAM_GUARD_TIME_LIMIT`
+      exists only so tests need not wait 20 seconds, and can only shorten the limit.
+    - **Push cap.** Each level of a command is first counted without asking git anything; the real
+      pass keeps the count that decides (it also covers `sh -c` strings). 10 pushes are checked; 11
+      are refused.
+    - **`$'…'` escapes** follow bash 5 (bash 3.2 does not know `\u`, so on 3.2 the guard refuses
+      more, not less); a zero byte, which ends a string in bash, is dropped (bash reads `$'\c@x'`
+      as nothing, the reader keeps the x: more refused, never less).
+    - **Named-branch mapping** reads the remote's push refspecs, `push.default` and the list of
+      local branches once per push, and asks nothing when neither can move a branch; a negative
+      refspec is not read (stated).
+    - **`env -C`** is detected as any word starting `-C`, a short-option group containing `C`, or
+      `--chdir`, after an `env` word in the same simple command; it makes the push "cannot tell"
+      (allowed), exactly like `cd`.
+    - **ci-medic's interrupted pass.** An attended run may go ahead once the user has checked out
+      their own branch or says plainly that the checkout is theirs; the `left checked out:` line is
+      then removed so the question is not asked again.
+    - **Still quadratic, and left to the time limit:** bash's own prefix and suffix removal on a
+      huge refspec word (`git push origin <a 129 KB word>`: `${r#+}` about 9 s, `${r#*:}` up to
+      38 s under a UTF-8 locale). Such a command is refused on time, which fails closed. Setting
+      `LC_ALL=C` for the whole hook would cut some of these twentyfold; not done, as it is outside
+      the brief — a suggestion for the lead.
 - **Rejected on the way:** testing a few key phrases (the second review showed a rule can be
   weakened by ADDING words, which such tests never see — so steps 1 and 8 are compared whole); a
   closed list of protected things (anything left off it was open to override — replaced by the
@@ -293,7 +399,16 @@ see the section straight below.
   quoted argument as one word instead); doing the word-by-word reading in bash (about 12 seconds
   on a 24 KB command — it moved to awk); guarding against a lost ci-medic run id by checking
   whether the checkout is some pull request's head branch (that is guessing whose code it is,
-  which the design rules out — it is stated as a limit instead).
+  which the design rules out — it is stated as a limit instead). Fifth round: splitting each line
+  into characters and printing one at a time (still twice as slow as printing whole stretches);
+  reading the reader's output line by line straight from a pipe in bash (bash then reads one byte
+  at a time); calling a helper function for every word (bash 3.2 saves the caller's arguments on
+  every call: 13 seconds for a 5,000-file `git add`); `${word%sh}` to test a word's ending
+  (quadratic: 20 seconds on a 129 KB word); stopping only the timed-out worker (a slow `git` it was
+  waiting on kept the hook's output open, so the hook still took as long as the slow `git`); a test
+  for M23 (it changes nothing, so no test can catch it). The ci-medic run-record check is not the
+  rejected "is this some pull request's head branch?" guess: it reads only the plugin's own
+  records.
 - **Suggestion, now built:** `/dev-team-config init` used to write every other key explicitly
   (`dry-run: off`, `gates: hybrid`, …), so a freshly initialised config could overrule a project's
   cautious instruction. Decided by the lead and built in the starter-file commit (above).

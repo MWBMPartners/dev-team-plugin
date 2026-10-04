@@ -4,7 +4,7 @@
   File:     .OpenAI/CONTEXT.md
   Purpose:  Codex's starting context for this repository. The shared, fuller version is
             .claude/CONTEXT.md; read that too. This file adds what is specific to Codex's role.
-  Updated:  28 September 2026 (issue #47: the outstanding review range after its fourth round).
+  Updated:  4 October 2026 (issue #47: the outstanding review range after its fifth round).
 -->
 
 ## What Codex does here
@@ -22,15 +22,20 @@ work it does is then reviewed by Claude Code when Claude Code is back.
   `.claude/plans/ledger-file-clashes/codex-review-prompt-5.md`.
 - A second branch, `feature/bcp47-language-policy` (issue #47), is reviewed in rounds, and each
   round looks only at the work that has not been reviewed yet (what the branch adds as a whole is
-  in `.claude/HANDOFF.md`). **The outstanding, unreviewed range is `42bd45e..HEAD`**: the fourth
-  round, which acts on Codex's own review of `748e87c..42bd45e` (six findings, not clean) — the
-  Bash guard now reads quoted and escaped words and resolves a push that names no branch; the
-  smoke test checks each tool-to-guard registration; snapshot copies live in `files/`, apart from
-  the manifest and `snapshot/pr/<n>/`; a resumed run checks and reuses its recorded snapshot; a
-  ci-medic `/loop` is one run with one snapshot and every pass puts the starting branch back; and
-  these notes. Everything up to `42bd45e` has already been reviewed by Codex (`413d570..748e87c`,
-  then `748e87c..42bd45e`), and each of those rounds' findings has been acted on, so do not review
-  that range again: read `git diff 42bd45e..HEAD`, starting with `hooks/guard-dev-team.sh`. The
+  in `.claude/HANDOFF.md`). **The range Codex has not reviewed is `42bd45e..HEAD`**, in two parts:
+  `42bd45e..b39f40d`, the fourth round (acting on Codex's own review of `748e87c..42bd45e`), which
+  only a stand-in has reviewed — a fresh Opus agent, not Codex, so it still needs Codex's catch-up
+  review; and `b39f40d..HEAD`, the fifth round, which acts on that stand-in's ten items and is not
+  reviewed at all: the Bash guard reads git's `:` refspec as matching, runs in time proportional to
+  the command with a 10-push cap and a 20-second limit that refuses rather than lets through,
+  reads `$'…'` escapes, brace lists and pushes piped into a shell, maps a named branch the way git
+  does, treats `env -C` like `cd`, and states plainly that it does not run the shell; ten tests
+  catch the planted faults that used to survive; ci-medic's run record marks a checked-out pull
+  request so an interrupted pass cannot hand the next run someone else's checkout, and the pass
+  line names the repository; the short resume wording names the pre-1.6.0 case; and these notes.
+  Everything up to `42bd45e` has already been reviewed by Codex (`413d570..748e87c`, then
+  `748e87c..42bd45e`), and each of those rounds' findings has been acted on, so do not review that
+  range again: read `git diff 42bd45e..HEAD`, starting with `hooks/guard-dev-team.sh`. The
   whole #47 change is still compared with `claude/ledger-file-clashes` (where it was cut, at
   `413d570`), not with `main`, so #41's changes are not reported as #47's. To run the bats tests,
   set `TMPDIR` to a writable folder (the sandbox's default was not).

@@ -337,6 +337,18 @@ skill's `mission-and-done.md`; the stripe and featurefind skills' `SKILL.md`; al
   refused when it would reach `main`, allowed when it would not, and the documented limits allowed;
   and a long command (2,000 simple commands, or a large heredoc) still read to the end. Twelve of
   the sixteen fail against the previous hook (the other four test allowed cases).
+- Twenty-three more for the Bash guard after the stand-in review of 42bd45e..b39f40d, 39 in all:
+  git's matching refspec; other spellings of `main` (`$'…'` escapes, brace lists, a push piped into
+  a shell, `--` after `-c`) and the stated over-block; speed (a 10,000-line heredoc and a 129 KB
+  message within the limit, a 5,000-file `git add`, the 10-push cap, a refusal on time with a slow
+  stand-in `git`); a named branch mapped through `remote.<name>.push` or `push.default=upstream`;
+  `env -C`; the reader's markers; one test for each planted fault that used to survive (nesting
+  depth 3, the rule on the joined words, `pushRemote`/`pushDefault`, `--git-dir=`/`--work-tree=`,
+  `/usr/bin/git`, `\"` inside double quotes, `master`); and three found by planting faults that
+  undo this round's own fixes (an `eval` string with no other `git` word, a brace list quoted
+  inside, and the push count taken before git is asked). Each fails against the hook before its
+  fix. The speed tests judge the processor time the hook uses, not the clock, and a run the hook
+  stopped at its time limit is skipped, never passed; `tests/README.md` explains.
 - `tests/smoke-structure.sh` now checks each required hook registration in `hooks/hooks.json`:
   Bash to `guard-dev-team.sh`, and Write, Edit and MultiEdit to `guard-ledgers.sh`, each by its
   exact command path. It used to ask only whether some matcher contained "Write", so removing the

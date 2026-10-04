@@ -344,6 +344,19 @@ more no longer apply, because the text they targeted was replaced — in earlier
 one (the hook's old "a plain `git push` made while on `main` passes", the old `snapshot/pr-<n>/`
 layout, and the run-start line's old wording); this round's own edits above cover those places.
 
+*The stand-in review of `42bd45e..b39f40d`* (fifth round) — each edit in a throwaway copy of the
+tree, as above. The passages changed on purpose this round (ci-medic's run record and pass-report
+line, and the short resume wording) had their pinned records rewritten from the files, and every
+difference between the old and new records was checked word by word to be exactly the added
+wording:
+
+| Edit | Test that failed |
+|---|---|
+| The watch protocol's new step 4 ("mark a pull request's branch in the run record") deleted | 1 |
+| The repository's path taken out of the `ci-medic run <run-id> — started on …` line | 1 |
+| "(a run recorded before 1.6.0 has none: see step 1)" taken out of ship's run-start line | 2 |
+| The same wording taken out of the Cold-resume section | 1 |
+
 **What these cannot catch:** they check wording, word for word, in the right place. They cannot
 tell whether an agent obeys the rule when it runs — for example whether a lead really copies the
 files before spawning anyone. Nothing enforces the rule except where one of the two guard hooks
@@ -352,50 +365,102 @@ pinned section and item can still change unnoticed. And pinning means any delibe
 of these passages must change its record in the fixture too — on purpose, so that a change to a
 safety rule is visible in review.
 
-### `hooks/guard-dev-team.sh` — quoted words, and pushes that name no branch (issue #47)
+### `hooks/guard-dev-team.sh` — quoted words, other spellings, pushes that name no branch, and speed (issue #47)
 
 Codex's review of `748e87c..42bd45e` (finding 4) showed the Bash guard let through
 `git push origin 'main'` (it understood only double quotes) and a bare `git push` made while on
 `main` (it matched text, and a bare push names no branch). The hook now also reads the command the
-way the shell does — quotes and backslashes taken away, a quoted multi-word argument kept as one
-word, and a command string given to `sh -c` / `bash -c` or `eval` read as well — and, for a push
-that names no branch, asks git in the folder the command runs in where it would push. Sixteen
-tests, every one with `DEV_TEAM_GUARD=1` unless it says otherwise, in a throwaway git repository
-under `$SCRATCH` with the machine's own git settings shut out (`HOME`, `GIT_CONFIG_GLOBAL`,
-`GIT_CONFIG_NOSYSTEM`), so a `push.default` on the machine running them cannot change a result:
+way the shell reads the ordinary spellings of a word — quotes and backslashes taken away, bash's
+escapes inside `$'…'` worked out, a quoted multi-word argument kept as one word, and a command
+string given to `sh -c` / `bash -c` (after any options and a `--`) or `eval` read as well — and,
+for a push that names no branch, asks git in the folder the command runs in where it would push.
+The stand-in review of `42bd45e..b39f40d` (the fifth round) found more it let through, found it
+could be too slow to be waited for, and planted 30 faults in a copy of it, 8 of which no test
+noticed. Thirty-nine tests now, every one with `DEV_TEAM_GUARD=1` unless it says otherwise, in a
+throwaway git repository under `$SCRATCH` with the machine's own git settings shut out (`HOME`,
+`GIT_CONFIG_GLOBAL`, `GIT_CONFIG_NOSYSTEM`), so a `push.default` on the machine running them
+cannot change a result:
 
 - **Quoting** (blocked): a single-quoted `'main'`; `\main`; a quoted or escaped `git` (`'git'`,
   `"git"`, `\git`, `g'i't … ma"in"`); single-quoted refspecs (`'HEAD:refs/heads/main'`,
   `HEAD:'main'`, `--force origin '+main'`); a push to `main` inside `bash -c '…'`, `sh -c "…"` or
-  `eval "…"`. **Allowed:** quoted text that only mentions `main` (`git commit -m 'push to main'`,
-  `'maintenance'`, `'feature-main'`, an `echo` of the words).
+  `eval "…"`. **Allowed:** quoted text that only mentions `main` as part of a word or without a
+  push (`git commit -m 'push to main'`, `'maintenance'`, `'feature-main'`, `echo 'the main
+  branch'`, `$'\x6d\x61\x69\x6e\x74'`).
+- **Other spellings** (fifth round, blocked): `$'\x6d\x61\x69\x6e'`, `$'\155ain'`, `$'main'`,
+  `$'ma\x69n'`, `HEAD:$'\x6d'ain`; a brace list (`{main,feature}`, `{'main',x}`,
+  `HEAD:{main,x}`); a push written out for a shell to read from its standard input
+  (`echo 'git push origin main' | sh`, `… | bash`, `bash <<< '…'`, a quoted heredoc into `bash`);
+  the command string after `-c` found past `--`, `-o pipefail`, `--norc` and `-lc` (and a script's
+  own `-c` argument is not a command string). **A stated over-block, pinned:** text that only
+  spells out a push to `main` (`echo 'git push origin main'`, `git commit -m 'fix: push to main'`)
+  is refused, because the check on the text as written reads through quotes.
 - **A long command** — 2,000 simple commands, or an 800-line heredoc — is still read to the end: a
-  push to `main` at the very end is refused, a harmless one allowed. (The word-by-word part passes
-  only the commands that matter on to bash, which is slow on thousands of words; a 24 KB command
-  took about 12 seconds before that and takes about half a second now.)
+  push to `main` at the very end is refused, a harmless one allowed.
+- **Speed** (fifth round), judged by the processor time the hook uses (see below): a 10,000-line
+  heredoc is read to the end under 4 seconds (the push to `main` after it refused, the harmless one
+  allowed), a 129 KB `git commit -m` message under 3, and a `git add` naming 5,000 files under 8;
+  more than 10 pushes in one command are refused with a message asking for it to be split (counting
+  pushes inside a `bash -c` string) and 10 are checked; a stand-in `git` that takes 30 seconds,
+  with a 1-second limit, is refused within seconds — and a limit of 99 is ignored (the built-in 20
+  seconds still refuses it).
 - **No branch named** (blocked, message names the branch): a bare `git push` on `main`;
   `git push origin`, `-u origin HEAD`, `origin @`, `2>&1`, `command git push`; `git -C repo push`
   from outside; the hook input's `cwd` pointing at the repository (and, the other way round, a
   `cwd` elsewhere allows it); a branch tracking `main` under `push.default=upstream`, set in the
   repository or with `-c` on the command; `push.default=matching`, `--all`, `--mirror` and a
-  `remote.origin.push` naming `main`, all from a feature branch. **Allowed:** a feature branch
-  with no upstream, `HEAD` on a feature branch, upstream to `feature`, `push.default=nothing`,
-  `--tags`.
+  `remote.origin.push` naming `main`, all from a feature branch; git's matching refspec `:` and
+  `+:`, quoted or not, on the command line or as `remote.origin.push` (fifth round); a named branch
+  that `remote.origin.push` (exact, with `+`, or a `*` pattern) or `push.default=upstream` sends to
+  `main` (fifth round — and `feature:main`, `HEAD:refs/heads/main`, another branch's refspec, or
+  none, which git does not apply, are allowed). **Allowed:** a feature branch with no upstream,
+  `HEAD` on a feature branch, upstream to `feature`, `push.default=nothing`, `--tags`.
 - **The documented limits** (allowed, pinned so the docs stay true): not a git repository, an
   earlier `cd` (also inside `( … )`), `GIT_DIR=…` as a prefix, through `env`, or exported
-  earlier, and a detached HEAD.
+  earlier, `env -C <dir>` / `env --chdir=<dir>` / `env -iC <dir>` (fifth round: treated exactly
+  like a `cd`; plain `env` is still worked out, and a named `main` still refused), and a detached
+  HEAD.
+- **The reader's own markers** (fifth round): `git --work-tree @@SEP push` (and `@@REDIR`, `s`,
+  `r`, `vPM`, `w`) on `main` is refused — the reader's lines each start with a letter saying what
+  they are, so no word can be taken for one.
+- **One test per planted fault that used to survive** (fifth round): three `eval` levels deep
+  read, four not (nesting depth 3); the rule on the joined words (`cd . && git push origin
+  ma"i"n`); `remote.pushDefault` and `branch.<name>.pushRemote`; `--git-dir=` and `--work-tree=`
+  passed to git; `/usr/bin/git`; `\"` inside double quotes; a bare push on `master`. And three
+  found by this round's own sweep (a fault planted to undo each fifth-round fix): an `eval` string
+  read when no other word is `git` (`eval 'git push origin ma\in'`); a brace list quoted inside
+  (`{ma'i'n,x}`, hidden from the text as written); and more than 10 pushes refused before git is
+  asked anything (a stand-in `git` that never answers must not turn the refusal into a time-out).
 - **The hook off** (no active run, no `DEV_TEAM_GUARD`): a bare push on `main` is allowed.
 
-**Proof:** against the previous hook (`42bd45e`), twelve of the sixteen fail — every test with a
-case that must be refused — and the four tests of allowed cases pass, as they should. (The commit
-that added the first fifteen, `0993347`, says "10 of the 15"; it was 11 of 15 — a miscount in that
-message.) Dropping `git` from the word-by-word filter in a throwaway copy makes the six bare-push
-tests fail. All sixteen pass under Homebrew's bash 5 and the Mac's own `/bin/bash` 3.2.
+**Proof:** each fifth-round test was run against the hook before its fix and failed there (the
+commit messages give the first failing case). The reviewer's own fault-planting
+driver, re-typed after a machine restart lost the original and checked by re-running it on the
+pushed tree (it gave the review's own result: 21 caught, 9 survived), and a copy with each fault
+re-expressed where the rewrite changed the code it targets, plus 13 faults that undo each
+fifth-round fix: see `.claude/HANDOFF.md` for the result. Two planted faults cannot be caught by
+any test: M23 (the early return for a detached HEAD removed) changes nothing, because with no
+current branch every later step prints nothing anyway; and N02 (the push cap removed from the pass
+that works the pushes out) is a backstop behind the count taken first, which sees every push. All
+39 tests pass under Homebrew's bash 5, the Mac's own `/bin/bash` 3.2, and in an Ubuntu 24.04
+container (mawk).
 
-**What these cannot catch:** the hook reads the text of a command before it runs; it cannot see a
-branch held in a variable, a push from a script or an alias, or a protected branch other than
-`main` and `master`, and without `jq` it only scans the raw input. Its header comment lists every
-limit.
+**The speed tests judge processor time, not the clock.** The guard refuses a command whose
+checking runs past its 20-second limit, so on a machine starved of processor time — during this
+round the Mac's load average reached 300 to 430 on eight processors, largely from other work — a
+check that uses 2 seconds can take 17 on the clock and be refused. The clock-based first version
+of these tests failed that way. Now: more processor time than the bound fails; a run the hook
+allowed within the bound passes; a run the hook stopped at its limit within the bound is SKIPPED
+with a message (bats prints `# skip`), never counted as a pass, because a slow reader stopped early
+looks the same. A skip means "run it again when the machine is quieter". In the first build of
+this round, failures of the clock-based tests were put down to load; the real cause was a bash
+suffix removal, `${word%sh}`, whose time grows with the square of the word's length — so check the
+processor time before blaming the machine.
+
+**What these cannot catch:** the hook reads the text of a command before it runs and does not run
+the shell; it cannot see a branch held in a variable or a default value, one made by a command
+substitution, a push from a script or an alias, or a protected branch other than `main` and
+`master`, and without `jq` it only scans the raw input. Its header comment lists the limits known.
 
 ### `hooks/guard-ledgers.sh` — the ledger guard's test matrix
 

@@ -5,8 +5,8 @@
   Purpose:  Lessons that matter when Codex works on, or reviews, this repository. The fuller shared
             list is .claude/MEMORY.md (its "Running Codex reviews" section is about how Codex is
             started here). Add new lessons to whichever file fits, and keep them in step.
-  Updated:  28 September 2026 (after #47's fourth round: reading commands like the shell, and hook
-            registration).
+  Updated:  4 October 2026 (after #47's fifth round: more command shapes to try, and timing a
+            hook; after the fourth: reading commands like the shell, and hook registration).
 -->
 
 - When reviewing, compare the working branch with `main` (`git diff main...HEAD`). Text that
@@ -28,5 +28,10 @@
   that names no target at all (a bare `git push`). And when a test runs a hook script directly,
   ask whether anything checks that the hook is still registered in `hooks/hooks.json` (the smoke
   test does, since #47's fourth round).
+- When reviewing a guard that reads commands, also try: git's matching refspec `:`, `$'\x6d…'`
+  escapes, a brace list, a push piped into a shell (`echo '…' | sh`, `sh <<< '…'`), `--` after
+  `-c`, `env -C <dir>`, a named branch that `remote.<name>.push` sends elsewhere, and a very long
+  command timed under the Mac's `/bin/bash` 3.2 (a hook that is too slow is not waited for; bash's
+  `${w%…}` / `${w#…}` on a long word grow with the square of its length).
 - A record identifier such as `F-001` can run past 999 (`F-1000`); patterns must allow three or
   more digits.
