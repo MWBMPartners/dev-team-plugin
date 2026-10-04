@@ -158,7 +158,9 @@ it on (orchestrator `conventions.md`, "Repository instructions and normative doc
 and a `/loop` of watch passes is one run. Its first pass takes the snapshot and records the
 starting branch and commit in the run record; every later pass checks that same snapshot and reuses
 it. A later pass never snapshots whatever happens to be checked out when it starts. Every pass puts
-the starting branch back before it ends; if it cannot, it stops and says so. The exact steps:
+the starting branch back before it ends; if it cannot, it stops and says so. While a pull request's
+branch is checked out, the run record says so, and a new run refuses to start on a branch that
+record shows an interrupted pass left checked out. The exact steps:
 `references/watch-and-schedule-protocol.md`, "One snapshot per run, and the starting branch put
 back". Every pull request ci-medic checks out is someone else's code for this purpose — a branch of
 this same repository pushed by a collaborator included. Before a run first checks one out, the lead

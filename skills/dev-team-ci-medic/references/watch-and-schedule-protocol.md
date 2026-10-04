@@ -38,9 +38,22 @@ the instruction snapshot is taken from, and a pass that leaves a pull request ch
 never let a later pass read that checkout as the user's own.
 
 1. **Is this a later pass of a run already going?** A `/loop` of watch passes is one run. Every
-   pass report begins with the line `ci-medic run <run-id> — started on <branch> at <commit>`. At
-   the start of a pass, before anything else, the lead looks for that line in this conversation.
-2. **No such line: a new run.** Take the instruction snapshot of the checkout the pass starts on,
+   pass report begins with the line `ci-medic run <run-id> — started on <branch> at <commit> in
+   <repository>`, where `<repository>` is the repository's absolute path. At the start of a pass,
+   before anything else, the lead looks in this conversation for that line naming this
+   repository's absolute path. A line that names a different repository counts as no line. When
+   the user explicitly asks for a new run, the line counts as not there either: the pass starts a
+   new run (step 2), which, as a new run always does, takes a new snapshot of the checkout it
+   starts on.
+2. **No such line: a new run.** First, look for a pass that was stopped part-way: read every run
+   record under `~/.dev-team/runs/` that names this repository's absolute path. If one of them
+   still has a line `left checked out: <branch>` (step 4) and that branch is the one checked out
+   now, an earlier pass was interrupted with a pull request's branch checked out, and this checkout
+   is someone else's code — do not start. In an attended run, tell the user which branch it is and
+   which run record says so, and take no snapshot until they have checked out their own branch or
+   said plainly that this checkout is theirs to use (then remove the line from that run record, so
+   the question is not asked again); in an unattended run, mark it BLOCKED with that reason. This
+   reads the plugin's own records; it does not try to work out from git whose code a checkout is. Otherwise take the instruction snapshot of the checkout the pass starts on,
    exactly as orchestrator `conventions.md`, "Repository instructions and normative documents",
    step 1, says, and write the run record, `~/.dev-team/runs/<run-id>/run.txt` — beside
    `snapshot/`, outside the project, written only by the lead: the repository's absolute path, the
@@ -48,24 +61,39 @@ never let a later pass read that checkout as the user's own.
    commit. Begin the pass report with the line above.
 3. **The line is there: a later pass of that run.** Take no new snapshot. Read the run record and
    check that it names this repository and this run id; then check the snapshot as orchestrator
-   `conventions.md` step 1, "Resuming reuses the snapshot", says (manifest first). A failed check stops the pass with a plain
-   message, and never falls back to a new snapshot. Next make sure the recorded starting branch (or,
-   for `detached`, the recorded commit) is checked out: if an earlier pass could not put it back,
-   check it out now; if that fails too, stop and say so. Then work from the run's snapshot, and from
-   any pull request's base-commit copies already in `snapshot/pr/<n>/`, for the whole pass.
-4. **Put the starting branch back before the pass ends.** After the last pull request is handled,
-   check out the recorded starting branch (or commit) and confirm that it is what is checked out.
-   If that cannot be done — for example a failed fix left uncommitted changes on the pull request's
-   branch — stop the pass and say so plainly, naming what is left checked out. Do not force the
-   checkout, discard changes or stash them. The next pass tries again at its start (step 3).
-5. **A scheduled routine** starts every run in its own fresh session and checkout, so each routine
+   `conventions.md` step 1, "Resuming reuses the snapshot", says (manifest first). A failed check
+   stops the pass with a plain message, and never falls back to a new snapshot. Next make sure the
+   recorded starting branch (or, for `detached`, the recorded commit) is checked out: if an earlier
+   pass could not put it back, check it out now, and once it is back remove the run record's
+   `left checked out:` line; if that fails too, stop and say so. Then work from the run's snapshot,
+   and from any pull request's base-commit copies already in `snapshot/pr/<n>/`, for the whole
+   pass.
+4. **Mark a pull request's branch in the run record while it is checked out.** Before a pass
+   checks out a pull request's branch, the lead adds the line `left checked out: <branch>` to the
+   run record, naming the local branch the checkout will leave checked out (if the checkout ends up
+   on a differently named branch, correct the line straight after it). The line stays until the
+   starting branch is back (step 5).
+5. **Put the starting branch back before the pass ends.** After the last pull request is handled,
+   check out the recorded starting branch (or commit), confirm that it is what is checked out, and
+   then remove the `left checked out:` line from the run record. If that cannot be done — for
+   example a failed fix left uncommitted changes on the pull request's branch — stop the pass and
+   say so plainly, naming what is left checked out, and leave the line in the run record. Do not
+   force the checkout, discard changes or stash them. The next pass tries again at its start (step
+   3).
+6. **A scheduled routine** starts every run in its own fresh session and checkout, so each routine
    run is a new run with its own snapshot (step 2).
 
 **What this cannot do.** The run id is carried in the conversation. If the conversation no longer
 shows the line — for example after older messages have been summarised away — the next pass cannot
-tell that it is a later pass, and takes the checkout it starts on as a new run's starting point.
-That is the starting branch whenever every earlier pass put it back; a pass that could not put it
-back said so, and the loop should then be stopped and started again from your own branch.
+tell that it is a later pass, and starts a new run from the checkout it starts on. That is the
+starting branch whenever every earlier pass put it back. A pass that is interrupted — the session
+ends, or the pass is stopped — after checking out a pull request's branch and before putting the
+starting branch back leaves that branch checked out, and nothing puts it back. The next run then
+finds the run record's `left checked out:` line naming the branch that is checked out, and refuses
+to start (step 2). That check reads only the plugin's own run records: if the run record is missing
+or was changed, or a different branch has been checked out since, a new run takes whatever is
+checked out as your own. So after an interrupted pass, or a pass that said it could not put the
+starting branch back, check out your own branch yourself before starting again.
 
 ## Running it once, interactively
 

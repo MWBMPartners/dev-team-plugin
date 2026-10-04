@@ -261,6 +261,19 @@ these (ten or more settings written out, each at its default).
   `git --work-tree @@SEP push` was read as two commands and let a bare push on `main` through.
   Every line the reader prints now starts with a letter saying what it is, and the marker for a
   redirection is a line break, which no word can contain.
+- **ci-medic: an interrupted pass, and which repository a run belongs to** (the stand-in review of
+  42bd45e..b39f40d). Before a pass checks out a pull request's branch it now writes
+  `left checked out: <branch>` into the run record, `~/.dev-team/runs/<run-id>/run.txt`, and it
+  removes that line once the starting branch is back. A new run first reads the run records for
+  this repository: if one still names the branch that is checked out now, an earlier pass was
+  interrupted part-way and this checkout is someone else's code, so the run does not start — it
+  asks (unattended: `BLOCKED`). This reads the plugin's own records; it does not guess from git
+  whose code a checkout is. The line that begins every pass report now names the repository
+  (`ci-medic run <run-id> — started on <branch> at <commit> in <repository>`); a line for a
+  different repository counts as no line, and the user can ask for a new run, which takes a new
+  snapshot as a new run always does. "What this cannot do" now says plainly what an interrupted
+  pass leaves behind, and that a missing or changed run record, or a branch checked out since,
+  defeats the check — so check out your own branch after an interruption.
 - The iterate skill's audit gains a tenth dimension, **conformance** to the project's normative
   documents; the review skill gains a **conformance** claim type, and its reviewers do their own
   discovery even when House style recorded nothing.
