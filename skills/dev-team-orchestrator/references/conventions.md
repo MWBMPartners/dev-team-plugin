@@ -230,13 +230,14 @@ ledger. This is baked-in discipline, not a toggle — always attempted, always f
 fresh run when the check doesn't pass.
 
 **A resume keeps the run's instruction snapshot.** Resuming a recorded, unfinished run reuses the
-snapshot folder that run recorded, after checking it, and never takes a new one; a failed snapshot
-check stops the run with a plain message rather than falling back to a new snapshot — unlike the
-artifact check above, it does not fail open to a fresh run. Only a new run — new work the user
-starts, or a fresh start because nothing current was found — takes a new snapshot. The full rule is
-"Repository instructions and normative documents", step 1, "Resuming reuses the snapshot", under
-"Shared discipline" below; autopilot follows the same rule (REHYDRATE checks and reuses the
-snapshot, and only bootstrap takes one).
+snapshot folder that run recorded, after checking it, and never takes a new one; a run recorded
+before 1.6.0 has none (step 1 of "Repository instructions and normative documents" says what then
+happens); a failed snapshot check stops the run with a plain message rather than falling back to a
+new snapshot — unlike the artifact check above, it does not fail open to a fresh run. Only a new run
+— new work the user starts, or a fresh start because nothing current was found — takes a new
+snapshot. The full rule is "Repository instructions and normative documents", step 1, "Resuming
+reuses the snapshot", under "Shared discipline" below; autopilot follows the same rule (REHYDRATE
+checks and reuses the snapshot, and only bootstrap takes one).
 
 ## Autopilot notifications
 

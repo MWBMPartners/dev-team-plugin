@@ -274,6 +274,12 @@ these (ten or more settings written out, each at its default).
   snapshot as a new run always does. "What this cannot do" now says plainly what an interrupted
   pass leaves behind, and that a missing or changed run record, or a branch checked out since,
   defeats the check — so check out your own branch after an interruption.
+- **The short resume wording names the pre-1.6.0 case.** The eight skills' run-start lines, the
+  orchestrator's setup step, `conventions.md`'s "Cold-resume" and the README's cold-resume bullet
+  now add "(a run recorded before 1.6.0 has none: see step 1)" or the equivalent, so they agree with
+  `conventions.md` step 1 and autopilot's `loop-runtime.md`: such a run has no snapshot to check —
+  an attended run says so and takes one, an unattended one is marked `BLOCKED` (the stand-in review
+  of 42bd45e..b39f40d).
 - The iterate skill's audit gains a tenth dimension, **conformance** to the project's normative
   documents; the review skill gains a **conformance** claim type, and its reviewers do their own
   discovery even when House style recorded nothing.

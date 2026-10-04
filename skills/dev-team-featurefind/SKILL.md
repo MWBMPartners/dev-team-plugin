@@ -46,10 +46,10 @@ PHASE 0: FRAME (scout current feature set + infer aim/category; reuse Codebase M
 (`dev-team-orchestrator/references/conventions.md`, "Repository instructions and normative
 documents", step 1) — or, when this run resumes a recorded, unfinished one (the suite's Cold-resume
 contract, same file), check and reuse that run's recorded snapshot instead, stopping with a plain
-message if the check fails and never taking a new one in its place — and settle `handoff-file` once
-("Auto-handoff", same file); pass the snapshot in every brief and the `handoff-file` value in every
-documentarian brief. Under the autopilot conductor, use the conductor's snapshot and value instead
-of taking your own.
+message if the check fails and never taking a new one in its place (a run recorded before 1.6.0 has
+none: see step 1) — and settle `handoff-file` once ("Auto-handoff", same file); pass the snapshot in
+every brief and the `handoff-file` value in every documentarian brief. Under the autopilot
+conductor, use the conductor's snapshot and value instead of taking your own.
 
 You're always in an existing repo, so **scout first**. Spawn scout(s) to establish, as first-class outputs:
 
