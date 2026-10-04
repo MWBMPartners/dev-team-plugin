@@ -976,12 +976,13 @@ $line" ;;
 # machine running the tests cannot change the result.
 
 # Builds a hook payload whose command is exactly $1 (jq does the JSON quoting), plus a "cwd" field
-# when $2 is given.
+# when $2 is given. The command goes to jq on its standard input, not as an argument: Linux refuses
+# a single program argument longer than 128 KB, and the speed tests use a longer command.
 guard_payload() {
   if [ "$#" -ge 2 ]; then
-    jq -n --arg c "$1" --arg d "$2" '{tool_input: {command: $c}, cwd: $d}'
+    printf '%s' "$1" | jq -Rs --arg d "$2" '{tool_input: {command: .}, cwd: $d}'
   else
-    jq -n --arg c "$1" '{tool_input: {command: $c}}'
+    printf '%s' "$1" | jq -Rs '{tool_input: {command: .}}'
   fi
 }
 
@@ -1062,6 +1063,71 @@ make_push_repo() {
   body="$(for i in $(seq 1 800); do printf 'a line of text %s\n' "$i"; done)"
   run run_guard_cmd "$SCRATCH" "$(printf 'cat > notes.txt <<EOF\n%s\nEOF\ngit push origin \\main' "$body")"
   [ "$status" -eq 2 ]
+}
+
+# ---------------------------------------------------------------------------
+# hooks/guard-dev-team.sh — never abandoned for being slow
+# ---------------------------------------------------------------------------
+# The stand-in review of 42bd45e..b39f40d measured the reader of that time taking about 21 seconds
+# on a 10,000-line heredoc, 5 to 9 seconds on a 129 KB commit message and 38 seconds on 200 bare
+# pushes (macOS bash 3.2): long enough for Claude Code to stop waiting for the hook and run the
+# command unchecked. The reader now takes time in proportion to the command's length, at most 10
+# pushes are worked out in one command, and the checking runs under a time limit; a command with
+# more pushes, or one whose checking runs past the limit, is REFUSED rather than let through.
+
+@test "guard (speed): a 10,000-line heredoc and a 129 KB commit message are read to the end within the time limit" {
+  body="$(awk 'BEGIN { for (i = 1; i <= 10000; i++) printf "a line of text number %d here\n", i }')"
+  run run_guard_cmd "$SCRATCH" "$(printf 'cat > n.txt <<EOF\n%s\nEOF\ngit push origin '"'"'main'"'"'' "$body")"
+  echo "$output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"push to main/master detected"* ]]
+  run run_guard_cmd "$SCRATCH" "$(printf 'cat > n.txt <<EOF\n%s\nEOF\ngit push origin feature' "$body")"
+  echo "$output"
+  [ "$status" -eq 0 ]
+  msg="$(awk 'BEGIN { for (i = 1; i <= 26400; i++) printf "word "; }')"
+  run run_guard_cmd "$SCRATCH" "git commit -m \"$msg\""
+  echo "$output"
+  [ "$status" -eq 0 ]
+}
+
+@test "guard (speed): more than 10 pushes in one command are refused, with a message asking for it to be split; 10 are checked" {
+  mkdir -p "$SCRATCH/plain"
+  ten="git push; git push; git push; git push; git push; git push; git push; git push; git push; git push"
+  run run_guard_cmd "$SCRATCH/plain" "$ten"
+  [ "$status" -eq 0 ]
+  run run_guard_cmd "$SCRATCH/plain" "$ten; git push"
+  echo "$output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"more than 10"*"Split it into smaller commands"* ]]
+  # Pushes inside a command string handed to a shell count too.
+  run run_guard_cmd "$SCRATCH/plain" "git push; git push; git push; git push; git push; git push; bash -c 'git push; git push; git push; git push; git push'"
+  echo "$output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"more than 10"* ]]
+}
+
+@test "guard (speed): a command whose checking runs past the time limit is refused, not let through" {
+  # A stand-in git that takes 30 seconds to answer, first on PATH, and a 1-second limit
+  # (DEV_TEAM_GUARD_TIME_LIMIT can only make the limit shorter). The hook must refuse after about
+  # a second, without waiting for the stand-in to finish. (3>&- closes the file bats reports
+  # through, so the stand-in, still asleep after the hook has finished, cannot hold bats up.)
+  make_push_repo main
+  mkdir -p "$SCRATCH/slowbin"
+  printf '#!/bin/sh\nsleep 30\nexit 1\n' > "$SCRATCH/slowbin/git"
+  chmod +x "$SCRATCH/slowbin/git"
+  start=$SECONDS
+  run env PATH="$SCRATCH/slowbin:$PATH" DEV_TEAM_GUARD_TIME_LIMIT=1 bash -c 'cd "$1" && printf "%s" "$2" | DEV_TEAM_GUARD=1 bash "$3"' _ "$SCRATCH/repo" "$(guard_payload "git push")" "$REPO_ROOT/hooks/guard-dev-team.sh" 3>&-
+  took=$((SECONDS - start))
+  echo "status $status after ${took}s: $output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"took longer than"*"Split it into smaller commands"* ]]
+  [ "$took" -lt 15 ]
+  # A value that would make the limit LONGER is ignored: 99 falls back to the built-in 20 seconds,
+  # which still refuses the 30-second stand-in.
+  run env PATH="$SCRATCH/slowbin:$PATH" DEV_TEAM_GUARD_TIME_LIMIT=99 bash -c 'cd "$1" && printf "%s" "$2" | DEV_TEAM_GUARD=1 bash "$3"' _ "$SCRATCH/repo" "$(guard_payload "git push")" "$REPO_ROOT/hooks/guard-dev-team.sh" 3>&-
+  echo "status $status: $output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"took longer than 20 seconds"* ]]
 }
 
 @test "guard (no branch named): a bare git push while on main is blocked, and the message names the branch" {

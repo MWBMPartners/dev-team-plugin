@@ -190,8 +190,26 @@ these (ten or more settings written out, each at its default).
   `master`. Where it cannot tell (an earlier `cd` in the same command, a `GIT_*` variable set in
   it, not a git repository, a detached HEAD) it lets the push through, and its header, the README
   and `conventions.md` say so. The old raw-text check still runs, so nothing refused before is
-  allowed now. Only the commands that need it are read word by word, so a long command (a large
-  heredoc, say) is still checked in about half a second.
+  allowed now. Only the commands that need it are read word by word. (An earlier version of this
+  entry said a long command was "still checked in about half a second"; that was measured on a
+  short heredoc only. The stand-in review of 42bd45e..b39f40d measured about 21 seconds for a
+  10,000-line heredoc, 5 to 9 seconds for a 129 KB commit message and 38 seconds for 200 bare
+  pushes with macOS's bash 3.2 — see the next entry.)
+- **The Bash guard is never abandoned for being slow.** Claude Code stops waiting for a hook after
+  a while and runs the command anyway, so a slow guard is no guard. Its reader now works line by
+  line and never builds up one long piece of text (the old one took the command apart one
+  character at a time with a function that, in macOS's awk, measures the whole text on every
+  call, so its time grew with the square of the command's length). It works out at most 10
+  `git push` commands in one command, counting them before asking git anything; a command with
+  more is refused with a message asking for it to be split. All its checking runs under a
+  20-second limit (`DEV_TEAM_GUARD_TIME_LIMIT` can only make it shorter); past it the command is
+  refused the same way, and whatever the check was waiting on is stopped. These two refusals fail
+  closed on purpose. Measured (the middle of three runs each, on a Mac whose load average was
+  12 to 25 on eight processors): with macOS's bash 3.2 and awk, a 10,000-line heredoc took 0.49
+  seconds (21.8 before, with the load at 44), a 129 KB `git commit -m` message 0.39 to 0.44
+  seconds (1.8 to 2.7 before, and 5 to 9 when the machine was busier), and 200 bare pushes were
+  refused in 0.07 seconds (39.8 seconds, and allowed, before); on Linux (Ubuntu 24.04, mawk) the
+  same took 0.20, 0.06 to 0.10 and 0.03 seconds, against 4.3, 0.7 to 1.0 and 14.1 before.
 - **Every description of the guard hooks now says exactly what they cover.** "This written rule is
   the real protection" is gone from `conventions.md`'s ownership rule (the written rule is what
   agents follow, not enforcement; the one hook enforces only the writes it can see), and ci-medic's

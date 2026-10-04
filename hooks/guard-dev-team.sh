@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # dev-team guardrail (PreToolUse/Bash). Blocks only the truly unrecoverable actions,
 # and ONLY while a dev-team run is active (unless DEV_TEAM_GUARD is set). Fail-open by
-# design: any error, or no active run => allow (exit 0). One defense layer, best-effort
+# design: any error, or no active run => allow (exit 0) — with two exceptions that fail CLOSED
+# on purpose, listed under "How long it takes" below. One defense layer, best-effort
 # string matching — NEVER the safety guarantee.
 #   - The authoritative protection for `main` is SERVER-SIDE GitHub branch protection.
 #   - The live-Stripe-key check is a Bash-command heuristic only (it inspects tool_input.command),
@@ -26,6 +27,19 @@
 #      `cwd`, then any `git -C <dir>` in the command) and passes through the command's own
 #      `-c`, `--git-dir` and `--work-tree` options.
 #   3. A live Stripe key (sk_live_, rk_live_, pk_live_) anywhere in the command text.
+#
+# How long it takes, and the two refusals that are about the guard, not the command:
+#   Claude Code stops waiting for a hook after a while and then runs the command anyway, so a
+#   guard that is too slow is not there at all. The time this hook takes grows in step with the
+#   command's length (it reads it line by line and never builds up one long piece of text), and:
+#   - it works out where at most 10 `git push` commands go in one command (each asks git several
+#     questions); a command with more — counting those inside a command string handed to a
+#     shell — is REFUSED, with a message asking for it to be split;
+#   - all of its checking runs under a 20-second limit (DEV_TEAM_GUARD_TIME_LIMIT can make it
+#     shorter, never longer); a command whose checking runs past it is REFUSED the same way, and
+#     anything the checking was still waiting on (a git that does not answer, say) is stopped.
+#   These two fail closed because letting such a command through would mean the guard could be
+#   switched off by writing a longer command.
 #
 # What it cannot see, and so lets through (stated here so nobody reads more into it):
 #   - a branch or command held in a variable ($BRANCH), built by another command, or run from a
@@ -79,6 +93,24 @@ deny() {
   echo "dev-team guard: $1 Blocked as unrecoverable during an active run. Do it yourself, or disable the guard (remove .dev-team/autopilot.json or unset DEV_TEAM_GUARD)." >&2
   exit 2
 }
+# The two refusals that are not about what the command does, but about the guard not being able to
+# check all of it (too many pushes, or too long to check). They fail CLOSED on purpose: letting such
+# a command through would mean the guard can be switched off by writing a longer command.
+refuse() {
+  echo "dev-team guard: $1" >&2
+  exit 2
+}
+
+# At most this many `git push` commands are worked out in one command (see check_simple_command).
+MAX_PUSHES=10
+too_many_pushes() {
+  refuse "this command has more than $MAX_PUSHES \`git push\` commands, more than the guard can check in one go, so it is refused rather than let through unchecked. Split it into smaller commands."
+}
+# The line that stands for a redirection among a simple command's words. No word can ever be a line
+# break — read_words turns a line break inside a word into a space and prints one word per line —
+# so no word in a command can equal it. (It used to be the word "@@REDIR", which a command could
+# spell out.)
+REDIR=$'\n'
 
 # ---------------------------------------------------------------------------------------------
 # The text rules. Each takes the text to test as its only argument.
@@ -90,8 +122,8 @@ deny() {
 sep_copy() { printf ' %s ' "$1" | tr ':+/"=;,()' '         '; }
 # `git push` even with global options between git and push (e.g. `git -C dir push`).
 is_git_push() { printf '%s' " $1 " | grep -Eq ' git ([^ ]+ )*push([ ]|$)'; }
-# A main/master push target (as a bare token in the separator-normalized copy).
-targets_main() { sep_copy "$1" | grep -Eq ' (main|master) '; }
+# A main/master push target, as a bare token in a copy already made by sep_copy.
+targets_main() { printf '%s' "$1" | grep -Eq ' (main|master) '; }
 # A force update: --force / --force-with-lease / -f, or a leading `+` refspec on main/master.
 has_force() {
   printf '%s' " $1 " | grep -Eq '(--force|--force-with-lease| -f )' && return 0
@@ -100,12 +132,11 @@ has_force() {
 has_live_stripe_key() { printf '%s' "$1" | grep -Eq '(sk|rk|pk)_live_[A-Za-z0-9]'; }
 
 # Applies the three text rules to one piece of text. The force rule is checked first only so
-# that its clearer message is the one shown; either way the push is refused.
+# that its clearer message is the one shown; either way the push is refused. Each test runs once
+# (the command text can be long, and every test reads all of it).
 text_rules() {
-  if is_git_push "$1" && has_force "$1" && targets_main "$1"; then
-    deny "force-push to main/master detected."
-  fi
-  if is_git_push "$1" && targets_main "$1"; then
+  if is_git_push "$1" && targets_main "$(sep_copy "$1")"; then
+    has_force "$1" && deny "force-push to main/master detected."
     deny "push to main/master detected."
   fi
   if has_live_stripe_key "$1"; then
@@ -113,100 +144,221 @@ text_rules() {
   fi
 }
 
-# (a) The command text exactly as written, as before quotes were understood. Kept so that nothing
-# this rule used to refuse is let through by the word-by-word reading below.
-text_rules "$norm"
-[ "$have_jq" -eq 1 ] || exit 0
-
 # ---------------------------------------------------------------------------------------------
 # Reading the command the way the shell does.
 # ---------------------------------------------------------------------------------------------
-# shell_words reads the text on its standard input the way the shell does, after the shell's own
-# quote removal: '...' keeps everything literally, "..." keeps everything except that a backslash
-# before $ ` " \ or a line break is removed, a bare backslash makes the next character literal,
-# $'...' and $"..." lose their $. Outside quotes, a line break and ; & | ( ) ` end a simple
-# command; > and < start a redirection (the next word is where output goes, not an argument, and a
-# number just before them — the 2 in 2>&1 — is dropped). Spaces, tabs and line breaks INSIDE a
-# quoted word are kept as single spaces, so a commit message such as 'push to main' stays one word
-# and is never read as a push. This is a reading aid, not a full shell parser: it does not expand
+# Two small awk programs, one after the other, read the command text. Both work line by line and
+# never build up a long piece of text: the first prints each character of a word as soon as it has
+# read it, and the second receives each finished word as one line, which awk reads in one go. That
+# keeps the time the reading takes in proportion to the length of the command.
+#
+# Why it is done this way (the stand-in review of 42bd45e..b39f40d, finding on speed): the reader
+# before this one joined the whole command into one piece of text, then took it apart one
+# character at a time with awk's substr(). On macOS's awk every substr() call first measures the
+# whole text, so the work grew with the SQUARE of the command's length, and the words, the joined
+# text and the output were each built by adding to the end of a growing piece of text, which grows
+# the same way. Measured before the change, with macOS's bash 3.2 and awk: a heredoc of 10,000
+# short lines took about 21 seconds, a 129 KB `git commit -m` message 2 to 9 seconds (depending on
+# how busy the machine was), and 200 bare `git push` commands about 38 seconds — long enough for
+# Claude Code to give up waiting for the hook, which then lets the command run unchecked.
+#
+# read_words, the first program, reads the text on its standard input the way the shell does,
+# after the shell's own quote removal: '...' keeps everything literally, "..." keeps everything
+# except that a backslash before $ ` " \ or a line break is removed, a bare backslash makes the next
+# character literal, $'...' and $"..." lose their $. Outside quotes, a line break and ; & | ( ) `
+# end a simple command; > and < start a redirection. Spaces, tabs and line breaks INSIDE a quoted
+# word are kept as single spaces, so a commit message such as 'push to main' stays one word and is
+# never read as a push. This is a reading aid, not a full shell parser: it does not expand
 # variables, globs, braces or aliases.
-# It prints, first, one line "@@JOINED <all the words joined by spaces>" — each space inside a word
-# becomes _ so the word stays one word, a command separator becomes ";" and a redirection ">" — for
-# the text rules. Then, one word per line with a line "@@SEP" after each command, only the simple
-# commands the rest of this hook needs to look at word by word: one with a word that is git, a
-# shell (sh, bash, zsh, dash, ksh) or eval, or a GIT_...= setting, or one whose first word is cd,
-# pushd, popd, export, declare, typeset, set, builtin or command. Leaving the rest out keeps a long
-# command — a large heredoc, say — quick to check: the word-by-word part runs in bash, which is
-# slow on thousands of words.
-shell_words() {
-  awk '
-    function endword() {
-      if (inw) { gsub(/[\t\n]/, " ", w); nw++; cw[nw] = w; t = w; gsub(/ /, "_", t); joined = joined " " t }
-      w = ""; inw = 0
+# It prints one line per item, and every line starts with a letter saying what it is, so nothing
+# in a command can be mistaken for one of these markers (the reader before this one used lines
+# such as "@@SEP", which a command's own word could equal):
+#   w<word>   a word
+#   R         a redirection straight after a word (as in 2>&1; the word may be a number that
+#             belongs to the redirection, which the second program decides)
+#   r         a redirection after a space
+#   s         the end of a simple command
+# A line that contains none of the characters it has to look at, outside any quote, is split into
+# words in one step. Any other line is split into single characters once (split() with an empty
+# separator, which macOS awk, mawk and gawk all do), and a stretch of ordinary characters — a long
+# quoted message, say — is printed in one go rather than one character at a time.
+read_words() {
+  LC_ALL=C awk '
+    function openw() { if (!inw) { printf "w"; inw = 1 } }
+    # One character of the current word. A tab becomes a space (a line break inside a quoted word
+    # is turned into a space where the line ends).
+    function put(c) { if (!inw) { printf "w"; inw = 1 }; if (c == "\t") c = " "; printf "%s", c }
+    function endword() { if (inw) { printf "\n"; inw = 0 } }
+    function endcmd() { endword(); printf "s\n" }
+    # Splits the current line at the characters that matter in one reading state (re), keeping
+    # the pieces in P and the position where each piece starts in S; returns the number of pieces.
+    # Done at most once per line and state, and only when that state is met on the line.
+    function prep(P, S, re,   np, k, pos) {
+      np = split(line, P, re)
+      pos = 1
+      for (k = 1; k <= np; k++) { S[k] = pos; pos += length(P[k]) + 1 }
+      return np
     }
-    function endcmd(   k, keep, first, x) {
-      endword()
-      if (nw > 0) {
-        keep = 0; first = 1
-        while (first <= nw && cw[first] ~ /^[A-Za-z_][A-Za-z0-9_]*=/) first++
-        if (first <= nw && cw[first] ~ /^(cd|pushd|popd|export|declare|typeset|set|builtin|command)$/) keep = 1
-        for (k = 1; k <= nw; k++) {
-          x = cw[k]
-          if (x ~ /(^|\/)(git|sh|bash|zsh|dash|ksh)$/ || x == "eval" || x ~ /^GIT_[A-Za-z0-9_]*=/) keep = 1
-        }
-        if (keep) { for (k = 1; k <= nw; k++) out = out cw[k] "\n"; out = out "@@SEP\n" }
-        joined = joined " ;"
+    # Prints, as part of the current word, the stretch from position i up to the next character
+    # that matters in reading state w (the pieces from prep), and moves i to that character. This
+    # is what keeps a long quoted message quick: one printf for the whole stretch instead of one
+    # per character. ptr[w] only ever moves forward along the line.
+    function jump(P, S, np, w,   off, piece) {
+      while (ptr[w] < np && S[ptr[w] + 1] <= i) ptr[w]++
+      off = i - S[ptr[w]] + 1
+      piece = (off == 1) ? P[ptr[w]] : substr(P[ptr[w]], off)
+      i = S[ptr[w]] + length(P[ptr[w]])
+      if (piece != "") { if (index(piece, "\t") > 0) gsub(/\t/, " ", piece); openw(); printf "%s", piece }
+    }
+    BEGIN { st = 0; inw = 0; jn = 0 }
+    # st: 0 unquoted, 1 inside '\''...'\'', 2 inside "...", 3 inside $'\''...'\''
+    {
+      line = $0
+      # A line with nothing to look at, outside any quote and with no word still open from the
+      # line before, is split into words in one step. Inside a quote, a line with no closing quote
+      # and no backslash is part of the current word as it stands.
+      if (st == 0 && !inw && line !~ /[;&|()`<>\\"$]/ && index(line, "'\''") == 0) {
+        n = split(line, parts)
+        for (k = 1; k <= n; k++) printf "w%s\n", parts[k]
+        endcmd()
+        next
       }
-      nw = 0
-    }
-    { s = s (NR > 1 ? "\n" : "") $0 }
-    END {
-      n = length(s); i = 1; st = 0; w = ""; inw = 0; nw = 0; joined = ""; out = ""
-      # st: 0 unquoted, 1 inside '\''...'\'', 2 inside "...", 3 inside $'\''...'\''
+      if ((st == 1 && index(line, "'\''") == 0) || (st == 2 && line !~ /["\\]/) || (st == 3 && line !~ /['\''\\]/)) {
+        gsub(/\t/, " ", line)
+        openw(); printf "%s ", line
+        next
+      }
+      jn = 0
+      n = split(line, ch, "")
+      np0 = np1 = np2 = np3 = -1
+      ptr[0] = ptr[1] = ptr[2] = ptr[3] = 1
+      i = 1
       while (i <= n) {
-        c = substr(s, i, 1)
-        if (st == 1) { if (c == "'\''") st = 0; else w = w c; i++; continue }
+        c = ch[i]
+        if (st == 1) {
+          if (c == "'\''") { st = 0; i++; continue }
+          if (np1 < 0) np1 = prep(P1, S1, "'\''")
+          jump(P1, S1, np1, 1); continue
+        }
         if (st == 3) {
-          if (c == "\\" && i < n) { w = w substr(s, i + 1, 1); i += 2; continue }
-          if (c == "'\''") st = 0; else w = w c
-          i++; continue
+          if (c == "\\" && i < n) { put(ch[i + 1]); i += 2; continue }
+          if (c == "'\''") { st = 0; i++; continue }
+          if (c == "\\") { put(c); i++; continue }
+          if (np3 < 0) np3 = prep(P3, S3, "['\''\\\\]")
+          jump(P3, S3, np3, 3); continue
         }
         if (st == 2) {
           if (c == "\"") { st = 0; i++; continue }
-          if (c == "\\" && i < n) {
-            d = substr(s, i + 1, 1)
-            if (d == "\n") { i += 2; continue }
-            if (d == "$" || d == "`" || d == "\"" || d == "\\") { w = w d; i += 2; continue }
+          if (c == "\\") {
+            if (i == n) { jn = 1; i++; continue }              # backslash + line break: both go
+            d = ch[i + 1]
+            if (d == "$" || d == "`" || d == "\"" || d == "\\") { put(d); i += 2; continue }
+            put(c); i++; continue
           }
-          w = w c; i++; continue
+          if (np2 < 0) np2 = prep(P2, S2, "[\"\\\\]")
+          jump(P2, S2, np2, 2); continue
         }
         if (c == " " || c == "\t") { endword(); i++; continue }
-        if (c == "\n" || c == ";" || c == "|" || c == "(" || c == ")" || c == "`") { endcmd(); i++; continue }
-        if (c == "&" && substr(s, i + 1, 1) != ">") { endcmd(); i++; continue }
+        if (c == ";" || c == "|" || c == "(" || c == ")" || c == "`") { endcmd(); i++; continue }
+        if (c == "&" && ch[i + 1] != ">") { endcmd(); i++; continue }
         if (c == ">" || c == "<" || c == "&") {
-          if (inw && w ~ /^[0-9]+$/) { w = ""; inw = 0 } else endword()
-          while (i <= n && index("<>&|", substr(s, i, 1)) > 0) i++
-          nw++; cw[nw] = "@@REDIR"; joined = joined " >"
+          if (inw) { endword(); printf "R\n" } else printf "r\n"
+          while (i <= n && index("<>&|", ch[i]) > 0) i++
           continue
         }
         if (c == "\\") {
-          if (i < n) { d = substr(s, i + 1, 1); if (d != "\n") { w = w d; inw = 1 } }
-          i += 2; continue
+          if (i == n) { jn = 1; i++; continue }                # backslash + line break: both go
+          put(ch[i + 1]); i += 2; continue
         }
-        if (c == "'\''") { st = 1; inw = 1; i++; continue }
-        if (c == "\"") { st = 2; inw = 1; i++; continue }
-        if (c == "$" && i < n) {
-          d = substr(s, i + 1, 1)
-          if (d == "'\''") { st = 3; inw = 1; i += 2; continue }
-          if (d == "\"") { st = 2; inw = 1; i += 2; continue }
-        }
-        w = w c; inw = 1; i++
+        if (c == "'\''") { st = 1; openw(); i++; continue }
+        if (c == "\"") { st = 2; openw(); i++; continue }
+        if (c == "$" && ch[i + 1] == "'\''") { st = 3; openw(); i += 2; continue }
+        if (c == "$" && ch[i + 1] == "\"") { st = 2; openw(); i += 2; continue }
+        if (c == "$") { put(c); i++; continue }
+        if (np0 < 0) np0 = prep(P0, S0, "['\'' \t;&|()`<>\\\\\"$]")
+        jump(P0, S0, np0, 0)
       }
-      endcmd()
-      print "@@JOINED" joined
-      printf "%s", out
+      # The line break at the end of this line.
+      if (jn) { }                                   # removed by the backslash before it
+      else if (st == 0) endcmd()                    # ends the simple command
+      else put(" ")                                 # inside a quote: part of the word, as a space
     }
-  '
+    END { endcmd() }
+  ' 2>/dev/null
+}
+
+# keep_commands, the second program, reads read_words' lines. It does two things with them.
+#   1. The text rules on the words joined together (quotes removed), one word at a time, with no
+#      joined text ever built: a word that is git followed later by a word that is push; main or
+#      master as a whole piece of a word once the separators : + / " = ; , ( ) are treated as
+#      spaces; a force (--force anywhere in a word, a word -f, or a word starting with + that
+#      names main or master); a live Stripe key. A space inside a quoted word counts as part of
+#      the word, so 'push to main' is one word and is not read as a push. Its last line is "v"
+#      followed by a letter for each rule that matched: P (a git ... push), M (main or master),
+#      F (a force), S (a Stripe key).
+#   2. It passes on, in read_words' format, only the simple commands the rest of this hook needs
+#      to look at word by word: one with a word that is git, a shell (sh, bash, zsh, dash, ksh) or
+#      eval, or a GIT_...= setting, or one whose first word is cd, pushd, popd, export, declare,
+#      typeset, set, builtin or command. Leaving the rest out keeps a long command — a large
+#      heredoc, say — quick to check: the word-by-word part runs in bash, which is slow on
+#      thousands of words. A number straight before a redirection (the 2 in 2>&1) is dropped here,
+#      because it belongs to the redirection, not to the command.
+keep_commands() {
+  LC_ALL=C awk '
+    # Each test starts with a cheap one (a comparison, or index() looking for a fixed piece of
+    # text) and only uses a pattern when that says it may match: a heredoc of 10,000 lines is
+    # tens of thousands of words, and macOS awk is slow at patterns.
+    function rules(t,   x, mm) {
+      # A space inside a quoted word counts as part of the word, so it becomes _ here.
+      if (index(t, " ") > 0) gsub(/ /, "_", t)
+      if (t == "git") G = 1
+      else if (G && t == "push") P = 1
+      mm = (index(t, "main") > 0 || index(t, "master") > 0)
+      if (index(t, "--force") > 0 || t == "-f" || (mm && substr(t, 1, 1) == "+")) F = 1
+      if (mm) {
+        x = t
+        gsub(/[:+\/"=;,()]/, " ", x)
+        if ((" " x " ") ~ / (main|master) /) M = 1
+      }
+      if (index(t, "_live_") > 0 && t ~ /(sk|rk|pk)_live_[A-Za-z0-9]/) S = 1
+    }
+    function endcmd(   k, keep, first) {
+      if (nw > 0) {
+        keep = hit; first = 1
+        while (first <= nw && kind[first] == "w" && cw[first] ~ /^[A-Za-z_][A-Za-z0-9_]*=/) first++
+        if (first <= nw && kind[first] == "w" && cw[first] ~ /^(cd|pushd|popd|export|declare|typeset|set|builtin|command)$/) keep = 1
+        if (keep) {
+          for (k = 1; k <= nw; k++) { if (kind[k] == "w") print "w" cw[k]; else print "r" }
+          print "s"
+        }
+      }
+      nw = 0; hit = 0
+    }
+    # Is this word one that makes its simple command worth passing on: git, a shell, eval, or a
+    # GIT_...= setting? (The cheap index() tests come first; see rules().)
+    function trigger(x) {
+      if (x == "eval") return 1
+      if (index(x, "git") == 0 && index(x, "sh") == 0 && index(x, "GIT_") != 1) return 0
+      return (x ~ /(^|\/)(git|sh|bash|zsh|dash|ksh)$/ || x ~ /^GIT_[A-Za-z0-9_]*=/)
+    }
+    BEGIN { nw = 0; hit = 0; G = 0; P = 0; F = 0; M = 0; S = 0 }
+    # Most words (a heredoc of plain text, say) contain none of the pieces rules() and trigger()
+    # look for; one pattern test per word skips both for them, which halves the time this program
+    # takes on a 10,000-line heredoc with macOS awk. (No apostrophes in these comments: this whole
+    # program sits inside single quotes.)
+    # The list covers every piece either function tests: git, sh (and so bash, zsh, dash, ksh),
+    # eval, GIT_, push, main, master, -f (and so --force) and live_ (a Stripe key; without the
+    # leading _ because a space inside a word becomes _ only in rules()).
+    /^w/ {
+      nw++; kind[nw] = "w"; cw[nw] = substr($0, 2)
+      if (cw[nw] ~ /git|sh|eval|GIT_|push|main|master|-f|live_/) { rules(cw[nw]); if (!hit && trigger(cw[nw])) hit = 1 }
+      next
+    }
+    $0 == "R" { if (nw > 0 && kind[nw] == "w" && cw[nw] ~ /^[0-9]+$/) nw--; nw++; kind[nw] = "r"; next }
+    $0 == "r" { nw++; kind[nw] = "r"; next }
+    $0 == "s" { endcmd(); next }
+    END { endcmd(); printf "v%s%s%s%s\n", (P ? "P" : ""), (M ? "M" : ""), (F ? "F" : ""), (S ? "S" : "") }
+  ' 2>/dev/null
 }
 
 # Set by an earlier `cd`, `pushd` or `popd` command (or an `export GIT_...=`) before a push in the
@@ -349,19 +501,30 @@ check_simple_command() {
           k=$((k + 2)) ;;
         --git-dir=*|--work-tree=*|--bare) gopts[${#gopts[@]}]="$w"; k=$((k + 1)) ;;
         --namespace|--super-prefix|--config-env|--attr-source) k=$((k + 2)) ;;
-        @@REDIR) k=$((k + 2)) ;;
+        "$REDIR") k=$((k + 2)) ;;
         -*) k=$((k + 1)) ;;
         *) break ;;
       esac
     done
     sub="${words[$k]:-}"
     if [ "$sub" != "push" ]; then j=$((j + 1)); continue; fi
+    # At most MAX_PUSHES pushes are worked out in one command (each one asks git several
+    # questions); one more, anywhere in the command or in a command string it hands to a shell, is
+    # refused rather than let through unchecked. In counting mode (see analyse) the push is only
+    # counted, and nothing else is done with it.
+    if [ "$counting" -eq 1 ]; then
+      seen=$((seen + 1))
+      [ $((pushes + seen)) -gt "$MAX_PUSHES" ] && too_many_pushes
+      return 0
+    fi
+    pushes=$((pushes + 1))
+    [ "$pushes" -gt "$MAX_PUSHES" ] && too_many_pushes
     # The push's own arguments: options, then the repository, then the refspecs.
     repo=""; have_repo=0; refspecs=(); allmode=0; tags=0; endopts=0
     k=$((k + 1))
     while [ "$k" -lt "$m" ]; do
       w="${words[$k]}"
-      if [ "$w" = "@@REDIR" ]; then k=$((k + 2)); continue; fi
+      if [ "$w" = "$REDIR" ]; then k=$((k + 2)); continue; fi
       if [ "$endopts" -eq 0 ]; then
         case "$w" in
           --) endopts=1; k=$((k + 1)); continue ;;
@@ -397,33 +560,72 @@ check_simple_command() {
   return 0
 }
 
-# Reads the text $1 with shell_words and applies every rule to it: the text rules to the words
-# joined back together (quotes removed; a space inside a quoted word becomes _ so it stays one
-# word), check_simple_command to each simple command shell_words passed on, and all of this again,
-# one level deeper, to a command string given to a shell's -c or to eval ($2 is the depth; the
-# nesting stops at depth 3).
+# Reads the text $1 with read_words and keep_commands and applies every rule to it: the text rules
+# on the words joined together (worked out inside keep_commands, which prints them as its last
+# line), check_simple_command to each simple command keep_commands passed on, and all of this
+# again, one level deeper, to a command string given to a shell's -c or to eval ($2 is the depth;
+# the nesting stops at depth 3).
 analyse() {
-  local text="$1" depth="$2" line joined="" got_joined=0 cmdwords word i n inner
+  local text="$1" depth="$2" line verdict="" cmdwords word i n inner out oldifs
   local all=()
-  while IFS= read -r line; do
-    if [ "$got_joined" -eq 0 ]; then joined="${line#@@JOINED}"; got_joined=1; continue; fi
-    all[${#all[@]}]="$line"
-  done < <(printf '%s' "$text" | shell_words)
+  # The output is read in one go and split into lines in one step. Reading it line by line
+  # straight from the pipe (as this function used to) makes bash read one byte at a time, which
+  # took more than a second for a 129 KB commit message. No line is ever empty (every line starts
+  # with a letter), so splitting on line breaks loses nothing; globbing is off (set -f).
+  out="$(printf '%s' "$text" | read_words | keep_commands)"
+  oldifs="$IFS"; IFS=$'\n'
+  # shellcheck disable=SC2206  # split on line breaks only, on purpose; globbing is off (set -f)
+  all=($out)
+  IFS="$oldifs"
   n=${#all[@]}
-  text_rules "$joined"
+  # The last line is keep_commands' verdict on the words joined together: its letters come in
+  # the order P M F S. The force rule is checked first only so that its clearer message is shown.
+  if [ "$n" -gt 0 ]; then
+    case "${all[$((n - 1))]}" in v*) verdict="${all[$((n - 1))]#v}"; n=$((n - 1)) ;; esac
+  fi
+  case "$verdict" in *P*M*F*) deny "force-push to main/master detected." ;; esac
+  case "$verdict" in *P*M*) deny "push to main/master detected." ;; esac
+  case "$verdict" in *S*) deny "live Stripe key detected (dev-team is test-mode only)." ;; esac
+  # First count this level's pushes, without asking git anything, so that a command with more
+  # than MAX_PUSHES is refused before any of them is worked out (200 bare pushes used to take 38
+  # seconds on macOS). check_simple_command in counting mode only counts; the pass after this one
+  # does the work and keeps the count that decides, which also covers the pushes in a command
+  # string handed to a shell (counted when that string is read). An earlier cd seen while
+  # counting is forgotten again, so the real pass sees the commands in order.
+  local saved_place=$unknown_place
+  counting=1; seen=0
+  cmdwords=()
+  i=0
+  while [ "$i" -le "$n" ]; do
+    if [ "$i" -eq "$n" ] || [ "${all[$i]}" = "s" ]; then
+      [ "${#cmdwords[@]}" -gt 0 ] && check_simple_command "${cmdwords[@]}"
+      cmdwords=()
+    else
+      case "${all[$i]}" in
+        w*) cmdwords[${#cmdwords[@]}]="${all[$i]#w}" ;;
+        *) cmdwords[${#cmdwords[@]}]="$REDIR" ;;
+      esac
+    fi
+    i=$((i + 1))
+  done
+  counting=0; unknown_place=$saved_place
   # Each simple command in turn, in order, so that an earlier cd is seen before a later push.
   cmdwords=()
   i=0
   while [ "$i" -le "$n" ]; do
-    if [ "$i" -eq "$n" ] || [ "${all[$i]}" = "@@SEP" ]; then
+    if [ "$i" -eq "$n" ] || [ "${all[$i]}" = "s" ]; then
       if [ "${#cmdwords[@]}" -gt 0 ]; then
         # A command string handed to sh -c / bash -c / ... or to eval is read as a command too.
         if [ "$depth" -lt 3 ]; then
-          local c has_shell=0 has_eval=0 evaltext=""
+          local c has_shell=0 has_eval=0
+          local evalwords=()
           c=0
           while [ "$c" -lt "${#cmdwords[@]}" ]; do
             word="${cmdwords[$c]}"
-            if [ "$has_eval" -eq 1 ]; then evaltext="$evaltext $word"
+            if [ "$has_eval" -eq 1 ]; then
+              # eval's own redirection (and where it goes) is not part of the text eval runs.
+              if [ "$word" = "$REDIR" ]; then c=$((c + 2)); continue; fi
+              evalwords[${#evalwords[@]}]="$word"
             elif [ "$word" = "eval" ]; then has_eval=1
             elif is_shell_word "$word"; then has_shell=1
             elif [ "$has_shell" -eq 1 ]; then
@@ -433,22 +635,82 @@ analyse() {
             fi
             c=$((c + 1))
           done
-          [ -n "$evaltext" ] && analyse "$evaltext" $((depth + 1))
+          # eval joins its arguments with spaces; "${evalwords[*]}" does the same in one step (the
+          # text is never built up a word at a time, which grows with the square of its length).
+          [ "${#evalwords[@]}" -gt 0 ] && analyse "${evalwords[*]}" $((depth + 1))
         fi
         check_simple_command "${cmdwords[@]}"
       fi
       cmdwords=()
     else
-      cmdwords[${#cmdwords[@]}]="${all[$i]}"
+      line="${all[$i]}"
+      case "$line" in
+        w*) cmdwords[${#cmdwords[@]}]="${line#w}" ;;
+        *) cmdwords[${#cmdwords[@]}]="$REDIR" ;;
+      esac
     fi
     i=$((i + 1))
   done
   return 0
 }
 
+# Everything the hook checks, in one function, so that it can run under the time limit below:
+# (a) the text rules on the command text as written, then (b) the command read word by word.
+check_command() {
+  # (a) The command text exactly as written, as before quotes were understood. Kept so that
+  # nothing this rule used to refuse is let through by the word-by-word reading below.
+  text_rules "$norm"
+  [ "$have_jq" -eq 1 ] || return 0
+  # (b) The command read word by word, as the shell reads it.
+  analyse "$cmd" 0
+}
+
 gopts=()
 cur=""
-# (b) The command read word by word, as the shell reads it.
-analyse "$cmd" 0
+pushes=0
+counting=0
+seen=0
 
-exit 0
+# ---------------------------------------------------------------------------------------------
+# The time limit.
+# ---------------------------------------------------------------------------------------------
+# Claude Code stops waiting for a hook after a while and then runs the command anyway, so a guard
+# that is too slow is a guard that is not there. The checking therefore runs in a background
+# subshell ("worker"), and a second one ("timer") stops it after TIME_LIMIT seconds; a command
+# whose checking runs past that is REFUSED, with a message asking for it to be split — it is never
+# let through unchecked.
+#   - The worker is started with job control on (set -m) only so that it gets a process group of
+#     its own, and the timer stops that whole group: the worker AND whatever it is waiting on (a
+#     git that does not answer, say). Stopping only the worker left its children running, and they
+#     still held the hook's error output open, so the hook's caller went on waiting for them — the
+#     first version of this limit refused on time but still took as long as the slow git did. The
+#     worker switches job control off again for itself, so everything it starts stays in its group.
+#   - The timer's own output goes nowhere, so a timer still counting down can never hold the
+#     hook's output open after the hook has finished; the hook stops it once the worker is done.
+#   - DEV_TEAM_GUARD_TIME_LIMIT can make the limit SHORTER (1 to 19 seconds), never longer; any
+#     other value is ignored. The tests use it to prove the refusal without waiting 20 seconds.
+TIME_LIMIT=20
+case "${DEV_TEAM_GUARD_TIME_LIMIT:-}" in
+  [1-9]|1[0-9]) TIME_LIMIT="$DEV_TEAM_GUARD_TIME_LIMIT" ;;
+esac
+set -m
+( set +m; check_command ) &
+worker=$!
+set +m
+(
+  nap=""
+  trap '[ -n "$nap" ] && kill "$nap" 2>/dev/null; exit 0' TERM
+  sleep "$TIME_LIMIT" &
+  nap=$!
+  wait "$nap"
+  kill -TERM -- "-$worker" 2>/dev/null || kill -TERM "$worker" 2>/dev/null
+) </dev/null >/dev/null 2>&1 &
+timer=$!
+wait "$worker" 2>/dev/null
+rc=$?
+kill -TERM "$timer" 2>/dev/null
+case "$rc" in
+  2) exit 2 ;;                                   # refused; the worker has said why
+  143) refuse "checking this command took longer than $TIME_LIMIT seconds, so it is refused rather than let through unchecked. Split it into smaller commands." ;;
+  *) exit 0 ;;                                   # allowed, or any other error: fail open
+esac
