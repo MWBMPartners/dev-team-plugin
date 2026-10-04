@@ -1132,48 +1132,101 @@ make_push_repo() {
 # command unchecked. The reader now takes time in proportion to the command's length, at most 10
 # pushes are worked out in one command, and the checking runs under a time limit; a command with
 # more pushes, or one whose checking runs past the limit, is REFUSED rather than let through.
+#
+# The speed tests judge the PROCESSOR TIME the hook uses, not the clock. On a busy machine the
+# clock can run many times slower than the work (during this round, a check that used 2 seconds of
+# processor time took 17 on the clock), and the hook then refuses on time, as it is meant to — which
+# says nothing about how fast it reads. So: more processor time than the bound fails; a run the
+# hook allowed within the bound passes; and a run the hook stopped at its time limit within the
+# bound is SKIPPED, with a message, because a slow reader stopped early on a busy machine can look
+# the same — it is never counted as a pass. Any other refusal fails.
 
-@test "guard (speed): a 10,000-line heredoc and a 129 KB commit message are read to the end within the time limit" {
+# Runs the guard from folder $1 on the payload in file $2, with DEV_TEAM_GUARD=1 and the machine's
+# own git settings shut out, and prints the processor time it used (user + system, the hook and
+# everything it started), in seconds. Its exit status goes to $SCRATCH/rc and its messages to
+# $SCRATCH/out. The payload is read from a file because Linux refuses a single program argument
+# longer than 128 KB.
+guard_cpu() {
+  local TIMEFORMAT='%U %S' t
+  mkdir -p "$SCRATCH/home"
+  t="$( { time ( cd "$1" && DEV_TEAM_GUARD=1 HOME="$SCRATCH/home" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 \
+        bash "$REPO_ROOT/hooks/guard-dev-team.sh" < "$2" > "$SCRATCH/out" 2>&1; echo "$?" > "$SCRATCH/rc" ) ; } 2>&1 )"
+  printf '%s\n' "$t" | awk '{ printf "%.2f\n", $1 + $2 }'
+}
+
+# Passes when the last guard_cpu run allowed the command, or refused it only because its checking
+# ran past the time limit (a busy machine); any other refusal fails.
+allowed_or_late() {
+  local rc out
+  rc="$(cat "$SCRATCH/rc")"; out="$(cat "$SCRATCH/out")"
+  [ "$rc" -eq 0 ] && return 0
+  [ "$rc" -eq 2 ] && [[ "$out" == *"took longer than"* ]]
+}
+
+# True when the last guard_cpu run was stopped at the time limit.
+was_late() { [ "$(cat "$SCRATCH/rc")" -eq 2 ]; }
+
+# Passes when the processor time $1 is below $2 seconds.
+cpu_below() { awk -v c="$1" -v m="$2" 'BEGIN { exit !(c + 0 < m + 0) }'; }
+
+@test "guard (speed): a 10,000-line heredoc and a 129 KB commit message are read to the end in little processor time" {
   body="$(awk 'BEGIN { for (i = 1; i <= 10000; i++) printf "a line of text number %d here\n", i }')"
   run run_guard_cmd "$SCRATCH" "$(printf 'cat > n.txt <<EOF\n%s\nEOF\ngit push origin '"'"'main'"'"'' "$body")"
   echo "$output"
   [ "$status" -eq 2 ]
   [[ "$output" == *"push to main/master detected"* ]]
-  run run_guard_cmd "$SCRATCH" "$(printf 'cat > n.txt <<EOF\n%s\nEOF\ngit push origin feature' "$body")"
-  echo "$output"
-  [ "$status" -eq 0 ]
-  # The 129 KB commit message runs with a 10-second limit. A check that took 6 seconds of
-  # processor time on it — a bash suffix removal, "${word%sh}", whose time grows with the square of
-  # the word's length — passed under the 20-second limit on a quiet machine and failed on a busy
-  # one; at 10 seconds it fails either way, while the check as it is takes under a second. (The
-  # command text is built on its own line: the self-check at the end of this file reads a line
-  # naming both a git subcommand such as commit and the real repository's path as a test that
-  # changes the real repository.)
+  # The same heredoc with a harmless push: under 4 seconds of processor time (the reader before
+  # this round used about 7 with macOS's bash 3.2 and awk; this one about 1).
+  guard_payload "$(printf 'cat > n.txt <<EOF\n%s\nEOF\ngit push origin feature' "$body")" > "$SCRATCH/payload.json"
+  cpu="$(guard_cpu "$SCRATCH" "$SCRATCH/payload.json")"
+  echo "heredoc: exit $(cat "$SCRATCH/rc") after ${cpu}s of processor time: $(cat "$SCRATCH/out")"
+  allowed_or_late
+  cpu_below "$cpu" 4
+  late=""
+  was_late && late="the heredoc"
+  # The 129 KB commit message: under 3 seconds of processor time. A check that took 6 seconds on
+  # it — a bash suffix removal, "${word%sh}", whose time grows with the square of the word's
+  # length — passed under the 20-second limit on a quiet machine and failed on a busy one; the
+  # check as it is takes under a second. (The command text is built on its own line: the
+  # self-check at the end of this file reads a line naming both a git subcommand such as commit
+  # and the real repository's path as a test that changes the real repository.)
   msg="$(awk 'BEGIN { for (i = 1; i <= 26400; i++) printf "word "; }')"
   cmd="git commit -m \"$msg\""
-  run env DEV_TEAM_GUARD_TIME_LIMIT=10 bash -c 'cd "$1" && printf "%s" "$2" | DEV_TEAM_GUARD=1 bash "$3"' _ "$SCRATCH" "$(guard_payload "$cmd")" "$REPO_ROOT/hooks/guard-dev-team.sh"
-  echo "$output"
-  [ "$status" -eq 0 ]
+  guard_payload "$cmd" > "$SCRATCH/payload.json"
+  cpu="$(guard_cpu "$SCRATCH" "$SCRATCH/payload.json")"
+  echo "commit message: exit $(cat "$SCRATCH/rc") after ${cpu}s of processor time: $(cat "$SCRATCH/out")"
+  allowed_or_late
+  cpu_below "$cpu" 3
+  was_late && late="${late:+$late and }the commit message"
+  if [ -n "$late" ]; then
+    skip "the machine was too busy: the hook was stopped at its time limit on $late before its speed could be judged"
+  fi
 }
 
-@test "guard (speed): a git command naming thousands of files is checked well within the time limit" {
+@test "guard (speed): a git command naming thousands of files is checked in little processor time" {
   # bash 3.2 (macOS's) saves a copy of a function's arguments on every function call made from
-  # inside it, so the word-by-word check of a `git add` naming 5,000 files took 13 seconds and one
-  # naming 10,000 was refused on time. The limit here is set to 15 seconds so the test fails on
-  # that slowness rather than passing because the refusal also exits 2.
+  # inside it, so the word-by-word check of a `git add` naming 5,000 files used 15 seconds of
+  # processor time and was refused on time. Now: under 8 seconds (about 2 with bash 3.2).
   # (The command text is built on its own line: the self-check at the end of this file reads a line
   # naming both a git subcommand such as add and the real repository's path as a test that changes
   # the real repository.)
   files="$(awk 'BEGIN { for (i = 0; i < 5000; i++) printf " src/file%d.txt", i }')"
   cmd="git add$files"
-  run env DEV_TEAM_GUARD_TIME_LIMIT=15 bash -c 'cd "$1" && printf "%s" "$2" | DEV_TEAM_GUARD=1 bash "$3"' _ "$SCRATCH" "$(guard_payload "$cmd")" "$REPO_ROOT/hooks/guard-dev-team.sh"
-  echo "status $status: $output"
-  [ "$status" -eq 0 ]
+  guard_payload "$cmd" > "$SCRATCH/payload.json"
+  cpu="$(guard_cpu "$SCRATCH" "$SCRATCH/payload.json")"
+  echo "git add: exit $(cat "$SCRATCH/rc") after ${cpu}s of processor time: $(cat "$SCRATCH/out")"
+  allowed_or_late
+  cpu_below "$cpu" 8
+  late=""
+  was_late && late=1
   cmd="git add$files; git push origin main"
-  run env DEV_TEAM_GUARD_TIME_LIMIT=15 bash -c 'cd "$1" && printf "%s" "$2" | DEV_TEAM_GUARD=1 bash "$3"' _ "$SCRATCH" "$(guard_payload "$cmd")" "$REPO_ROOT/hooks/guard-dev-team.sh"
+  run run_guard_cmd "$SCRATCH" "$cmd"
   echo "status $status: $output"
   [ "$status" -eq 2 ]
   [[ "$output" == *"push to main/master detected"* ]]
+  if [ -n "$late" ]; then
+    skip "the machine was too busy: the hook was stopped at its time limit on the git add before its speed could be judged"
+  fi
 }
 
 @test "guard (speed): more than 10 pushes in one command are refused, with a message asking for it to be split; 10 are checked" {
