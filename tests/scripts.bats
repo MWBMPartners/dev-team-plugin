@@ -1264,6 +1264,44 @@ make_push_repo() {
   [ "$status" -eq 0 ]
 }
 
+@test "guard (no branch named): a named branch that remote.<name>.push, or push.default=upstream, sends to main is blocked" {
+  # The stand-in review of 42bd45e..b39f40d found `git push origin feature` let through while
+  # remote.origin.push = refs/heads/feature:refs/heads/main sent it to main. git maps a named
+  # branch with no destination through the remote's push refspecs (the first whose source matches
+  # the branch's full name, or a * pattern), and failing that, under push.default=upstream, to the
+  # branch's upstream. Each case below was checked against `git push --dry-run`.
+  make_push_repo feature
+  git -C "$SCRATCH/repo" branch -q xin
+  git -C "$SCRATCH/repo" config remote.origin.push refs/heads/feature:refs/heads/main
+  for c in "git push origin feature" "git push origin refs/heads/feature" "git push origin heads/feature"; do
+    run run_guard_cmd "$SCRATCH/repo" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 2 ]
+  done
+  git -C "$SCRATCH/repo" config remote.origin.push '+refs/heads/feature:refs/heads/main'
+  run run_guard_cmd "$SCRATCH/repo" "git push origin feature"
+  [ "$status" -eq 2 ]
+  git -C "$SCRATCH/repo" config remote.origin.push 'refs/heads/x*:refs/heads/ma*'
+  run run_guard_cmd "$SCRATCH/repo" "git push origin xin"
+  [ "$status" -eq 2 ]
+  # git does not map these (a short source, HEAD, another branch's refspec, or none at all).
+  for spec in feature:main HEAD:refs/heads/main refs/heads/other:refs/heads/main; do
+    git -C "$SCRATCH/repo" config remote.origin.push "$spec"
+    run run_guard_cmd "$SCRATCH/repo" "git push origin feature"
+    echo "remote.origin.push=$spec -> $status"
+    [ "$status" -eq 0 ]
+  done
+  git -C "$SCRATCH/repo" config --unset-all remote.origin.push
+  run run_guard_cmd "$SCRATCH/repo" "git push origin feature"
+  [ "$status" -eq 0 ]
+  # push.default=upstream: the branch's upstream decides; the default (simple) keeps its own name.
+  git -C "$SCRATCH/repo" config branch.feature.merge refs/heads/main
+  run run_guard_cmd "$SCRATCH/repo" "git -c push.default=upstream push origin feature"
+  [ "$status" -eq 2 ]
+  run run_guard_cmd "$SCRATCH/repo" "git push origin feature"
+  [ "$status" -eq 0 ]
+}
+
 @test "guard (no branch named): pushes that would not reach main are allowed" {
   make_push_repo feature
   run run_guard_cmd "$SCRATCH/repo" "git push"

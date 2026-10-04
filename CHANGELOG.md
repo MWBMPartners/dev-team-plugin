@@ -234,6 +234,15 @@ these (ten or more settings written out, each at its default).
   reading through quotes means a command that only spells out a push to main in single quotes
   (`git commit -m 'fix: push to main'`, `echo 'git push origin main'`) is now refused too, as the
   same text in double quotes already was; the header and the README say so.
+- **The Bash guard follows git when a named branch has no destination.** `git push origin feature`
+  does not always push to `feature`: git sends it through the remote's `remote.<name>.push`
+  refspecs (the first whose source matches `refs/heads/feature`, or a `*` pattern), and failing
+  those, under `push.default=upstream`, to the branch's upstream. The stand-in review of
+  42bd45e..b39f40d found it let through while `remote.origin.push =
+  refs/heads/feature:refs/heads/main` sent it to `main`; the guard now works the destination out
+  the way git's own push command does (checked case by case against `git push --dry-run`) and
+  refuses it when that is `main` or `master`. A negative refspec (`^…`) is not read, so a push it
+  would exclude may still be refused.
 - The iterate skill's audit gains a tenth dimension, **conformance** to the project's normative
   documents; the review skill gains a **conformance** claim type, and its reviewers do their own
   discovery even when House style recorded nothing.

@@ -31,6 +31,9 @@
 #      `push.default=matching`). It asks git in the folder the command runs in (the hook input's
 #      `cwd`, then any `git -C <dir>` in the command) and passes through the command's own
 #      `-c`, `--git-dir` and `--work-tree` options.
+#      The same goes for a branch named with no destination (`git push origin feature`): git sends
+#      it through the remote's `remote.<name>.push` refspecs, and failing those, under
+#      `push.default=upstream`, to its upstream, so either can send it to `main` or `master`.
 #   3. A live Stripe key (sk_live_, rk_live_, pk_live_) anywhere in the command text.
 #
 # How long it takes, and the two refusals that are about the guard, not the command:
@@ -485,12 +488,70 @@ refspec_targets() {
     if [ -z "$dst" ]; then
       case "$src" in
         HEAD|@) [ -n "$cur" ] && echo "$cur" ;;
-        *) echo "$src" ;;
+        *) if [ "$map_named" -eq 1 ]; then map_named_source "$src"; else echo "$src"; fi ;;
       esac
     else
       echo "${dst#refs/heads/}"
     fi
   done
+}
+
+# Prints the branch git would push a named source with no destination to — the `feature` of
+# `git push origin feature`. git does not always push it under its own name: when the remote has
+# push refspecs (remote.<name>.push), the first one whose source matches the branch decides where
+# it goes, and if none does and push.default is upstream (or tracking), the branch's upstream does.
+# This follows git's own push command (map_refspec() in builtin/push.c): the name must be one of
+# the local branches, a refspec's source is compared with the branch's full name
+# (refs/heads/<name>) or matched as a * pattern, a refspec without a destination is skipped, and
+# HEAD is not mapped at all (the caller has already turned it into the current branch). The
+# remote's push refspecs ($map_specs), push.default ($map_default) and the list of local branches
+# ($map_branches) are read once per push by the caller, so a push naming many branches does not
+# ask git the same questions for each; and when neither the refspecs nor push.default can move a
+# branch, nothing is asked at all. The stand-in review of 42bd45e..b39f40d found
+# `git push origin feature` let through while remote.origin.push =
+# refs/heads/feature:refs/heads/main sent it to main; each case here was checked against
+# `git push --dry-run`.
+# A negative refspec (^...) is not read, so a push it would exclude may still be refused.
+map_named_source() {
+  local src="$1" full spec a b pre suf mid bpre bsuf dst merge
+  if [ -z "$map_specs" ]; then
+    case "$map_default" in upstream|tracking) ;; *) echo "$src"; return 0 ;; esac
+  fi
+  case "$src" in
+    refs/heads/*) full="$src" ;;
+    refs/*) echo "$src"; return 0 ;;                  # not a branch: git pushes it by that name
+    heads/*) full="refs/$src" ;;
+    *) full="refs/heads/$src" ;;
+  esac
+  # Is it a local branch? $map_branches holds every local branch's full name, one per line.
+  case "$nl$map_branches$nl" in
+    *"$nl$full$nl"*) ;;
+    *) echo "$src"; return 0 ;;
+  esac
+  # shellcheck disable=SC2086  # one refspec per word, on purpose; globbing is off (set -f)
+  for spec in $map_specs; do
+    spec="${spec#+}"
+    case "$spec" in ^*|:*|*:) continue ;; *:*) ;; *) continue ;; esac
+    a="${spec%%:*}"; b="${spec#*:}"
+    case "$a" in
+      *'*'*)
+        pre="${a%%\**}"; suf="${a#*\*}"
+        case "$full" in
+          "$pre"*"$suf")
+            mid="${full#"$pre"}"; mid="${mid%"$suf"}"
+            bpre="${b%%\**}"; bsuf="${b#*\*}"
+            dst="$bpre$mid$bsuf"
+            echo "${dst#refs/heads/}"; return 0 ;;
+        esac ;;
+      *) if [ "$a" = "$full" ]; then echo "${b#refs/heads/}"; return 0; fi ;;
+    esac
+  done
+  case "$map_default" in
+    upstream|tracking)
+      merge="$(g config --get "branch.${full#refs/heads/}.merge")" || merge=""
+      if [ -n "$merge" ]; then echo "${merge#refs/heads/}"; return 0; fi ;;
+  esac
+  echo "${full#refs/heads/}"
 }
 
 # Prints where a push that names no branch would go (one branch per line), or nothing when it
@@ -622,7 +683,16 @@ check_simple_command() {
       cur=""
       if [ "${#refspecs[@]}" -gt 0 ]; then
         cur="$(g symbolic-ref --quiet --short HEAD)" || cur=""
+        # A named source with no destination is mapped the way git maps it (map_named_source).
+        map_specs="$(g config --get-all "remote.$repo.push")" || map_specs=""
+        map_default="$(g config --get push.default)" || map_default="simple"
+        map_branches=""
+        if [ -n "$map_specs" ] || [ "$map_default" = upstream ] || [ "$map_default" = tracking ]; then
+          map_branches="$(g for-each-ref --format='%(refname)' refs/heads/)"
+        fi
+        map_named=1
         targets="$(refspec_targets "${refspecs[@]}")"
+        map_named=0
       elif [ "$tags" -eq 1 ] && [ "$allmode" -eq 0 ]; then
         targets=""                                          # --tags alone pushes only tags
       else
@@ -764,6 +834,11 @@ check_command() {
 
 gopts=()
 cur=""
+map_specs=""
+map_default=""
+map_branches=""
+map_named=0
+nl=$'\n'
 pushes=0
 counting=0
 seen=0
