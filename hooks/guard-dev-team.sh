@@ -62,8 +62,9 @@
 #     are there to read; printf with escapes, or a file, gets through);
 #   - a command string nested more than three levels deep (sh -c inside sh -c inside ...);
 #   - a bare push when it cannot tell where it would go: an earlier `cd`/`pushd`/`popd` in the
-#     same command (the folder it would run in is then unknown), a GIT_* variable set in the
-#     command, a folder that is not a git repository, `git` not installed, or a detached HEAD.
+#     same command, or `env -C <dir>` / `env --chdir=<dir>` in front of git (the folder it would
+#     run in is then unknown), a GIT_* variable set in the command, a folder that is not a git
+#     repository, `git` not installed, or a detached HEAD.
 #     (A `remote.<name>.push` setting is not a limit: one that names neither branch, uses no `*`
 #     and is not `:` sends nothing to main or master, so letting that push through is correct.
 #     An earlier wording listed it here as something the hook "cannot see"; it was wrong both
@@ -595,7 +596,7 @@ implicit_targets() {
 # when the push would go to main or master although no protected branch is named in the text.
 check_simple_command() {
   local words=("$@") m=$# j k w first sub repo have_repo allmode tags endopts cannot_tell t targets
-  local refspecs
+  local refspecs env_seen=0
   # The words are in the array now; clear this function's own arguments. bash 3.2 (macOS's) saves
   # a copy of a function's arguments on every function call made from inside it, so with them left
   # in place a `git add` naming 5,000 files took 13 seconds here, one word at a time.
@@ -625,8 +626,16 @@ check_simple_command() {
   esac
   j=$first
   while [ "$j" -lt "$m" ]; do
-    # `env GIT_DIR=... git push` sets the variable after the command word.
-    case "${words[$j]}" in GIT_*=*) cannot_tell=1 ;; esac
+    case "${words[$j]}" in
+      # `env GIT_DIR=... git push` sets the variable after the command word.
+      GIT_*=*) cannot_tell=1 ;;
+      env|*/env) env_seen=1 ;;
+      # `env -C <dir> git push` / `env --chdir=<dir> git push` runs git in another folder. It is
+      # treated exactly like a push after a cd: where it would go is not worked out (a stated
+      # limit). It used to be worked out in the folder the command started in — the wrong one,
+      # found by the stand-in review of 42bd45e..b39f40d.
+      -C*|-[!-]*C*|--chdir|--chdir=*) [ "$env_seen" -eq 1 ] && cannot_tell=1 ;;
+    esac
     # Only a word ending in "git" can be git; is_git_word decides, but calling a function for
     # every word is slow in bash 3.2 even with the arguments cleared, so it is asked only then.
     case "${words[$j]}" in *git) ;; *) j=$((j + 1)); continue ;; esac

@@ -1355,7 +1355,7 @@ make_push_repo() {
   mkdir -p "$SCRATCH/plain"
   run run_guard_cmd "$SCRATCH/plain" "git push"
   [ "$status" -eq 0 ]
-  for c in "cd . && git push" "(cd . && git push)" "GIT_DIR=.git git push" "env GIT_DIR=.git git push" "export GIT_DIR=.git; git push"; do
+  for c in "cd . && git push" "(cd . && git push)" "GIT_DIR=.git git push" "env GIT_DIR=.git git push" "export GIT_DIR=.git; git push" "env -C . git push" "env --chdir=. git push" "env -i -C . git push"; do
     run run_guard_cmd "$SCRATCH/repo" "$c"
     echo "command: $c -> $status"
     [ "$status" -eq 0 ]
@@ -1363,6 +1363,42 @@ make_push_repo() {
   git -C "$SCRATCH/repo" checkout -q --detach
   run run_guard_cmd "$SCRATCH/repo" "git push"
   [ "$status" -eq 0 ]
+}
+
+@test "guard (no branch named): env -C <dir> is treated like cd — the push is not worked out in the wrong folder" {
+  # The stand-in review of 42bd45e..b39f40d found `env -C <dir> git push` worked out in the folder
+  # the command started in, not in <dir> where git actually runs. It is now treated exactly like a
+  # push after a cd (a stated limit): the push that names no branch is not worked out. Here the
+  # command starts in a repository on main and the push runs in a plain folder, so the old reading
+  # refused a push that could not go to main at all.
+  make_push_repo main
+  mkdir -p "$SCRATCH/plain"
+  for c in "env -C $SCRATCH/plain git push" "env --chdir=$SCRATCH/plain git push" "env -iC $SCRATCH/plain git push"; do
+    run run_guard_cmd "$SCRATCH/repo" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 0 ]
+  done
+  # Control: plain env, with no folder change, is still worked out.
+  run run_guard_cmd "$SCRATCH/repo" "env git push"
+  [ "$status" -eq 2 ]
+  # A push that names main is refused whatever env does first.
+  run run_guard_cmd "$SCRATCH/repo" "env -C $SCRATCH/plain git push origin main"
+  [ "$status" -eq 2 ]
+}
+
+@test "guard (reading): a command's own words can never be taken for the reader's markers" {
+  # The reader used to print lines such as "@@SEP" (end of a command) and "@@REDIR" (a
+  # redirection) among the words, so a command could spell one out: `git --work-tree @@SEP push`
+  # was read as `git --work-tree` and `push`, two commands, and a bare push on main went through
+  # (the stand-in review of 42bd45e..b39f40d). Every line the reader prints now starts with a
+  # letter saying what it is, and the redirection marker among a command's words is a line break,
+  # which no word can contain.
+  make_push_repo main
+  for c in "git --work-tree @@SEP push" "git --work-tree @@REDIR push" "git --work-tree s push" "git --work-tree r push" "git --work-tree vPM push" "git --work-tree w push"; do
+    run run_guard_cmd "$SCRATCH/repo" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 2 ]
+  done
 }
 
 @test "guard (no branch named): with no active run and no DEV_TEAM_GUARD, a bare push on main is allowed (the hook is off)" {

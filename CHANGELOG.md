@@ -253,6 +253,14 @@ these (ten or more settings written out, each at its default).
   the way git's own push command does (checked case by case against `git push --dry-run`) and
   refuses it when that is `main` or `master`. A negative refspec (`^…`) is not read, so a push it
   would exclude may still be refused.
+- **Two misreadings in the Bash guard fixed** (the stand-in review of 42bd45e..b39f40d).
+  `env -C <dir> git push` and `env --chdir=<dir> git push` run git in another folder, but the guard
+  worked the push out in the folder the command started in; they are now treated exactly like a
+  push after a `cd` — a push that names no branch is not worked out (a stated limit), and one that
+  names `main` is still refused. And the reader's own marker lines could be spelled by a command:
+  `git --work-tree @@SEP push` was read as two commands and let a bare push on `main` through.
+  Every line the reader prints now starts with a letter saying what it is, and the marker for a
+  redirection is a line break, which no word can contain.
 - The iterate skill's audit gains a tenth dimension, **conformance** to the project's normative
   documents; the review skill gains a **conformance** claim type, and its reviewers do their own
   discovery even when House style recorded nothing.
