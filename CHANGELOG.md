@@ -210,7 +210,17 @@ these (ten or more settings written out, each at its default).
   seconds (21.8 before, with the load at 44), a 129 KB `git commit -m` message 0.39 to 0.44
   seconds (1.8 to 2.7 before, and 5 to 9 when the machine was busier), and 200 bare pushes were
   refused in 0.07 seconds (39.8 seconds, and allowed, before); on Linux (Ubuntu 24.04, mawk) the
-  same took 0.20, 0.06 to 0.10 and 0.03 seconds, against 4.3, 0.7 to 1.0 and 14.1 before.
+  same took 0.20, 0.06 to 0.10 and 0.03 seconds, against 4.3, 0.7 to 1.0 and 14.1 before. A long
+  git command was still slow on macOS after that: bash 3.2 saves a copy of a function's arguments
+  on every function call made from inside it, so checking a `git add` that names 5,000 files took
+  13 seconds and one naming 10,000 was refused on time. The guard now clears those arguments once
+  it has them in a list, and calls its per-word helpers only for a word that could match (each
+  of the two alone keeps it under the limit): the same commands now use 1.9 and 3.6 seconds of
+  processor time, against 15 and 17 before, when both were refused at the 20-second limit. The
+  test for a word that could be a shell is a `case` pattern, not `${word%sh}`: bash removes a
+  suffix or prefix in time that grows with the square of the word's length (about 20 seconds for
+  a 129 KB commit message), and a first version of this change that used it slowed that message
+  from 0.7 to 6 seconds of processor time.
 - **Every description of the guard hooks now says what they cover and the limits known.** (This
   entry first said "exactly what they cover"; the stand-in review of 42bd45e..b39f40d found
   spellings of main the Bash guard missed, so that claimed more than was true.) "This written rule is

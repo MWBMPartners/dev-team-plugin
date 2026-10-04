@@ -596,6 +596,10 @@ implicit_targets() {
 check_simple_command() {
   local words=("$@") m=$# j k w first sub repo have_repo allmode tags endopts cannot_tell t targets
   local refspecs
+  # The words are in the array now; clear this function's own arguments. bash 3.2 (macOS's) saves
+  # a copy of a function's arguments on every function call made from inside it, so with them left
+  # in place a `git add` naming 5,000 files took 13 seconds here, one word at a time.
+  set --
   # Which word is the command itself: skip leading NAME=value assignments (a GIT_* one changes
   # which repository or settings git uses, so a push in this command cannot be resolved) and the
   # words `builtin` and `command`.
@@ -623,6 +627,9 @@ check_simple_command() {
   while [ "$j" -lt "$m" ]; do
     # `env GIT_DIR=... git push` sets the variable after the command word.
     case "${words[$j]}" in GIT_*=*) cannot_tell=1 ;; esac
+    # Only a word ending in "git" can be git; is_git_word decides, but calling a function for
+    # every word is slow in bash 3.2 even with the arguments cleared, so it is asked only then.
+    case "${words[$j]}" in *git) ;; *) j=$((j + 1)); continue ;; esac
     if ! is_git_word "${words[$j]}"; then j=$((j + 1)); continue; fi
     # The git program's own options, up to its subcommand. -C, -c, --git-dir and --work-tree are
     # kept, so the settings are read the way the push itself would read them.
@@ -774,7 +781,12 @@ analyse() {
               if [ "$word" = "$REDIR" ]; then c=$((c + 2)); continue; fi
               evalwords[${#evalwords[@]}]="$word"
             elif [ "$word" = "eval" ]; then has_eval=1
-            elif is_shell_word "$word"; then
+            # Every shell is_shell_word knows ends in "sh"; the function is asked only then,
+            # because a function call per word is slow in bash 3.2 (see check_simple_command). The
+            # test is a case pattern, never "${word%sh}": bash removes a suffix or prefix in time
+            # that grows with the SQUARE of the word's length (about 20 seconds for a 129 KB commit
+            # message, in bash 3.2 and 5 alike), while a case pattern takes a few hundredths.
+            elif case "$word" in *sh) true ;; *) false ;; esac && is_shell_word "$word"; then
               # The shell's own options come first. With -c among them (alone, or in a group such
               # as -lc) the first word after the options is the command string; `--` ends the
               # options, and the word after it is the string. -o, -O, +o, +O, --rcfile and

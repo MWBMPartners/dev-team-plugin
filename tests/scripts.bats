@@ -1142,10 +1142,38 @@ make_push_repo() {
   run run_guard_cmd "$SCRATCH" "$(printf 'cat > n.txt <<EOF\n%s\nEOF\ngit push origin feature' "$body")"
   echo "$output"
   [ "$status" -eq 0 ]
+  # The 129 KB commit message runs with a 10-second limit. A check that took 6 seconds of
+  # processor time on it — a bash suffix removal, "${word%sh}", whose time grows with the square of
+  # the word's length — passed under the 20-second limit on a quiet machine and failed on a busy
+  # one; at 10 seconds it fails either way, while the check as it is takes under a second. (The
+  # command text is built on its own line: the self-check at the end of this file reads a line
+  # naming both a git subcommand such as commit and the real repository's path as a test that
+  # changes the real repository.)
   msg="$(awk 'BEGIN { for (i = 1; i <= 26400; i++) printf "word "; }')"
-  run run_guard_cmd "$SCRATCH" "git commit -m \"$msg\""
+  cmd="git commit -m \"$msg\""
+  run env DEV_TEAM_GUARD_TIME_LIMIT=10 bash -c 'cd "$1" && printf "%s" "$2" | DEV_TEAM_GUARD=1 bash "$3"' _ "$SCRATCH" "$(guard_payload "$cmd")" "$REPO_ROOT/hooks/guard-dev-team.sh"
   echo "$output"
   [ "$status" -eq 0 ]
+}
+
+@test "guard (speed): a git command naming thousands of files is checked well within the time limit" {
+  # bash 3.2 (macOS's) saves a copy of a function's arguments on every function call made from
+  # inside it, so the word-by-word check of a `git add` naming 5,000 files took 13 seconds and one
+  # naming 10,000 was refused on time. The limit here is set to 15 seconds so the test fails on
+  # that slowness rather than passing because the refusal also exits 2.
+  # (The command text is built on its own line: the self-check at the end of this file reads a line
+  # naming both a git subcommand such as add and the real repository's path as a test that changes
+  # the real repository.)
+  files="$(awk 'BEGIN { for (i = 0; i < 5000; i++) printf " src/file%d.txt", i }')"
+  cmd="git add$files"
+  run env DEV_TEAM_GUARD_TIME_LIMIT=15 bash -c 'cd "$1" && printf "%s" "$2" | DEV_TEAM_GUARD=1 bash "$3"' _ "$SCRATCH" "$(guard_payload "$cmd")" "$REPO_ROOT/hooks/guard-dev-team.sh"
+  echo "status $status: $output"
+  [ "$status" -eq 0 ]
+  cmd="git add$files; git push origin main"
+  run env DEV_TEAM_GUARD_TIME_LIMIT=15 bash -c 'cd "$1" && printf "%s" "$2" | DEV_TEAM_GUARD=1 bash "$3"' _ "$SCRATCH" "$(guard_payload "$cmd")" "$REPO_ROOT/hooks/guard-dev-team.sh"
+  echo "status $status: $output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"push to main/master detected"* ]]
 }
 
 @test "guard (speed): more than 10 pushes in one command are refused, with a message asking for it to be split; 10 are checked" {
