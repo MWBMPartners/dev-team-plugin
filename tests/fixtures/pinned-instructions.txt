@@ -196,10 +196,12 @@
   text of a Bash command before it runs, with the shell's quotes and backslashes taken away — it
   refuses a `git push` that names `main` or `master`, a `git push` that names no branch when the
   repository's own git settings show it would push to `main` or `master`, and a live Stripe key; it
-  cannot see a branch or command held in a variable or run from a script, and it lets a push that
-  names no branch through whenever it cannot tell where that push would go (for example after a `cd`
-  in the same command, or outside a git repository) — its header comment lists exactly what it
-  covers and what it does not; `guard-ledgers.sh` sees only the Write, Edit and MultiEdit tools,
+  reads the ordinary ways of spelling a command but does not run the shell, so anything the shell
+  only works out while the command runs goes through — a branch or command held in a variable or a
+  default value (`${X:-main}`), made by a command substitution, or run from a script — and it lets a
+  push that names no branch through whenever it cannot tell where that push would go (for example
+  after a `cd` in the same command, or outside a git repository); its header comment lists what it
+  covers and the limits known; `guard-ledgers.sh` sees only the Write, Edit and MultiEdit tools,
   never a Bash command — it refuses a Write that puts the plugin's marked content into one of its
   eight named files (the seven record names and `README.md`) outside `.dev-team/`, and, while a
   cycle runs, a write that puts plugin-looking content into a top-level file with one of the seven

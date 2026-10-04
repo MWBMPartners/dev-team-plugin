@@ -9,13 +9,18 @@
 #     NOT a secret-leak control — that is the gitleaks scan wired by dev-team-ship, plus GitHub
 #     secret scanning / push protection on the repo.
 #
-# What it refuses, exactly (exit 2), while it is active:
+# What it refuses (exit 2), while it is active:
 #   1. A `git push` whose command text names `main` or `master` as a whole word — as a plain
-#      word, inside a refspec (HEAD:main, +main, refs/heads/main), in double quotes, in single
-#      quotes, or behind a backslash (\main). The text is read the way the shell reads it: quotes
-#      and backslashes are removed first, so 'main', "main", \main and ma'in' are all "main", and
-#      'git' push is a git push. A command string handed to `sh -c` / `bash -c` / `zsh -c` (and
-#      the like) or to `eval` is read the same way, one level at a time, three levels deep.
+#      word, inside a refspec (HEAD:main, +main, refs/heads/main), in a brace list ({main,x}), in
+#      double or single quotes, behind a backslash (\main), or spelled with bash's escapes inside
+#      $'...' ($'\x6d\x61\x69\x6e', $'\155ain', $'\u006dain'). The text is read the way the shell
+#      reads it: quotes and backslashes are removed and $'...' escapes worked out first, so 'main',
+#      "main", \main and ma'in' are all "main", and 'git' push and /usr/bin/git push are git pushes.
+#      A command string handed to `sh -c` / `bash -c` / `zsh -c` (and the like, after any options
+#      and a `--`) or to `eval` is read the same way, one level at a time, three levels deep. The
+#      command text as written is also checked with its quotes, braces and slashes treated as
+#      spaces, which catches a push written out for a shell to run from its standard input:
+#      `echo 'git push origin main' | sh`, `sh <<< 'git push origin main'`.
 #   2. A `git push` that names NO branch — a bare `git push`, `git push <remote>`, `git push
 #      origin HEAD`, `git push origin :` / `+:` (git's "matching" refspec), or `git push --all` /
 #      `--branches` / `--mirror` — when the hook can work out from the repository's own git
@@ -41,9 +46,18 @@
 #   These two fail closed because letting such a command through would mean the guard could be
 #   switched off by writing a longer command.
 #
-# What it cannot see, and so lets through (stated here so nobody reads more into it):
-#   - a branch or command held in a variable ($BRANCH), built by another command, or run from a
-#     script file, an alias or a git alias;
+# What it cannot see, and so lets through (stated here so nobody reads more into it). It reads the
+# ordinary ways of spelling a word, listed above; it does not run the shell, so it cannot know
+# anything the shell only works out while the command runs:
+#   - a branch or command held in a variable ($BRANCH), in a default value (${X:-main}), or made
+#     by another command ($(...), `...`), by arithmetic, by a glob, or by braces that build a
+#     word out of parts ({ma,xx}in, {m..n});
+#   - a command run from a script file, an alias, a git alias or a shell function, or put together
+#     by another program (xargs, env -S, find -exec and the like);
+#   - text given to a shell on its standard input that is not written out in this command's own
+#     text (the raw-text rule above sees `echo 'git push origin main' | sh` only because the words
+#     are there to read; printf with escapes, or a file, gets through);
+#   - a command string nested more than three levels deep (sh -c inside sh -c inside ...);
 #   - a bare push when it cannot tell where it would go: an earlier `cd`/`pushd`/`popd` in the
 #     same command (the folder it would run in is then unknown), a GIT_* variable set in the
 #     command, a folder that is not a git repository, `git` not installed, or a detached HEAD.
@@ -56,7 +70,11 @@
 #   - anything at all when `jq` is not installed: it then only scans the raw hook input as plain
 #     text, the way it did before quotes were handled, and can miss things.
 # It reads the text of the command before the command runs; it does not watch what actually
-# happens. A command that misses every pattern above is allowed.
+# happens. A command that misses every pattern above is allowed. The other way round, the check on
+# the command text as written (with quotes treated as spaces) also refuses a command that only
+# mentions a push to main in its text — `git commit -m 'fix: push to main'`, `echo 'git push
+# origin main'` — because it cannot tell text that is only shown from text a shell will run; do
+# such a command yourself, or word it differently.
 set -u
 # No filename globbing anywhere in this hook: words and branch names from the command are only
 # ever compared, never matched against files.
@@ -115,12 +133,19 @@ REDIR=$'\n'
 # ---------------------------------------------------------------------------------------------
 # The text rules. Each takes the text to test as its only argument.
 # ---------------------------------------------------------------------------------------------
-# A copy with common argument separators (: + / " = ; , ( )) turned into spaces, so a target
-# branch can't hide inside a refspec (HEAD:main, +main, x:refs/heads/main), a quote ("main"),
-# a refs/heads/ prefix, or trailing punctuation (main;). main/master must appear as a whole,
-# space-delimited token to match — so "maintenance" and "feature-main" do NOT trip it.
-sep_copy() { printf ' %s ' "$1" | tr ':+/"=;,()' '         '; }
-# `git push` even with global options between git and push (e.g. `git -C dir push`).
+# A copy with common argument separators (: + / " ' = ; , ( ) { }) turned into spaces, so a target
+# branch can't hide inside a refspec (HEAD:main, +main, x:refs/heads/main), a quote ("main" or
+# 'main'), a list in braces ({main,x}), a refs/heads/ prefix, or trailing punctuation (main;).
+# main/master must appear as a whole, space-delimited token to match — so "maintenance" and
+# "feature-main" do NOT trip it. The single quote and the braces were added after the stand-in
+# review of 42bd45e..b39f40d: without them `git push origin {main,x}` (the shell turns it into
+# `main x`), `echo 'git push origin main' | sh` and `sh <<< 'git push origin main'` all got through.
+sep_copy() { printf ' %s ' "$1" | tr ":+/\"=;,(){}'" '            '; }
+# `git push` even with global options between git and push (e.g. `git -C dir push`). text_rules
+# asks this of the text as written AND of its sep_copy, so a git push written inside quotes (for a
+# shell to run: `echo 'git push origin main' | sh`) or as /usr/bin/git is seen too. In the
+# sep_copy a separator next to a space leaves two spaces, which the pattern does not cross, so
+# `git commit -m 'push to main'` (the quote opens right before push) is still not a push.
 is_git_push() { printf '%s' " $1 " | grep -Eq ' git ([^ ]+ )*push([ ]|$)'; }
 # A main/master push target, as a bare token in a copy already made by sep_copy.
 targets_main() { printf '%s' "$1" | grep -Eq ' (main|master) '; }
@@ -135,7 +160,9 @@ has_live_stripe_key() { printf '%s' "$1" | grep -Eq '(sk|rk|pk)_live_[A-Za-z0-9]
 # that its clearer message is the one shown; either way the push is refused. Each test runs once
 # (the command text can be long, and every test reads all of it).
 text_rules() {
-  if is_git_push "$1" && targets_main "$(sep_copy "$1")"; then
+  local s
+  s="$(sep_copy "$1")"
+  if { is_git_push "$1" || is_git_push "$s"; } && targets_main "$s"; then
     has_force "$1" && deny "force-push to main/master detected."
     deny "push to main/master detected."
   fi
@@ -210,7 +237,57 @@ read_words() {
       i = S[ptr[w]] + length(P[ptr[w]])
       if (piece != "") { if (index(piece, "\t") > 0) gsub(/\t/, " ", piece); openw(); printf "%s", piece }
     }
-    BEGIN { st = 0; inw = 0; jn = 0 }
+    # The escapes bash reads inside $'\''...'\'' (the stand-in review of 42bd45e..b39f40d found
+    # $'\''\x6d\x61\x69\x6e'\'', which bash reads as main, let through: this reader used to keep
+    # only the character after the backslash). One byte of a decoded escape: a tab or a line break
+    # becomes a space, as inside any quoted word, and a zero byte (which ends a string in bash) is
+    # dropped. awk runs with LC_ALL=C, so %c prints one byte.
+    function putbyte(v) { if (v == 0) return; if (v == 9 || v == 10) put(" "); else put(sprintf("%c", v)) }
+    # A character number from \u or \U, written out in UTF-8, as bash does.
+    function putcode(v) {
+      if (v < 128) { putbyte(v); return }
+      if (v < 2048) { put(sprintf("%c%c", 192 + int(v / 64), 128 + v % 64)); return }
+      if (v < 65536) { put(sprintf("%c%c%c", 224 + int(v / 4096), 128 + int(v / 64) % 64, 128 + v % 64)); return }
+      put(sprintf("%c%c%c%c", 240 + int(v / 262144) % 8, 128 + int(v / 4096) % 64, 128 + int(v / 64) % 64, 128 + v % 64))
+    }
+    # The value of one hexadecimal digit, or -1 (also for an empty string, past the end of a line:
+    # macOS awk says an empty string is found at position 1 of any text).
+    function hexv(d) { if (length(d) != 1) return -1; return index("0123456789abcdef", tolower(d)) - 1 }
+    # The number of a printable character (for \cX), from a table made once in BEGIN.
+    function ord(d) { if (length(d) != 1) return 0; return index(asc, d) + 31 }
+    # Decodes the escape whose backslash is at ch[i], inside $'\''...'\'', the way bash does, and
+    # returns how many characters it used: \a \b \e \E \f \n \r \t \v; a backslash before a
+    # backslash, either quote or a question mark; one to three octal digits; \x with one or two
+    # hexadecimal digits, \u with one to four, \U with one to eight; and \cX (control-X). Any
+    # other backslash stays, with the character after it.
+    function esc(i,   d, v, k, m) {
+      d = ch[i + 1]
+      if (d == "a") { putbyte(7); return 2 }
+      if (d == "b") { putbyte(8); return 2 }
+      if (d == "e" || d == "E") { putbyte(27); return 2 }
+      if (d == "f") { putbyte(12); return 2 }
+      if (d == "n") { putbyte(10); return 2 }
+      if (d == "r") { putbyte(13); return 2 }
+      if (d == "t") { putbyte(9); return 2 }
+      if (d == "v") { putbyte(11); return 2 }
+      if (d == "\\" || d == "'\''" || d == "\"" || d == "?") { put(d); return 2 }
+      if (d ~ /^[0-7]$/) {
+        v = 0; k = 0
+        while (k < 3 && ch[i + 1 + k] ~ /^[0-7]$/) { v = v * 8 + ch[i + 1 + k]; k++ }
+        putbyte(v % 256); return 1 + k
+      }
+      if (d == "x" || d == "u" || d == "U") {
+        m = (d == "x") ? 2 : ((d == "u") ? 4 : 8)
+        v = 0; k = 0
+        while (k < m && hexv(ch[i + 2 + k]) >= 0) { v = v * 16 + hexv(ch[i + 2 + k]); k++ }
+        if (k == 0) { put("\\"); put(d); return 2 }
+        if (d == "x") putbyte(v); else putcode(v)
+        return 2 + k
+      }
+      if (d == "c" && length(ch[i + 2]) == 1) { putbyte(ord(ch[i + 2]) % 32); return 3 }
+      put("\\"); put(d); return 2
+    }
+    BEGIN { st = 0; inw = 0; jn = 0; for (k = 32; k < 127; k++) asc = asc sprintf("%c", k) }
     # st: 0 unquoted, 1 inside '\''...'\'', 2 inside "...", 3 inside $'\''...'\''
     {
       line = $0
@@ -241,7 +318,7 @@ read_words() {
           jump(P1, S1, np1, 1); continue
         }
         if (st == 3) {
-          if (c == "\\" && i < n) { put(ch[i + 1]); i += 2; continue }
+          if (c == "\\" && i < n) { i += esc(i); continue }
           if (c == "'\''") { st = 0; i++; continue }
           if (c == "\\") { put(c); i++; continue }
           if (np3 < 0) np3 = prep(P3, S3, "['\''\\\\]")
@@ -311,13 +388,13 @@ keep_commands() {
     function rules(t,   x, mm) {
       # A space inside a quoted word counts as part of the word, so it becomes _ here.
       if (index(t, " ") > 0) gsub(/ /, "_", t)
-      if (t == "git") G = 1
+      if (t == "git" || t ~ /\/git$/) G = 1
       else if (G && t == "push") P = 1
       mm = (index(t, "main") > 0 || index(t, "master") > 0)
       if (index(t, "--force") > 0 || t == "-f" || (mm && substr(t, 1, 1) == "+")) F = 1
       if (mm) {
         x = t
-        gsub(/[:+\/"=;,()]/, " ", x)
+        gsub(/[:+\/"=;,(){}'\'']/, " ", x)
         if ((" " x " ") ~ / (main|master) /) M = 1
       }
       if (index(t, "_live_") > 0 && t ~ /(sk|rk|pk)_live_[A-Za-z0-9]/) S = 1
@@ -617,21 +694,41 @@ analyse() {
       if [ "${#cmdwords[@]}" -gt 0 ]; then
         # A command string handed to sh -c / bash -c / ... or to eval is read as a command too.
         if [ "$depth" -lt 3 ]; then
-          local c has_shell=0 has_eval=0
+          local c has_eval=0 k saw_c opt nwords=${#cmdwords[@]}
           local evalwords=()
           c=0
-          while [ "$c" -lt "${#cmdwords[@]}" ]; do
+          while [ "$c" -lt "$nwords" ]; do
             word="${cmdwords[$c]}"
             if [ "$has_eval" -eq 1 ]; then
               # eval's own redirection (and where it goes) is not part of the text eval runs.
               if [ "$word" = "$REDIR" ]; then c=$((c + 2)); continue; fi
               evalwords[${#evalwords[@]}]="$word"
             elif [ "$word" = "eval" ]; then has_eval=1
-            elif is_shell_word "$word"; then has_shell=1
-            elif [ "$has_shell" -eq 1 ]; then
-              case "$word" in
-                -*c*) inner="${cmdwords[$((c + 1))]:-}"; [ -n "$inner" ] && analyse "$inner" $((depth + 1)) ;;
-              esac
+            elif is_shell_word "$word"; then
+              # The shell's own options come first. With -c among them (alone, or in a group such
+              # as -lc) the first word after the options is the command string; `--` ends the
+              # options, and the word after it is the string. -o, -O, +o, +O, --rcfile and
+              # --init-file take a value. (This used to take whatever word came straight after
+              # -c, so `bash -c -- 'git push origin main'` read the string "--" and missed the
+              # push; the stand-in review of 42bd45e..b39f40d found that.)
+              k=$((c + 1)); saw_c=0
+              while [ "$k" -lt "$nwords" ]; do
+                opt="${cmdwords[$k]}"
+                if [ "$opt" = "$REDIR" ]; then k=$((k + 2)); continue; fi
+                case "$opt" in
+                  --) k=$((k + 1)); break ;;
+                  -o|-O|+o|+O|--rcfile|--init-file) k=$((k + 2)) ;;
+                  --*) k=$((k + 1)) ;;
+                  -*c*) saw_c=1; k=$((k + 1)) ;;
+                  -*|+*) k=$((k + 1)) ;;
+                  *) break ;;
+                esac
+              done
+              while [ "$k" -lt "$nwords" ] && [ "${cmdwords[$k]}" = "$REDIR" ]; do k=$((k + 2)); done
+              if [ "$saw_c" -eq 1 ] && [ "$k" -lt "$nwords" ]; then
+                inner="${cmdwords[$k]}"
+                [ -n "$inner" ] && analyse "$inner" $((depth + 1))
+              fi
             fi
             c=$((c + 1))
           done

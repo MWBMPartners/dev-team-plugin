@@ -1045,10 +1045,68 @@ make_push_repo() {
 }
 
 @test "guard (quoting): quoted words that only mention main are allowed" {
-  for c in "git commit -m 'push to main'" "git push origin 'maintenance'" "git push origin 'feature-main'" "echo 'git push origin main is blocked'"; do
+  for c in "git commit -m 'push to main'" "git push origin 'maintenance'" "git push origin 'feature-main'" "echo 'the main branch'" "git push origin \$'\\x6d\\x61\\x69\\x6e\\x74'"; do
     run run_guard_cmd "$SCRATCH" "$c"
     echo "command: $c -> $status"
     [ "$status" -eq 0 ]
+  done
+}
+
+# ---------------------------------------------------------------------------
+# hooks/guard-dev-team.sh — other spellings of main (the stand-in review of 42bd45e..b39f40d)
+# ---------------------------------------------------------------------------
+# The review found these let through: bash's escapes inside $'...' (the reader kept only the
+# character after each backslash, so $'\x6d\x61\x69\x6e' read as "x6dx61x69x6e"), a brace list,
+# a push written out for a shell to run from its standard input, and a -- between -c and the
+# command string.
+
+@test "guard (other spellings): main spelled with bash's escapes inside \$'...' is blocked" {
+  for c in "git push origin \$'\\x6d\\x61\\x69\\x6e'" "git push origin \$'\\155ain'" "git push origin \$'\\u006dain'" "git push origin \$'ma\\x69n'" "git push origin HEAD:\$'\\x6d'ain" "git push --force origin \$'+\\x6d'ain"; do
+    run run_guard_cmd "$SCRATCH" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 2 ]
+  done
+}
+
+@test "guard (other spellings): a brace list naming main is blocked" {
+  for c in "git push origin {main,feature}" "git push origin {'main',x}" "git push origin HEAD:{main,x}"; do
+    run run_guard_cmd "$SCRATCH" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 2 ]
+  done
+}
+
+@test "guard (other spellings): a push to main written out for a shell to read from its standard input is blocked" {
+  for c in "echo 'git push origin main' | sh" "echo \"git push origin main\" | bash" "bash <<< 'git push origin main'" "$(printf "bash <<'EOF'\ngit push origin 'main'\nEOF")"; do
+    run run_guard_cmd "$SCRATCH" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 2 ]
+  done
+}
+
+@test "guard (other spellings): the command string after -c is found past other options and a --" {
+  # "ma\"i\"n" keeps the raw-text rule out of it: only reading the string as a command finds main.
+  for c in "bash -c -- 'git push origin ma\"i\"n'" "sh -c -- \"git push origin ma'i'n\"" "bash -o pipefail -c 'git push origin ma\"i\"n'" "bash --norc -lc 'git push origin ma\"i\"n'"; do
+    run run_guard_cmd "$SCRATCH" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 2 ]
+  done
+  # A bare push inside it is worked out too.
+  make_push_repo main
+  run run_guard_cmd "$SCRATCH/repo" "bash -c -- 'git push'"
+  [ "$status" -eq 2 ]
+  # Control: a script file's own arguments are not a command string.
+  run run_guard_cmd "$SCRATCH" "bash ./script.sh -c 'ma\"i\"n'"
+  [ "$status" -eq 0 ]
+}
+
+@test "guard (other spellings): text that spells out a push to main is refused even when it is only shown (a stated over-block)" {
+  # The check on the command text as written reads through quotes, so that `echo '...' | sh`
+  # above is caught; it cannot tell that from text that is only printed or used as a message.
+  for c in "echo 'git push origin main'" "git commit -m 'fix: push to main'"; do
+    run run_guard_cmd "$SCRATCH" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 2 ]
   done
 }
 

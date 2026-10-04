@@ -66,13 +66,14 @@ these (ten or more settings written out, each at its default).
     snapshot is safe from git operations (a checkout, a commit, a pull request's changes) but not
     from commands the run executes, the project's own scripts included, and the checksum catches
     accidental damage only; none of this is an enforcement boundary. The only enforcement the
-    plugin itself provides is its two guard hooks, described exactly: both fail open and read the
-    live config; the Bash guard reads a command's text (quotes and backslashes taken away) and
-    refuses a push that names `main`/`master`, a push that names no branch when git's own settings
-    show it would go there, and a live Stripe key, but cannot see a branch held in a variable or a
-    push run from a script, and lets through a push whose destination it cannot tell (after a `cd`
-    in the same command, outside a git repository); server-side branch protection is the real
-    protection for pushes. Content the
+    plugin itself provides is its two guard hooks, each described with what it covers and the
+    limits known: both fail open and read the live config; the Bash guard reads the ordinary
+    spellings of a command's text (quotes and backslashes taken away) and refuses a push that names
+    `main`/`master`, a push that names no branch when git's own settings show it would go there,
+    and a live Stripe key, but does not run the shell, so it cannot see a branch held in a variable
+    or a default value, one made by a command substitution, or a push run from a script, and lets
+    through a push whose destination it cannot tell (after a `cd` in the same command, outside a
+    git repository); server-side branch protection is the real protection for pushes. Content the
     repository does not author never counts (for example vendored code, dependency caches and build
     output — `vendor/`, `third_party/`, `node_modules/`, `target/`, `.build/`, `Pods/`, `dist/`,
     `build/`, `.venv/`, `_build/`, `deps/`, `bower_components/`, `Carthage/`, code vendored with `git
@@ -210,10 +211,29 @@ these (ten or more settings written out, each at its default).
   seconds (1.8 to 2.7 before, and 5 to 9 when the machine was busier), and 200 bare pushes were
   refused in 0.07 seconds (39.8 seconds, and allowed, before); on Linux (Ubuntu 24.04, mawk) the
   same took 0.20, 0.06 to 0.10 and 0.03 seconds, against 4.3, 0.7 to 1.0 and 14.1 before.
-- **Every description of the guard hooks now says exactly what they cover.** "This written rule is
+- **Every description of the guard hooks now says what they cover and the limits known.** (This
+  entry first said "exactly what they cover"; the stand-in review of 42bd45e..b39f40d found
+  spellings of main the Bash guard missed, so that claimed more than was true.) "This written rule is
   the real protection" is gone from `conventions.md`'s ownership rule (the written rule is what
   agents follow, not enforcement; the one hook enforces only the writes it can see), and ci-medic's
   rule 2 no longer says the hook "already blocks pushes to main".
+- **The Bash guard reads more spellings of `main`, and says plainly what it cannot read.** Found by
+  the stand-in review of 42bd45e..b39f40d, each let through before: bash's escapes inside `$'…'`
+  (`git push origin $'\x6d\x61\x69\x6e'`, `$'\155ain'`, `$'\u006dain'` — the reader kept only the
+  character after each backslash; it now works them out as bash does); a brace list
+  (`git push origin {main,x}`); a push written out for a shell to read from its standard input
+  (`echo 'git push origin main' | sh`, `sh <<< 'git push origin main'` — the check on the command
+  text as written now treats single quotes and braces as separators too, and looks for the
+  `git … push` through them); a `--` between `-c` and the command string
+  (`bash -c -- 'git push'` — the shell's options are now read properly); and `/usr/bin/git` after
+  a `cd`. The header, the README and `conventions.md` now say plainly that the guard reads the
+  ordinary spellings of a command but does not run the shell, so anything the shell only works
+  out while the command runs — a variable, a default value such as `${X:-main}`, a command
+  substitution, braces that build a word from parts, a command string nested more than three
+  deep — goes through; "quoted, escaped or not" and "lists exactly" are gone. The other way round,
+  reading through quotes means a command that only spells out a push to main in single quotes
+  (`git commit -m 'fix: push to main'`, `echo 'git push origin main'`) is now refused too, as the
+  same text in double quotes already was; the header and the README say so.
 - The iterate skill's audit gains a tenth dimension, **conformance** to the project's normative
   documents; the review skill gains a **conformance** claim type, and its reviewers do their own
   discovery even when House style recorded nothing.
