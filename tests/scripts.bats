@@ -1118,6 +1118,28 @@ make_push_repo() {
   [ "$status" -eq 2 ]
 }
 
+@test "guard (no branch named): the matching refspec ':' — on the command line or as remote.<name>.push — is blocked like push.default=matching" {
+  # The stand-in review of 42bd45e..b39f40d found `git push origin :` let through: a refspec that
+  # is empty on both sides of the colon is git's "matching" refspec and pushes main along with
+  # every other branch that exists on both sides, but the hook split it into two empty names.
+  make_push_repo feature
+  for c in "git push origin :" "git push origin +:" "git push origin ':'" "git push origin '+:'"; do
+    run run_guard_cmd "$SCRATCH/repo" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 2 ]
+  done
+  for spec in ':' '+:'; do
+    git -C "$SCRATCH/repo" config remote.origin.push "$spec"
+    run run_guard_cmd "$SCRATCH/repo" "git push"
+    echo "remote.origin.push=$spec, git push -> $status"
+    [ "$status" -eq 2 ]
+  done
+  # Control: a push setting that names neither branch, uses no * and is not ':' sends nothing to main.
+  git -C "$SCRATCH/repo" config remote.origin.push refs/heads/feature:refs/heads/feature
+  run run_guard_cmd "$SCRATCH/repo" "git push"
+  [ "$status" -eq 0 ]
+}
+
 @test "guard (no branch named): pushes that would not reach main are allowed" {
   make_push_repo feature
   run run_guard_cmd "$SCRATCH/repo" "git push"

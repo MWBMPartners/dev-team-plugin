@@ -16,11 +16,13 @@
 #      'git' push is a git push. A command string handed to `sh -c` / `bash -c` / `zsh -c` (and
 #      the like) or to `eval` is read the same way, one level at a time, three levels deep.
 #   2. A `git push` that names NO branch — a bare `git push`, `git push <remote>`, `git push
-#      origin HEAD`, or `git push --all` / `--branches` / `--mirror` — when the hook can work out
-#      from the repository's own git settings that it would push to `main` or `master`: the
-#      current branch's name, the branch it tracks (`branch.<name>.merge`), `push.default`
-#      (`nothing`, `matching`, `current`, `simple`, `upstream`), and a `remote.<name>.push`
-#      setting if there is one. It asks git in the folder the command runs in (the hook input's
+#      origin HEAD`, `git push origin :` / `+:` (git's "matching" refspec), or `git push --all` /
+#      `--branches` / `--mirror` — when the hook can work out from the repository's own git
+#      settings that it would push to `main` or `master`: the current branch's name, the branch
+#      it tracks (`branch.<name>.merge`), `push.default` (`nothing`, `matching`, `current`,
+#      `simple`, `upstream`), and a `remote.<name>.push` setting if there is one (a destination
+#      it names, a `*` pattern — read as pushing any local main/master — and `:`, read exactly as
+#      `push.default=matching`). It asks git in the folder the command runs in (the hook input's
 #      `cwd`, then any `git -C <dir>` in the command) and passes through the command's own
 #      `-c`, `--git-dir` and `--work-tree` options.
 #   3. A live Stripe key (sk_live_, rk_live_, pk_live_) anywhere in the command text.
@@ -30,8 +32,11 @@
 #     script file, an alias or a git alias;
 #   - a bare push when it cannot tell where it would go: an earlier `cd`/`pushd`/`popd` in the
 #     same command (the folder it would run in is then unknown), a GIT_* variable set in the
-#     command, a folder that is not a git repository, `git` not installed, a detached HEAD, or a
-#     `remote.<name>.push` setting that names neither branch and uses no `*`;
+#     command, a folder that is not a git repository, `git` not installed, or a detached HEAD.
+#     (A `remote.<name>.push` setting is not a limit: one that names neither branch, uses no `*`
+#     and is not `:` sends nothing to main or master, so letting that push through is correct.
+#     An earlier wording listed it here as something the hook "cannot see"; it was wrong both
+#     ways, since it also hid that `:` was being missed.)
 #   - any branch name other than `main` and `master` (it does not read GitHub's own protection
 #     settings);
 #   - anything at all when `jq` is not installed: it then only scans the raw hook input as plain
@@ -232,11 +237,18 @@ local_protected() {
 # far as that can be told from the refspec alone; a refspec with a * prints the local main/master
 # branches (it would push them), and a refspec of HEAD or @ with no destination prints the
 # current branch ($cur).
+# A refspec that is empty on both sides of the colon — `:` or `+:`, on the command line or in a
+# remote.<name>.push setting — is git's "matching" refspec: it pushes every branch that exists
+# both here and on the remote, main included. It is treated exactly as push.default=matching is.
+# (It used to fall through to the source/destination split below, which found two empty names and
+# printed nothing, so `git push origin :` was let through; the stand-in review of 42bd45e..b39f40d
+# found that.)
 refspec_targets() {
   local r src dst
   for r in "$@"; do
     r="${r#+}"
     case "$r" in
+      :) local_protected; continue ;;
       *'*'*) local_protected; continue ;;
       *:*) src="${r%%:*}"; dst="${r#*:}" ;;
       *) src="$r"; dst="" ;;
