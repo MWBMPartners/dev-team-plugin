@@ -49,7 +49,7 @@ viewport matrix and the severity scale.
 - Fix clear, low-risk issues directly, as small commits with Conventional-Commit subjects
   (`fix(web): …`, `chore(web): …`). Follow the project's own rules: its CLAUDE.md/AGENTS.md,
   shared layouts and partials, CSP, copy style, changelog conventions, and the branch policy
-  in `dev-team-orchestrator/references/conventions.md`.
+  in `../dev-team-orchestrator/references/conventions.md`.
 - Don't redesign, change product behaviour, or rewrite copy wholesale. When a fix needs a
   product or design decision, leave it, and list it under **Blocked on me** with your
   recommendation.
@@ -69,7 +69,7 @@ red. In `fix` mode, offer `guard` at the end if the project has no such spec.
 Do the work yourself by default. Delegate only when the route list is large enough to split
 into independent tracks (for example, more than about 30 distinct page types), and then use
 no more than two or three subagents, routed through
-`dev-team-orchestrator/references/model-routing.md` (`sonnet-builder` for mechanical fixes).
+`../dev-team-orchestrator/references/model-routing.md` (`sonnet-builder` for mechanical fixes).
 Don't use subagents to re-check your own findings.
 
 ## Report
