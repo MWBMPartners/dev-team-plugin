@@ -373,7 +373,10 @@ read_words() {
 
 # keep_commands, the second program, reads read_words' lines. It does two things with them.
 #   1. The text rules on the words joined together (quotes removed), one word at a time, with no
-#      joined text ever built: a word that is git followed later by a word that is push; main or
+#      joined text ever built: a word that is git followed later IN THE SAME simple command by a
+#      word that is push (the git word is forgotten at the end of each simple command, so
+#      `git status; echo 'push' 'main'` is not a push — Codex's catch-up review of
+#      748e87c..2f91439, finding 7, found it refused, though the hook at 748e87c allowed it); main or
 #      master as a whole piece of a word once the separators : + / " = ; , ( ) are treated as
 #      spaces; a force (--force anywhere in a word, a word -f, or a word starting with + that
 #      names main or master); a live Stripe key. A space inside a quoted word counts as part of
@@ -416,7 +419,9 @@ keep_commands() {
           print "s"
         }
       }
-      nw = 0; hit = 0
+      # A git word counts only for the rest of its own simple command (see the comment above
+      # keep_commands): without this, git in one command and push in a later one made a push.
+      nw = 0; hit = 0; G = 0
     }
     # Is this word one that makes its simple command worth passing on: git, a shell, eval, or a
     # GIT_...= setting? (The cheap index() tests come first; see rules().)

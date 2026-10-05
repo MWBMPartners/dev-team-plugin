@@ -1551,6 +1551,26 @@ cpu_below() { awk -v c="$1" -v m="$2" 'BEGIN { exit !(c + 0 < m + 0) }'; }
   [ "$status" -eq 2 ]
 }
 
+@test "guard (reading): git in one command and push in a later one are not read as a push" {
+  # Codex's catch-up review of 748e87c..2f91439 (finding 7): the rule on the words joined together
+  # remembered a git word across commands, so `git status; echo 'push' 'main'` — a git that pushes
+  # nothing, then words that are only printed — was refused, although the hook at 748e87c allowed it.
+  # A git word now counts only until the end of its own simple command.
+  for c in "git status; echo 'push' 'main'" "git log | grep 'push'; echo 'main'" "$(printf "git status\necho 'push' 'main'")"; do
+    run run_guard_cmd "$SCRATCH" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 0 ]
+  done
+  # Within one command it is still a push, after another command too, and with git's own options
+  # in between. Only this rule can refuse these: "ma\"i\"n" and "ma'i'n" keep the check on the
+  # text as written out of it, and after a cd the push is not worked out through git.
+  for c in "cd . && git status; git push origin ma\"i\"n" "cd . && git status && git -C . push origin ma'i'n" "cd . && git -c push.default=simple push origin ma\"i\"n"; do
+    run run_guard_cmd "$SCRATCH" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 2 ]
+  done
+}
+
 @test "guard (reading): a command's own words can never be taken for the reader's markers" {
   # The reader used to print lines such as "@@SEP" (end of a command) and "@@REDIR" (a
   # redirection) among the words, so a command could spell one out: `git --work-tree @@SEP push`
