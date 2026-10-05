@@ -215,7 +215,8 @@ The rule "Repository instructions and normative documents" (`conventions.md`, fi
 "Shared discipline") tells every agent to follow a project's own instruction files and the
 standards they name only as they were copied when the run started, and only to add work or choose
 between style defaults — never to remove or loosen a check, a gate, a confirmation or a safety
-rule. Ten tests guard it, the `handoff-file` switch that came with it, and the starter config file.
+rule. Eleven tests guard it, the `handoff-file` switch that came with it, and the starter config
+file.
 This is the sixth set: each earlier set passed a change that weakened the rule — headings only;
 then a few key sentences (words ADDED passed); then brief fields by their opening words; then
 phrases inside the places that write `.dev-team/HANDOFF.md`; then, with whole passages pinned, text
@@ -271,6 +272,11 @@ changing its record in the fixture too — which makes a change to a safety rule
 10. **The starter config file** — nothing written out but `version: 1`; all 18 settings commented
     out showing their defaults; `init` writes only chosen keys; `show` tags a commented-out key as
     the built-in default and warns about an old fully written-out file.
+11. **Every place that describes a ci-medic `/loop`'s run says a later pass finds its run from its
+    run record** (sixth round) — the two places that are not pinned (ci-medic's "How it's run"
+    bullet and the `/dev-team-watch-prs` command) say so, and the old limit ("cannot tell that it
+    is a later pass, and starts a new run from the checkout it starts on") is gone from all three
+    ci-medic files.
 
 **How they were proven** (on 28 September 2026). Each edit was made in a throwaway copy of the
 working tree outside the clone, the #47 test group was run against the copy with a writable
@@ -357,6 +363,21 @@ wording:
 | "(a run recorded before 1.6.0 has none: see step 1)" taken out of ship's run-start line | 2 |
 | The same wording taken out of the Cold-resume section | 1 |
 
+*Codex's catch-up review of `748e87c..2f91439`* (sixth round) — each edit in a throwaway copy, as
+above. The watch protocol's section and ci-medic's safety-rules section had their pinned records
+rewritten from the files after the change:
+
+| Edit | Test that failed |
+|---|---|
+| "Never start a new run on a guess." taken out of the watch protocol | 1 |
+| No line in the conversation made a new run again (step 1) | 1 |
+| A `/loop`'s pass marks its run ended, like a run of one pass | 1 |
+| The `/dev-team-watch-prs` command's old wording put back | 11 |
+| ci-medic's "How it's run" `/loop` bullet's old wording put back | 11 |
+| The old limit put back into "What this cannot do" | 1 and 11 |
+
+Test 11 also fails on the three files as they were before the change.
+
 **What these cannot catch:** they check wording, word for word, in the right place. They cannot
 tell whether an agent obeys the rule when it runs — for example whether a lead really copies the
 files before spawning anyone. Nothing enforces the rule except where one of the two guard hooks
@@ -376,7 +397,10 @@ string given to `sh -c` / `bash -c` (after any options and a `--`) or `eval` rea
 for a push that names no branch, asks git in the folder the command runs in where it would push.
 The stand-in review of `42bd45e..b39f40d` (the fifth round) found more it let through, found it
 could be too slow to be waited for, and planted 30 faults in a copy of it, 8 of which no test
-noticed. Thirty-nine tests now, every one with `DEV_TEAM_GUARD=1` unless it says otherwise, in a
+noticed. Codex's catch-up review of `748e87c..2f91439` (the sixth round) found five more gaps, one
+over-block and long-input tests that did not prove the reading reaches the end. Forty-four tests
+now (52 with the eight older guard tests), every one with `DEV_TEAM_GUARD=1` unless it says
+otherwise, in a
 throwaway git repository under `$SCRATCH` with the machine's own git settings shut out (`HOME`,
 `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_NOSYSTEM`), so a `push.default` on the machine running them
 cannot change a result:
@@ -392,25 +416,43 @@ cannot change a result:
   `HEAD:{main,x}`); a push written out for a shell to read from its standard input
   (`echo 'git push origin main' | sh`, `… | bash`, `bash <<< '…'`, a quoted heredoc into `bash`);
   the command string after `-c` found past `--`, `-o pipefail`, `--norc` and `-lc` (and a script's
-  own `-c` argument is not a command string). **A stated over-block, pinned:** text that only
+  own `-c` argument is not a command string). A zero byte inside `$'…'` ends the string, as in
+  bash (sixth round): `$'main\0ignored'`, `\x00`, `\c@`, `\400`, `\u0000`, `$'ma\0zz'in`, an
+  escaped quote in the dropped part, and a dropped part running over three lines are refused;
+  `$'mai\0n'` and `$'feature\0main'` (bash reads "mai" and "feature") are allowed. **A stated
+  over-block, pinned:** text that only
   spells out a push to `main` (`echo 'git push origin main'`, `git commit -m 'fix: push to main'`)
   is refused, because the check on the text as written reads through quotes.
 - **A long command** — 2,000 simple commands, or an 800-line heredoc — is still read to the end: a
-  push to `main` at the very end is refused, a harmless one allowed.
+  push to `main` at the very end is refused, a harmless one allowed. Since the sixth round each of
+  the three long-input tests (this one, the 10,000-line heredoc and the 5,000-file `git add`) ends
+  with two late cases only the full reading can refuse — `git push origin ma"i"n` (no `main` in the
+  text as written) and a bare `git push` in a repository on `main` — each checked by its own
+  refusal message. With Codex's fault planted (the reading cut off after 4,096 characters) the
+  heredoc and `git add` tests used to pass; now all three fail, and all three also fail when the
+  hook stops working out where a push goes once the command is longer than 4,096 characters.
 - **Speed** (fifth round), judged by the processor time the hook uses (see below): a 10,000-line
   heredoc is read to the end under 4 seconds (the push to `main` after it refused, the harmless one
   allowed), a 129 KB `git commit -m` message under 3, and a `git add` naming 5,000 files under 8;
   more than 10 pushes in one command are refused with a message asking for it to be split (counting
   pushes inside a `bash -c` string) and 10 are checked; a stand-in `git` that takes 30 seconds,
   with a 1-second limit, is refused within seconds — and a limit of 99 is ignored (the built-in 20
-  seconds still refuses it).
+  seconds still refuses it). Sixth round: the limit covers reading the input and asking `jq` (a
+  stand-in `jq`, then a stand-in `cat`, each waiting 8 seconds under a 1-second limit, is refused
+  within 6 seconds — it used to be allowed after 16), and a stand-in `grep` that ignores SIGTERM and
+  waits 30 seconds while holding the hook's output gets the refusal to the caller within 8 seconds
+  (the limit plus the one-second grace, with room for a busy machine; it used to take 30), with no
+  stand-in left running.
 - **No branch named** (blocked, message names the branch): a bare `git push` on `main`;
   `git push origin`, `-u origin HEAD`, `origin @`, `2>&1`, `command git push`; `git -C repo push`
   from outside; the hook input's `cwd` pointing at the repository (and, the other way round, a
   `cwd` elsewhere allows it); a branch tracking `main` under `push.default=upstream`, set in the
   repository or with `-c` on the command; `push.default=matching`, `--all`, `--mirror` and a
   `remote.origin.push` naming `main`, all from a feature branch; git's matching refspec `:` and
-  `+:`, quoted or not, on the command line or as `remote.origin.push` (fifth round); a named branch
+  `+:`, quoted or not, on the command line or as `remote.origin.push` (fifth round); a push to a
+  remote set up as a mirror (`remote.backup.mirror`, against a local bare repository, git's own dry
+  run checked first) — named, chosen by `remote.pushDefault`, or set with `-c` (sixth round; mirror
+  off, or a push refspec that sends only the feature branch, allowed); a named branch
   that `remote.origin.push` (exact, with `+`, or a `*` pattern) or `push.default=upstream` sends to
   `main` (fifth round — and `feature:main`, `HEAD:refs/heads/main`, another branch's refspec, or
   none, which git does not apply, are allowed). **Allowed:** a feature branch with no upstream,
@@ -423,6 +465,10 @@ cannot change a result:
 - **The reader's own markers** (fifth round): `git --work-tree @@SEP push` (and `@@REDIR`, `s`,
   `r`, `vPM`, `w`) on `main` is refused — the reader's lines each start with a letter saying what
   they are, so no word can be taken for one.
+- **One command at a time** (sixth round): `git status; echo 'push' 'main'`, a pipe into
+  `grep 'push'`, and the same split over two lines are allowed — a `git` word counts only until the
+  end of its own simple command; within one command (after a `cd`, with `ma"i"n` or `ma'i'n`, and
+  with git's own options between `git` and `push`) it is still refused.
 - **One test per planted fault that used to survive** (fifth round): three `eval` levels deep
   read, four not (nesting depth 3); the rule on the joined words (`cd . && git push origin
   ma"i"n`); `remote.pushDefault` and `branch.<name>.pushRemote`; `--git-dir=` and `--work-tree=`
@@ -442,8 +488,18 @@ fifth-round fix: see `.claude/HANDOFF.md` for the result. Two planted faults can
 any test: M23 (the early return for a detached HEAD removed) changes nothing, because with no
 current branch every later step prints nothing anyway; and N02 (the push cap removed from the pass
 that works the pushes out) is a backstop behind the count taken first, which sees every push. All
-39 tests pass under Homebrew's bash 5, the Mac's own `/bin/bash` 3.2, and in an Ubuntu 24.04
+39 tests passed under Homebrew's bash 5, the Mac's own `/bin/bash` 3.2, and in an Ubuntu 24.04
 container (mawk).
+
+**Proof, sixth round:** each new test was run against the hook before its fix and failed there
+(the commit messages give the case). A sweep planted 59 faults one at a time in a copy of the tree
+and ran the 52 guard tests: the 43 of the fifth round's driver and 16 that undo this round's fixes.
+54 were caught. Five were not: M23 and N02, as before; N04 and N05 (SIGTERM never sent, or sent to
+the worker alone), because the SIGKILL one second later still stopped everything — the stop test
+now also checks that a SIGTERM reached the stand-in, and catches both; and P09 (the worker's
+explicit `<&0` removed), which changes nothing while job control hands the input over anyway. All
+52 guard tests pass under bash 5 and the Mac's `/bin/bash` 3.2, and the whole suite in an Ubuntu
+24.04 container (mawk).
 
 **The speed tests judge processor time, not the clock.** The guard refuses a command whose
 checking runs past its 20-second limit, so on a machine starved of processor time — during this

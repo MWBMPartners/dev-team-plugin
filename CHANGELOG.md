@@ -280,6 +280,31 @@ these (ten or more settings written out, each at its default).
   `conventions.md` step 1 and autopilot's `loop-runtime.md`: such a run has no snapshot to check —
   an attended run says so and takes one, an unattended one is marked `BLOCKED` (the stand-in review
   of 42bd45e..b39f40d).
+- **Five more gaps in the Bash guard closed, and one over-block undone** (Codex's catch-up review
+  of 748e87c..2f91439). A zero byte inside `$'…'` now ends that string, as it does in bash:
+  `git push origin $'main\0ignored'` pushes to `main`, and the guard used to read "mainignored"
+  and let it through. A remote set up as a mirror (`remote.<name>.mirror`, as
+  `git remote add --mirror=push` writes it) is now read as pushing every branch, `main` included,
+  so `git push backup` from a feature branch is refused when `backup` is such a remote. The
+  20-second limit now covers everything the guard does once it is active — reading its input and
+  asking `jq` included; before, a slow `jq` let a command through after the limit. Past the limit,
+  whatever the check was waiting on is asked to stop and, one second later, made to (SIGKILL to
+  its whole process group), so a program that ignores the request can no longer keep Claude Code
+  waiting: the refusal arrives within the limit plus that second. And `git … push` is looked for
+  inside one command only again, so `git status; echo 'push' 'main'` is allowed, as it was before
+  the fourth round; every other refusal stays.
+- **ci-medic never takes a new snapshot by accident** (Codex's catch-up review of
+  748e87c..2f91439). If the conversation no longer shows the line that names a `/loop`'s run — for
+  example after older messages have been summarised — a pass used to start a new run and take a
+  new snapshot, so instruction files changed during the loop became instructions nobody accepted.
+  Now it finds the run from the plugin's own run records: one open run for this repository is
+  continued (the pass report says it was found that way), none means a new run, and more than one
+  means it stops and asks (unattended: `BLOCKED`) rather than guess. The run record now says how
+  the run was started; a run of one pass is marked `ended` when that pass ends, and a `/loop`'s run
+  stays open until the user asks for a new run. The watch protocol, ci-medic's `SKILL.md` and the
+  `/dev-team-watch-prs` command say the same, and "What this cannot do" says plainly what is left:
+  after a `/loop` stops, a later session's first pass continues that run until you ask for a new
+  one, and missing or changed run records leave nothing to find the run from.
 - The iterate skill's audit gains a tenth dimension, **conformance** to the project's normative
   documents; the review skill gains a **conformance** claim type, and its reviewers do their own
   discovery even when House style recorded nothing.
@@ -349,6 +374,17 @@ skill's `mission-and-done.md`; the stripe and featurefind skills' `SKILL.md`; al
   inside, and the push count taken before git is asked). Each fails against the hook before its
   fix. The speed tests judge the processor time the hook uses, not the clock, and a run the hook
   stopped at its time limit is skipped, never passed; `tests/README.md` explains.
+- Six more after Codex's catch-up review of 748e87c..2f91439 (44 newer tests for the Bash guard
+  in all, 52 with the eight older ones): a zero byte inside `$'…'`; a remote set up as a mirror
+  (against a local bare repository, git's own dry run checked first); the time limit covering a
+  slow `jq` and a slow read of the input; a program that ignores SIGTERM and holds the hook's
+  output, which must not keep the caller waiting past the limit plus one second; `git` and `push`
+  in separate commands (allowed) and in one (refused); and one checking that every place
+  describing a ci-medic `/loop`'s run says a later pass finds its run from its run record. The
+  three long-input tests now end with late cases that only the full reading catches
+  (`ma"i"n`, and a bare push in a repository on `main`): with the reading cut off after 4,096
+  characters, two of them used to pass. Each new test fails against the hook or the text before
+  its fix, and with faults planted to undo it; `tests/README.md` lists them.
 - `tests/smoke-structure.sh` now checks each required hook registration in `hooks/hooks.json`:
   Bash to `guard-dev-team.sh`, and Write, Edit and MultiEdit to `guard-ledgers.sh`, each by its
   exact command path. It used to ask only whether some matcher contained "Write", so removing the

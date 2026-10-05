@@ -6,13 +6,12 @@
             Rewritten as work happens, not tidied at the end. See .claude/CLAUDE.md section 2.
 -->
 
-**Last updated:** 4 October 2026 — issue #47's fifth round, acting on the stand-in review of
-`42bd45e..b39f40d`. The lead pushed the fourth round up to `b39f40d`; the fifth round's commits
-follow it locally (`c084708` to the notes commit), not yet pushed or reviewed; see the #47 section
-straight below. The "START HERE" section dates from 23 September; everything below "Detailed
-history" is the older, fuller record.
+**Last updated:** 5 October 2026 — issue #47's sixth round, acting on Codex's catch-up review of
+`748e87c..2f91439`; the #47 section straight below says where its review stands and what is next.
+The "START HERE" section dates from 23 September; everything below "Detailed history" is the
+older, fuller record.
 **Working branch:** `claude/ledger-file-clashes` (made from `main`; `alpha` is fully contained in
-`main`, so this branch can later go to `alpha` in one pull request). Pushed to GitHub.
+`main`, so this branch can later go to `alpha` in one pull request).
 **28 September 2026:** a second branch, `feature/bcp47-language-policy` (issue #47), is in flight —
 see the section straight below.
 **Issues:** [#41](https://github.com/MWBMPartners/dev-team-plugin/issues/41) (the main work),
@@ -32,7 +31,9 @@ see the section straight below.
   data. A resumed run checks and reuses its recorded snapshot; only a new run takes one. Someone
   else's pull request is handled only by a skill that checks it out itself (ci-medic), which copies
   its instruction files from its base commit into `snapshot/pr/<n>/files/`; a ci-medic `/loop` is
-  one run with one snapshot, and every pass puts the starting branch back. The limits are stated
+  one run with one snapshot — a pass that no longer sees its run's line in the conversation finds
+  the run from the plugin's own run records, and stops rather than guess — and every pass puts the
+  starting branch back. The limits are stated
   plainly: start from your own branch; the snapshot is safe from git operations but not from
   commands the run executes; this is not an enforcement boundary — only the plugin's two guard
   hooks enforce anything, and only what they cover (each described with the limits known: the
@@ -57,8 +58,8 @@ see the section straight below.
   - **Second independent review** (a fresh Opus agent standing in, because Codex was out of
     allowance) found 12 problems. The lead checked them and took final decisions (brief:
     `brief-plugin-r3.md` in the lead's session scratchpad — not in the repository; the decisions are
-    summarised in the three commit messages). All were acted on in three commits, **committed
-    locally and NOT pushed** (the lead pushes), followed by one commit for these notes:
+    summarised in the three commit messages). All were acted on in three commits, followed by one
+    commit for these notes:
     - `25223c0` — the direction rule replaces the closed list in step 8; step 1 defines the trusted
       base with a method, loaded files count only if unchanged, files changed during the run are
       not instructions, an open "for example" list of content the repository does not author;
@@ -84,8 +85,7 @@ see the section straight below.
     was NOT clean. Its core finding: the trusted-base method (merge-base, diff, show) missed
     uncommitted edits and new files, failed on shallow clones and unusual remote names, was
     defined differently by autopilot, and kept its base where agents could rewrite it. The lead
-    took final decisions (16 items); all were built in five commits, **committed locally and NOT
-    pushed** (the lead pushes):
+    took final decisions (16 items); all were built in five commits:
     - `bfb4e8a` — (its storage was replaced after Codex's review, below) the run-start SNAPSHOT
       replaces the trusted base everywhere (conventions.md step
       1): path + SHA-256 + a git object id (`git hash-object -w`) for every instruction file,
@@ -212,8 +212,7 @@ see the section straight below.
   - **The fifth round was built twice.** The first build (nine local commits) was lost unpushed
     when the machine restarted on 2 October and emptied the temporary folder holding the clone,
     the sandbox and most of the review's evidence. It was rebuilt from the builder's record of
-    every edit, each item reproduced and proved again, in these commits, **committed locally and
-    NOT pushed** (the lead pushes):
+    every edit, each item reproduced and proved again, in these commits:
     - `c084708` — (1) git's matching refspec `:` / `+:` (command line or `remote.<name>.push`) is
       read exactly as `push.default=matching`; the header's wrong "limit" about push settings
       corrected.
@@ -271,14 +270,61 @@ see the section straight below.
       taken first).
     - The notes commit — CHANGELOG, `tests/README.md`, these notes (item 10: the fourth round is
       pushed at `b39f40d`).
-  - **None of the fifth round is reviewed yet**, and `42bd45e..b39f40d` has had only the stand-in's
-    review (a fresh Opus agent, not Codex). Under rule 5 the next Codex round should cover
-    `42bd45e..HEAD` — the stand-in's range as the catch-up review, and the fifth round — or, if
-    the lead decides the stand-in round counts, `b39f40d..HEAD`. Set `TMPDIR` to a writable folder
-    when asking Codex to run bats (its sandbox's default was not writable).
+  - The fifth round had no review of its own before Codex's catch-up review, below.
+  - **Codex's catch-up review of `748e87c..2f91439`** (rounds 2 to 5 as one body, 24 commits; its
+    own earlier review of `748e87c..42bd45e` lies inside that range): NOT clean — eight findings,
+    seven medium and one low: a `$'…'` string not ended at a zero byte (`$'main\0ignored'` let
+    through); a remote set up as a mirror not read; the time limit not covering reading the input
+    and `jq`; a program that ignores SIGTERM keeping the caller waiting; ci-medic taking a new
+    snapshot when a `/loop`'s run line is summarised away; long-input tests that did not prove the
+    reading reaches the end; these notes (they misstated the review history and push status); and
+    (low) `git … push` detected across separate commands. Its ten earlier findings are resolved
+    except the notes. The lead's decisions are in `brief-plugin-r6.md` (scratchpad).
+  - **The sixth round** acts on all eight, in these commits:
+    - `6768927` — (1) a zero byte ends a `$'…'` string, as in bash: nothing more of it, up to the
+      closing quote, goes into the word, and the word goes on after the quote.
+    - `51419ca` — (2) a remote set up as a mirror (`remote.<name>.mirror`) is read as pushing every
+      branch, in git's order: the remote's push refspecs, then the mirror setting, then
+      `push.default`. Tested against a local bare repository, with git's own dry run checked first.
+    - `2f43a79` — (3) reading the input, both `jq` calls and tidying the command run inside the
+      worker, under the time limit.
+    - `da90a37` — (4) past the limit: SIGTERM to the worker's process group, a fixed one-second
+      grace, then SIGKILL; the hook can no longer call that off once the limit is reached, so the
+      refusal reaches the caller within the limit plus one second.
+    - `b8da4d4` — (7) `git … push` is looked for inside one simple command only, as at `748e87c`.
+    - `9e3a3cb` — (6) the three long-input tests end with late cases only the full reading
+      catches (`git push origin ma"i"n`, and a bare push in a repository on `main`).
+    - `a3269c3` — (5) ci-medic finds a `/loop`'s run from its run records when the conversation no
+      longer shows the line, stops (unattended: BLOCKED) when more than one run is open, and never
+      starts a new run on a guess; a run of one pass is marked `ended`, a `/loop`'s stays open.
+    - `6113bbc` — (4, its test) the stop test also checks that the SIGTERM reached the stand-in, so
+      it went to the whole process group: this round's fault sweep showed the test from `da90a37`
+      passed with the SIGTERM never sent or sent to the worker alone (the SIGKILL covered both).
+    - The notes commit — (8, 9) CHANGELOG, `tests/README.md`, these notes, both CONTEXT files and
+      both MEMORY files.
+  - **Review status.** Codex has reviewed `413d570..748e87c` (10 findings), `748e87c..42bd45e` (6)
+    and, as a catch-up, `748e87c..2f91439` (8). Stand-ins (fresh Opus agents, not Codex) reviewed
+    `748e87c..a9fb292` and `42bd45e..b39f40d`. Commits after `2f91439` are not yet reviewed.
+  - **Next** (the maintainer's instruction, 5 October 2026). This repository's language-policy work
+    is handed over to its own sessions; nothing more will be run from the MeedyaDL session.
+    1. Next is a review of this round's commits (everything after `2f91439`) — by Codex if it has
+       allowance, otherwise by a fresh agent, named as a stand-in. Set `TMPDIR` to a writable
+       folder when asking Codex to run bats (its sandbox's default was not writable).
+    2. The review loop now stops when a review finds no high or medium problems. Low findings,
+       wording points and older faults become GitHub issues, not new rounds.
   - Note: the lead's decision named "review/verify when given `pr=`" as a second skill that checks
     pull requests out; the review skill has no `pr=` argument today, so the text says "a skill that
     checks one out itself — today, ci-medic".
+- **Checks at the sixth round:** each code commit's guard tests were run with bash 5 and with
+  `/bin/bash` 3.2 before it was committed (47 at `2f91439`; 52 from `b8da4d4`), and shellcheck. On
+  `a3269c3`, in a throwaway repository of its own: both audits, the smoke test, shellcheck and
+  actionlint clean; bats 199 of 199, none skipped (193 before the round, plus five Bash-guard tests
+  and one ci-medic test; the #47 group still checks 30 sections, 11 items and 13 fields); the 52
+  guard tests also with `/bin/bash` 3.2; and in an Ubuntu 24.04 container (mawk, bash 5.2) 199 of
+  199 with the 10 schema tests skipped (`check-jsonschema` is not installed there). The 10-push
+  control: ten allowed, eleven refused, with both shells. The fault sweep (59 planted faults; see
+  `tests/README.md`): 54 caught at `9e3a3cb`, then N04 and N05 caught by `6113bbc`; M23, N02 and
+  P09 change nothing a test can see.
 - **Checks at the fifth round:** each commit's own tree was checked before it was committed (the
   commit messages give the counts): both audits, the smoke test, shellcheck, actionlint and bats —
   193 at the last code commit (170 before the round, plus 23 Bash-guard tests) — and the guard
@@ -354,9 +400,10 @@ see the section straight below.
       unattended → BLOCKED, exactly as autopilot already does.
     - **ci-medic.** The run record is a file, `~/.dev-team/runs/<run-id>/run.txt`, beside
       `snapshot/`; the run id travels from pass to pass in the conversation, in the first line of
-      every pass report, and the limit is stated: if that line is summarised away, the next pass
-      takes its checkout as a new run's start — the starting branch whenever every earlier pass
-      put it back. A pull request's base copies are taken the first time a run works on it and
+      every pass report, and the limit was stated: if that line is summarised away, the next pass
+      takes its checkout as a new run's start (replaced in the sixth round, after Codex's catch-up
+      review: such a pass now finds its run from the run records, and stops when that is not
+      clear). A pull request's base copies are taken the first time a run works on it and
       reused for the rest of the run. A pass that cannot put the branch back stops without forcing,
       discarding or stashing. A scheduled routine's runs are each a new run.
     - **Pinning.** Two more whole sections are pinned — conventions "Cold-resume" and ci-medic's
@@ -372,8 +419,10 @@ see the section straight below.
       pass keeps the count that decides (it also covers `sh -c` strings). 10 pushes are checked; 11
       are refused.
     - **`$'…'` escapes** follow bash 5 (bash 3.2 does not know `\u`, so on 3.2 the guard refuses
-      more, not less); a zero byte, which ends a string in bash, is dropped (bash reads `$'\c@x'`
-      as nothing, the reader keeps the x: more refused, never less).
+      more, not less); a zero byte, which ends a string in bash, was dropped and the rest of the
+      string kept. This note used to say that could only refuse more, never less; that was wrong —
+      Codex's catch-up review found `$'main\0ignored'`, which bash reads as `main`, let through.
+      Since the sixth round the reader stops the string at the zero byte, as bash does.
     - **Named-branch mapping** reads the remote's push refspecs, `push.default` and the list of
       local branches once per push, and asks nothing when neither can move a branch; a negative
       refspec is not read (stated).
@@ -388,6 +437,27 @@ see the section straight below.
       38 s under a UTF-8 locale). Such a command is refused on time, which fails closed. Setting
       `LC_ALL=C` for the whole hook would cut some of these twentyfold; not done, as it is outside
       the brief — a suggestion for the lead.
+  - Sixth round (Codex's catch-up review of `748e87c..2f91439`):
+    - **Zero byte.** The cut lasts to the closing quote and escapes are still read inside it, so an
+      escaped quote there does not end the string; checked against `/bin/bash` 3.2 and bash 5
+      (they agree except on `\u`, as before).
+    - **Time limit.** The check of whether the hook is active at all (`guard: off`, an active run,
+      `DEV_TEAM_GUARD`) stays in front of the limit: it reads at most `.dev-team/config.yml` and
+      decides whether there is anything to time. An inactive hook still reads its input and throws it away,
+      as it always did. The grace is one second, so the bound is the limit plus one second. The
+      worker is handed the input with `<&0` as well as by job control; removing `<&0` alone changes
+      nothing a test can see. A worker stopped by SIGKILL (137) is refused like one stopped by
+      SIGTERM (143).
+    - **One command.** Only the `git` word is forgotten at the end of a simple command; `main`
+      anywhere in the text still counts, as it did in the check on the text as written long
+      before `748e87c`.
+    - **ci-medic.** With no line in the conversation and exactly one open run record for the
+      repository, the pass continues that run without asking, because a `/loop` has to keep
+      running hands-off after the conversation is summarised; the pass report says the run was
+      found from its record. `started as:` is written by the first pass, when how the run was
+      started is certain, so later passes read it rather than guess. A `/loop`'s run is never
+      marked ended (no pass can know it is the last): stated as a limit — a later session's first
+      pass continues it until the user asks for a new run.
 - **Rejected on the way:** testing a few key phrases (the second review showed a rule can be
   weakened by ADDING words, which such tests never see — so steps 1 and 8 are compared whole); a
   closed list of protected things (anything left off it was open to override — replaced by the
@@ -408,7 +478,11 @@ see the section straight below.
   waiting on kept the hook's output open, so the hook still took as long as the slow `git`); a test
   for M23 (it changes nothing, so no test can catch it). The ci-medic run-record check is not the
   rejected "is this some pull request's head branch?" guess: it reads only the plugin's own
-  records.
+  records. Sixth round: having the hook's worker report through its exit code and send all its
+  output nowhere, so that nothing it started could ever hold the hook's output (more moving parts;
+  the SIGKILL after one second already bounds the wait); asking the user every time a `/loop`'s run
+  line is missing (it would stop a hands-off loop; one open run is clear enough to continue, and
+  more than one does stop and ask).
 - **Suggestion, now built:** `/dev-team-config init` used to write every other key explicitly
   (`dry-run: off`, `gates: hybrid`, …), so a freshly initialised config could overrule a project's
   cautious instruction. Decided by the lead and built in the starter-file commit (above).

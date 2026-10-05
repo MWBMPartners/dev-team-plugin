@@ -33,5 +33,13 @@
   `-c`, `env -C <dir>`, a named branch that `remote.<name>.push` sends elsewhere, and a very long
   command timed under the Mac's `/bin/bash` 3.2 (a hook that is too slow is not waited for; bash's
   `${w%…}` / `${w#…}` on a long word grow with the square of its length).
+- Also try (found in #47's catch-up review): a zero byte inside `$'…'` (`$'main\0ignored'` is
+  `main` in bash); a push to a remote set up as a mirror (`remote.<name>.mirror`); a slow `jq` and
+  a child that ignores SIGTERM while holding the hook's output, under a short time limit; separate
+  commands whose words only add up to a push (`git status; echo 'push' 'main'`); and, for a test
+  that claims a long command is read to the end, whether it still passes when the reading stops
+  early.
+- Give every finding a severity. The review loop stops when a review finds no high or medium
+  problems; low findings, wording points and older faults become GitHub issues, not new rounds.
 - A record identifier such as `F-001` can run past 999 (`F-1000`); patterns must allow three or
   more digits.

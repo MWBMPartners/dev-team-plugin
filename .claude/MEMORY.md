@@ -118,6 +118,23 @@
   blocks with `git diff -U0 -- <file>`, stage chosen blocks with `git apply --cached
   --unidiff-zero <patch>`, and stage a hand-made in-between version of a file with
   `git hash-object -w` then `git update-index --cacheinfo 100644,<blob>,<path>`.
+- From #47's sixth round (Codex's catch-up review): bash ends a `$'…'` string at a zero byte
+  (`\0`, `\x00`, `\c@`, `\400`) but the word goes on after the closing quote; a remote with
+  `remote.<name>.mirror = true` pushes every branch when no branch is named; a hook's time limit
+  has to cover everything it does once active, reading its input and `jq` included; and stopping
+  what a hook started needs SIGTERM, a short grace, then SIGKILL to the whole process group — a
+  child that ignores SIGTERM and holds the hook's output otherwise keeps the caller waiting
+  (a `grep` in the hook inherits that output).
+- A test that claims a long command "is read to the end" needs a late case that only the full
+  reading can catch (`ma"i"n`, or a bare push that has to be worked out): a case the check on the
+  text as written also catches stays green when the reading stops early.
+- A rule that joins a command's words must not carry state from one simple command into the next
+  (`git status; echo 'push' 'main'` was refused that way).
+- Check a builder's or reviewer's statement of review history against the records before writing
+  it into the notes: in #47 the catch-up prompt said Codex had reviewed none of
+  `748e87c..2f91439`, while the lead's own records show Codex reviewed `748e87c..42bd45e`.
+- When a background loop of your own goes wrong, stop it by its process id. In zsh an unquoted
+  `$var` is not split into words, so a `for p in $list` loop written for bash can spin forever.
 
 ## The owner's machine
 
