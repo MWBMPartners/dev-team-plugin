@@ -1313,6 +1313,36 @@ cpu_below() { awk -v c="$1" -v m="$2" 'BEGIN { exit !(c + 0 < m + 0) }'; }
   done
 }
 
+@test "guard (speed): a program that ignores the request to stop cannot keep the caller waiting past the limit plus one second" {
+  # Codex's catch-up review of 748e87c..2f91439 (finding 4): past the limit the hook only ASKED
+  # what it had started to stop (SIGTERM), so a program that ignores that request and still holds
+  # the hook's output kept the caller waiting until it finished by itself. Here a stand-in grep —
+  # the text rules' grep inherits the hook's output — ignores SIGTERM and waits 30 seconds, under a
+  # 1-second limit: the refusal must arrive within the limit plus the one-second grace (the bound
+  # below leaves room for a busy machine; the hook before this fix took the full 30 seconds), and
+  # the stand-in must be gone afterwards (it is made to stop: SIGKILL).
+  mkdir -p "$SCRATCH/stubborn" "$SCRATCH/plain"
+  printf '#!/bin/sh\necho $$ >> "%s"\ntrap "" TERM\nsleep 30\nexec %s "$@"\n' "$SCRATCH/stubborn.pids" "$(command -v grep)" > "$SCRATCH/stubborn/grep"
+  chmod +x "$SCRATCH/stubborn/grep"
+  start=$SECONDS
+  run env PATH="$SCRATCH/stubborn:$PATH" DEV_TEAM_GUARD_TIME_LIMIT=1 bash -c 'cd "$1" && printf "%s" "$2" | DEV_TEAM_GUARD=1 bash "$3"' _ "$SCRATCH/plain" "$(guard_payload "ls -la")" "$REPO_ROOT/hooks/guard-dev-team.sh" 3>&-
+  took=$((SECONDS - start))
+  echo "status $status after ${took}s: $output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"took longer than 1 seconds"* ]]
+  [ "$took" -lt 8 ]
+  [ -s "$SCRATCH/stubborn.pids" ]
+  # Every stand-in that started has been stopped (allowing a moment for the stop to land).
+  for _ in 1 2 3 4 5; do
+    alive=""
+    while read -r pid; do kill -0 "$pid" 2>/dev/null && alive="$alive $pid"; done < "$SCRATCH/stubborn.pids"
+    [ -z "$alive" ] && break
+    sleep 1
+  done
+  echo "still running:${alive:- none}"
+  [ -z "$alive" ]
+}
+
 @test "guard (no branch named): a bare git push while on main is blocked, and the message names the branch" {
   make_push_repo main
   run run_guard_cmd "$SCRATCH/repo" "git push"

@@ -48,7 +48,9 @@
 #   - everything it does once it is active — reading its input, asking jq for the command, and
 #     all of its checking — runs under a 20-second limit (DEV_TEAM_GUARD_TIME_LIMIT can make it
 #     shorter, never longer); a command whose checking runs past it is REFUSED the same way, and
-#     anything the checking was still waiting on (a git that does not answer, say) is stopped.
+#     anything the checking was still waiting on (a git that does not answer, say) is stopped:
+#     asked to stop, and one second later made to, so the refusal reaches the caller within the
+#     limit plus that second even when something it started ignores the request to stop.
 #   These two fail closed because letting such a command through would mean the guard could be
 #   switched off by writing a longer command.
 #
@@ -910,6 +912,16 @@ seen=0
 #     still held the hook's error output open, so the hook's caller went on waiting for them — the
 #     first version of this limit refused on time but still took as long as the slow git did. The
 #     worker switches job control off again for itself, so everything it starts stays in its group.
+#   - The timer first asks the group to stop (SIGTERM), waits GRACE seconds, then stops it outright
+#     (SIGKILL, which cannot be ignored). Asking alone was not enough: a program that ignores SIGTERM
+#     and still holds the hook's output (a grep in the text rules inherits it) kept the caller
+#     waiting until it finished by itself — four seconds after a one-second limit in Codex's
+#     catch-up review of 748e87c..2f91439 (finding 4), and as long as the program liked in general.
+#     Once the limit is reached the hook can no longer call the timer off (it ignores the hook's
+#     SIGTERM from then on), so the SIGKILL always follows, even after the hook itself has exited;
+#     the refusal therefore reaches the caller within TIME_LIMIT + GRACE seconds. What this cannot
+#     do: a program that moves itself out of the process group (none of git, jq, awk, grep, tr or
+#     cat does) is not stopped.
 #   - The timer's own output goes nowhere, so a timer still counting down can never hold the
 #     hook's output open after the hook has finished; the hook stops it once the worker is done.
 #   - DEV_TEAM_GUARD_TIME_LIMIT can make the limit SHORTER (1 to 19 seconds), never longer; any
@@ -918,6 +930,7 @@ TIME_LIMIT=20
 case "${DEV_TEAM_GUARD_TIME_LIMIT:-}" in
   [1-9]|1[0-9]) TIME_LIMIT="$DEV_TEAM_GUARD_TIME_LIMIT" ;;
 esac
+GRACE=1
 set -m
 ( set +m; check_command ) <&0 &
 worker=$!
@@ -928,7 +941,11 @@ set +m
   sleep "$TIME_LIMIT" &
   nap=$!
   wait "$nap"
+  # The limit is reached: from here on the hook can no longer call this off.
+  trap '' TERM
   kill -TERM -- "-$worker" 2>/dev/null || kill -TERM "$worker" 2>/dev/null
+  sleep "$GRACE"
+  kill -KILL -- "-$worker" 2>/dev/null || kill -KILL "$worker" 2>/dev/null
 ) </dev/null >/dev/null 2>&1 &
 timer=$!
 wait "$worker" 2>/dev/null
@@ -936,6 +953,7 @@ rc=$?
 kill -TERM "$timer" 2>/dev/null
 case "$rc" in
   2) exit 2 ;;                                   # refused; the worker has said why
-  143) refuse "checking this command took longer than $TIME_LIMIT seconds, so it is refused rather than let through unchecked. Split it into smaller commands." ;;
+  # Stopped by the timer: 143 is SIGTERM, 137 is SIGKILL (the worker did not stop when asked).
+  137|143) refuse "checking this command took longer than $TIME_LIMIT seconds, so it is refused rather than let through unchecked. Split it into smaller commands." ;;
   *) exit 0 ;;                                   # allowed, or any other error: fail open
 esac
