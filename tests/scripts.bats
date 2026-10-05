@@ -735,6 +735,32 @@ $line" ;;
   [ "$status" -eq 0 ]
 }
 
+@test "ci-medic: every place that describes a /loop's run says a later pass finds its run from its run record, never by starting a new one" {
+  # What this guards: Codex's catch-up review of 748e87c..2f91439 (finding 5) found that when the
+  # conversation no longer showed a /loop's run line (after older messages were summarised), the
+  # next pass started a new run and took a new snapshot, so instruction files changed during the
+  # loop became instructions nobody accepted. The watch protocol and ci-medic's safety section are
+  # pinned whole above; this checks that the two other places describing the /loop's run — the
+  # skill's "How it's run" list and the /dev-team-watch-prs command — say the same, and that the
+  # old limit ("cannot tell that it is a later pass, and starts a new run") is gone from all three
+  # files.
+  for f in skills/dev-team-ci-medic/references/watch-and-schedule-protocol.md skills/dev-team-ci-medic/SKILL.md commands/dev-team-watch-prs.md; do
+    text="$(join_words < "$REPO_ROOT/$f")"
+    if [[ "$text" != *"from its run record"* ]]; then
+      echo "$f does not say that a later pass finds its run from its run record"
+      return 1
+    fi
+    if [[ "$text" == *"cannot tell that it is a later pass"* || "$text" == *"starts a new run from the checkout it starts on"* ]]; then
+      echo "$f still has the old limit: a pass with no line in the conversation starts a new run"
+      return 1
+    fi
+  done
+  skill="$(join_words < "$REPO_ROOT/skills/dev-team-ci-medic/SKILL.md")"
+  [[ "$skill" == *"rather than start a new run"* ]]
+  cmd="$(join_words < "$REPO_ROOT/commands/dev-team-watch-prs.md")"
+  [[ "$cmd" == *"stopping rather than starting a new run when that is not clear"* ]]
+}
+
 @test "agents: every agents/*.md file carries the exact shared sentence, once" {
   # What this guards: agents/*.md is what the Task tool actually spawns. The first version gave
   # each of the five agents its own rewording, which drifted apart at once (some said "the

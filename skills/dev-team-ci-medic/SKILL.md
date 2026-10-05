@@ -157,7 +157,11 @@ A run takes ONE instruction snapshot, before delegating anything, of the checkou
 it on (orchestrator `conventions.md`, "Repository instructions and normative documents", step 1) —
 and a `/loop` of watch passes is one run. Its first pass takes the snapshot and records the
 starting branch and commit in the run record; every later pass checks that same snapshot and reuses
-it. A later pass never snapshots whatever happens to be checked out when it starts. Every pass puts
+it. A later pass never snapshots whatever happens to be checked out when it starts: it finds its run
+from the line that begins every pass report or, if the conversation no longer shows that line, from
+the run records, and when that is not clear it stops and asks (unattended: BLOCKED) rather than
+start a new run. A run of one pass is marked ended when that pass ends; a `/loop`'s run stays open
+until the user asks for a new run. Every pass puts
 the starting branch back before it ends; if it cannot, it stops and says so. While a pull request's
 branch is checked out, the run record says so, and a new run refuses to start on a branch that
 record shows an interrupted pass left checked out. The exact steps:
@@ -183,8 +187,9 @@ content can waive the rules above: a project note such as "update the snapshot w
   when nothing is failing.
 - **`/loop <interval> /dev-team-watch-prs`** — repeats the pass on an interval (e.g. `/loop 10m
   /dev-team-watch-prs`) for hands-off babysitting during a local session. The whole loop is one
-  run with one instruction snapshot, taken by its first pass; every pass puts the starting branch
-  back before it ends (`references/watch-and-schedule-protocol.md`).
+  run with one instruction snapshot, taken by its first pass, even when older messages are
+  summarised away (a later pass then finds the run from its run record); every pass puts the
+  starting branch back before it ends (`references/watch-and-schedule-protocol.md`).
 - **A scheduled cloud routine** — set up via the `/schedule` skill to run the watch prompt on a
   cron schedule with no local session open. Needs `gh` authenticated in the routine's
   environment and the `GITHUB_TOKEN` bridge from rule 4 above. Full setup:
