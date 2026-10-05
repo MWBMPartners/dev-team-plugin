@@ -1068,6 +1068,27 @@ make_push_repo() {
   done
 }
 
+@test "guard (other spellings): a zero byte inside \$'...' ends the string there, as it does in bash" {
+  # Codex's catch-up review of 748e87c..2f91439 (finding 1) found `git push origin $'main\0ignored'`
+  # let through: bash stops a $'...' string at a zero byte, so the branch is main, but the reader
+  # dropped only the zero byte and read "mainignored". The word goes on after the closing quote
+  # ($'ma\0zz'in is main), an escaped quote in the part that is dropped does not close it, and
+  # the part dropped may run over several lines.
+  # Each of these is main in bash 3.2 and 5 alike, except \u0000, which bash 3.2 does not know
+  # (it keeps the text as written, so the guard refuses more there, never less).
+  for c in "git push origin \$'main\\0ignored'" "git push origin \$'main\\x00ignored'" "git push origin \$'main\\c@ignored'" "git push origin \$'main\\400ignored'" "git push origin \$'main\\u0000ignored'" "git push origin \$'ma\\0zz'in" "git push origin \$'ma\\0\\'x'in" "$(printf "git push origin \$'ma\\\\0x\nzz\nyy'in")"; do
+    run run_guard_cmd "$SCRATCH" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 2 ]
+  done
+  # Bash reads these as "mai" and "feature": nothing here pushes to main.
+  for c in "git push origin \$'mai\\0n'" "git push origin \$'feature\\0main'"; do
+    run run_guard_cmd "$SCRATCH" "$c"
+    echo "command: $c -> $status"
+    [ "$status" -eq 0 ]
+  done
+}
+
 @test "guard (other spellings): a brace list naming main is blocked" {
   for c in "git push origin {main,feature}" "git push origin {'main',x}" "git push origin HEAD:{main,x}"; do
     run run_guard_cmd "$SCRATCH" "$c"

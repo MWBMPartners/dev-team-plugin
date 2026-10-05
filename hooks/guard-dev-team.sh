@@ -13,7 +13,8 @@
 #   1. A `git push` whose command text names `main` or `master` as a whole word — as a plain
 #      word, inside a refspec (HEAD:main, +main, refs/heads/main), in a brace list ({main,x}), in
 #      double or single quotes, behind a backslash (\main), or spelled with bash's escapes inside
-#      $'...' ($'\x6d\x61\x69\x6e', $'\155ain', $'\u006dain'). The text is read the way the shell
+#      $'...' ($'\x6d\x61\x69\x6e', $'\155ain', $'\u006dain'; a zero byte ends the string there,
+#      as it does in bash, so $'main\0ignored' is main). The text is read the way the shell
 #      reads it: quotes and backslashes are removed and $'...' escapes worked out first, so 'main',
 #      "main", \main and ma'in' are all "main", and 'git' push and /usr/bin/git push are git pushes.
 #      A command string handed to `sh -c` / `bash -c` / `zsh -c` (and the like, after any options
@@ -217,8 +218,9 @@ read_words() {
   LC_ALL=C awk '
     function openw() { if (!inw) { printf "w"; inw = 1 } }
     # One character of the current word. A tab becomes a space (a line break inside a quoted word
-    # is turned into a space where the line ends).
-    function put(c) { if (!inw) { printf "w"; inw = 1 }; if (c == "\t") c = " "; printf "%s", c }
+    # is turned into a space where the line ends). Nothing is added while zc is set: the rest of a
+    # $'\''...'\'' string after a zero byte (see putbyte).
+    function put(c) { if (zc) return; if (!inw) { printf "w"; inw = 1 }; if (c == "\t") c = " "; printf "%s", c }
     function endword() { if (inw) { printf "\n"; inw = 0 } }
     function endcmd() { endword(); printf "s\n" }
     # Splits the current line at the characters that matter in one reading state (re), keeping
@@ -239,14 +241,19 @@ read_words() {
       off = i - S[ptr[w]] + 1
       piece = (off == 1) ? P[ptr[w]] : substr(P[ptr[w]], off)
       i = S[ptr[w]] + length(P[ptr[w]])
-      if (piece != "") { if (index(piece, "\t") > 0) gsub(/\t/, " ", piece); openw(); printf "%s", piece }
+      if (piece != "" && !zc) { if (index(piece, "\t") > 0) gsub(/\t/, " ", piece); openw(); printf "%s", piece }
     }
     # The escapes bash reads inside $'\''...'\'' (the stand-in review of 42bd45e..b39f40d found
     # $'\''\x6d\x61\x69\x6e'\'', which bash reads as main, let through: this reader used to keep
     # only the character after the backslash). One byte of a decoded escape: a tab or a line break
-    # becomes a space, as inside any quoted word, and a zero byte (which ends a string in bash) is
-    # dropped. awk runs with LC_ALL=C, so %c prints one byte.
-    function putbyte(v) { if (v == 0) return; if (v == 9 || v == 10) put(" "); else put(sprintf("%c", v)) }
+    # becomes a space, as inside any quoted word. awk runs with LC_ALL=C, so %c prints one byte.
+    # A zero byte (\0, \x00, \c@, \u0000, or \400, which wraps round to zero) ends the string in
+    # bash: nothing after it, up to the closing quote, is part of the word, though the word goes
+    # on after that quote ($'\''main\0ignored'\''x is mainx, and $'\''ma\0x'\''in is main, in bash
+    # 3.2 and 5 alike). zc ("zero cut") is set until that quote. This reader used to drop only the
+    # zero byte and keep the rest, so it read $'\''main\0ignored'\'' as "mainignored" while bash
+    # pushes to main (the catch-up review of 748e87c..2f91439 by Codex, finding 1).
+    function putbyte(v) { if (v == 0) { zc = 1; return }; if (v == 9 || v == 10) put(" "); else put(sprintf("%c", v)) }
     # A character number from \u or \U, written out in UTF-8, as bash does.
     function putcode(v) {
       if (v < 128) { putbyte(v); return }
@@ -291,7 +298,7 @@ read_words() {
       if (d == "c" && length(ch[i + 2]) == 1) { putbyte(ord(ch[i + 2]) % 32); return 3 }
       put("\\"); put(d); return 2
     }
-    BEGIN { st = 0; inw = 0; jn = 0; for (k = 32; k < 127; k++) asc = asc sprintf("%c", k) }
+    BEGIN { st = 0; inw = 0; jn = 0; zc = 0; for (k = 32; k < 127; k++) asc = asc sprintf("%c", k) }
     # st: 0 unquoted, 1 inside '\''...'\'', 2 inside "...", 3 inside $'\''...'\''
     {
       line = $0
@@ -305,8 +312,7 @@ read_words() {
         next
       }
       if ((st == 1 && index(line, "'\''") == 0) || (st == 2 && line !~ /["\\]/) || (st == 3 && line !~ /['\''\\]/)) {
-        gsub(/\t/, " ", line)
-        openw(); printf "%s ", line
+        if (!zc) { gsub(/\t/, " ", line); openw(); printf "%s ", line }
         next
       }
       jn = 0
@@ -323,7 +329,7 @@ read_words() {
         }
         if (st == 3) {
           if (c == "\\" && i < n) { i += esc(i); continue }
-          if (c == "'\''") { st = 0; i++; continue }
+          if (c == "'\''") { st = 0; zc = 0; i++; continue }
           if (c == "\\") { put(c); i++; continue }
           if (np3 < 0) np3 = prep(P3, S3, "['\''\\\\]")
           jump(P3, S3, np3, 3); continue
