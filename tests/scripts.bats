@@ -1290,6 +1290,29 @@ cpu_below() { awk -v c="$1" -v m="$2" 'BEGIN { exit !(c + 0 < m + 0) }'; }
   [[ "$output" == *"took longer than 20 seconds"* ]]
 }
 
+@test "guard (speed): the time limit also covers reading the hook's input and asking jq" {
+  # Codex's catch-up review of 748e87c..2f91439 (finding 3) found the time limit started only after
+  # the hook had read its input, asked jq twice and tidied the command: with a jq that took two
+  # seconds a call and a one-second limit, a harmless command was let through after four seconds.
+  # Here a stand-in jq (and then a stand-in cat) waits 8 seconds before doing its job, under a
+  # 1-second limit: the hook must refuse on time, not allow after 8 or 16 seconds. (The payload is
+  # built with the real jq first. 3>&- closes the file bats reports through; see the test above.)
+  mkdir -p "$SCRATCH/slowjq" "$SCRATCH/slowcat"
+  printf '#!/bin/sh\nsleep 8\nexec %s "$@"\n' "$(command -v jq)" > "$SCRATCH/slowjq/jq"
+  printf '#!/bin/sh\nsleep 8\nexec %s "$@"\n' "$(command -v cat)" > "$SCRATCH/slowcat/cat"
+  chmod +x "$SCRATCH/slowjq/jq" "$SCRATCH/slowcat/cat"
+  mkdir -p "$SCRATCH/plain"
+  for slow in slowjq slowcat; do
+    start=$SECONDS
+    run env PATH="$SCRATCH/$slow:$PATH" DEV_TEAM_GUARD_TIME_LIMIT=1 bash -c 'cd "$1" && printf "%s" "$2" | DEV_TEAM_GUARD=1 bash "$3"' _ "$SCRATCH/plain" "$(guard_payload "ls -la")" "$REPO_ROOT/hooks/guard-dev-team.sh" 3>&-
+    took=$((SECONDS - start))
+    echo "$slow: status $status after ${took}s: $output"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"took longer than 1 seconds"* ]]
+    [ "$took" -lt 6 ]
+  done
+}
+
 @test "guard (no branch named): a bare git push while on main is blocked, and the message names the branch" {
   make_push_repo main
   run run_guard_cmd "$SCRATCH/repo" "git push"

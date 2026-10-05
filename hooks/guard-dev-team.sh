@@ -45,7 +45,8 @@
 #   - it works out where at most 10 `git push` commands go in one command (each asks git several
 #     questions); a command with more — counting those inside a command string handed to a
 #     shell — is REFUSED, with a message asking for it to be split;
-#   - all of its checking runs under a 20-second limit (DEV_TEAM_GUARD_TIME_LIMIT can make it
+#   - everything it does once it is active — reading its input, asking jq for the command, and
+#     all of its checking — runs under a 20-second limit (DEV_TEAM_GUARD_TIME_LIMIT can make it
 #     shorter, never longer); a command whose checking runs past it is REFUSED the same way, and
 #     anything the checking was still waiting on (a git that does not answer, say) is stopped.
 #   These two fail closed because letting such a command through would mean the guard could be
@@ -85,33 +86,26 @@ set -u
 # No filename globbing anywhere in this hook: words and branch names from the command are only
 # ever compared, never matched against files.
 set -f
-payload="$(cat 2>/dev/null)" || exit 0
 
 # Scope: repo-scoped guard mode (.dev-team/config.yml, best-effort, fail-open) folded into the
 # active-run scope check. off = disabled repo-wide; on = forced on (skip the scope gate); auto/unset
 # (default) = only enforce during an active run, unless explicitly forced on via DEV_TEAM_GUARD.
+# When the hook is off, its input is still read (and thrown away) before it allows the command, as
+# it always was; when it is on, the input is read under the time limit (see "The time limit").
 guard_mode=""
 [ -f .dev-team/config.yml ] && guard_mode="$(grep -Eo '^[[:space:]]*guard:[[:space:]]*(on|off|auto)' .dev-team/config.yml 2>/dev/null | grep -Eo '(on|off|auto)$' | head -1)"
 case "$guard_mode" in
-  off) exit 0 ;;                                   # disabled repo-wide
+  off) cat >/dev/null 2>&1; exit 0 ;;              # disabled repo-wide
   on)  : ;;                                        # forced on — skip the active-run scope gate
-  *)   if [ -z "${DEV_TEAM_GUARD:-}" ]; then [ -f ".dev-team/autopilot.json" ] || exit 0; fi ;;
+  *)   if [ -z "${DEV_TEAM_GUARD:-}" ]; then [ -f ".dev-team/autopilot.json" ] || { cat >/dev/null 2>&1; exit 0; }; fi ;;
 esac
 
-# The command text, and the folder it will run in. Both come from the hook's own JSON input when
-# jq is available. Without jq the whole raw input is scanned as text (rule "(a)" below only), which
-# is what the hook did before it understood quotes.
+# The command text and the folder it will run in (set by read_input, inside the time limit), and
+# the command text with its line breaks turned into spaces.
 cmd=""
 run_dir=""
 have_jq=0
-if command -v jq >/dev/null 2>&1; then
-  have_jq=1
-  cmd="$(printf '%s' "$payload" | jq -r '.tool_input.command // empty' 2>/dev/null)"
-  run_dir="$(printf '%s' "$payload" | jq -r '.cwd // empty' 2>/dev/null)"
-fi
-[ -n "$cmd" ] || { cmd="$payload"; have_jq=0; }
-[ -n "$run_dir" ] && [ -d "$run_dir" ] || run_dir="$PWD"
-norm="$(printf '%s' "$cmd" | tr '\n' ' ' | tr -s ' ')"
+norm=""
 
 deny() {
   echo "dev-team guard: $1 Blocked as unrecoverable during an active run. Do it yourself, or disable the guard (remove .dev-team/autopilot.json or unset DEV_TEAM_GUARD)." >&2
@@ -858,9 +852,29 @@ analyse() {
   return 0
 }
 
-# Everything the hook checks, in one function, so that it can run under the time limit below:
-# (a) the text rules on the command text as written, then (b) the command read word by word.
+# Reads the hook's input: the command text, and the folder it will run in. Both come from the hook's
+# own JSON input when jq is available. Without jq the whole raw input is scanned as text (rule "(a)"
+# below only), which is what the hook did before it understood quotes.
+read_input() {
+  local payload
+  payload="$(cat 2>/dev/null)" || exit 0
+  if command -v jq >/dev/null 2>&1; then
+    have_jq=1
+    cmd="$(printf '%s' "$payload" | jq -r '.tool_input.command // empty' 2>/dev/null)"
+    run_dir="$(printf '%s' "$payload" | jq -r '.cwd // empty' 2>/dev/null)"
+  fi
+  [ -n "$cmd" ] || { cmd="$payload"; have_jq=0; }
+  [ -n "$run_dir" ] && [ -d "$run_dir" ] || run_dir="$PWD"
+  norm="$(printf '%s' "$cmd" | tr '\n' ' ' | tr -s ' ')"
+}
+
+# Everything the hook does once it is active, in one function, so that all of it runs under the time
+# limit below: reading its input, then (a) the text rules on the command text as written, then (b)
+# the command read word by word. Reading the input and asking jq used to happen before the time
+# limit started, so a jq that took two seconds a call let a harmless command through after four
+# seconds under a one-second limit (Codex's catch-up review of 748e87c..2f91439, finding 3).
 check_command() {
+  read_input
   # (a) The command text exactly as written, as before quotes were understood. Kept so that
   # nothing this rule used to refuse is let through by the word-by-word reading below.
   text_rules "$norm"
@@ -884,10 +898,12 @@ seen=0
 # The time limit.
 # ---------------------------------------------------------------------------------------------
 # Claude Code stops waiting for a hook after a while and then runs the command anyway, so a guard
-# that is too slow is a guard that is not there. The checking therefore runs in a background
-# subshell ("worker"), and a second one ("timer") stops it after TIME_LIMIT seconds; a command
-# whose checking runs past that is REFUSED, with a message asking for it to be split — it is never
-# let through unchecked.
+# that is too slow is a guard that is not there. Everything the hook does once it is active —
+# reading its input, asking jq for the command and the folder, and the checking — therefore runs in
+# a background subshell ("worker"), and a second one ("timer") stops it after TIME_LIMIT seconds; a
+# command whose checking runs past that is REFUSED, with a message asking for it to be split — it is
+# never let through unchecked. The worker reads the hook's own input: `<&0` hands it over
+# explicitly (without it, bash gives a background command /dev/null when job control is off).
 #   - The worker is started with job control on (set -m) only so that it gets a process group of
 #     its own, and the timer stops that whole group: the worker AND whatever it is waiting on (a
 #     git that does not answer, say). Stopping only the worker left its children running, and they
@@ -903,7 +919,7 @@ case "${DEV_TEAM_GUARD_TIME_LIMIT:-}" in
   [1-9]|1[0-9]) TIME_LIMIT="$DEV_TEAM_GUARD_TIME_LIMIT" ;;
 esac
 set -m
-( set +m; check_command ) &
+( set +m; check_command ) <&0 &
 worker=$!
 set +m
 (
