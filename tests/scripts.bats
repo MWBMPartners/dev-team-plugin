@@ -1142,6 +1142,20 @@ make_push_repo() {
   body="$(for i in $(seq 1 800); do printf 'a line of text %s\n' "$i"; done)"
   run run_guard_cmd "$SCRATCH" "$(printf 'cat > notes.txt <<EOF\n%s\nEOF\ngit push origin \\main' "$body")"
   [ "$status" -eq 2 ]
+  # Late cases that only the full reading can catch. Codex's catch-up review of 748e87c..2f91439
+  # (finding 6) cut the reading off after the first 4,096 characters and the first two cases above
+  # still passed, because the check on the command text as written catches 'main' too. ma"i"n has
+  # no main in the text as written, and a bare push names no branch at all, so the hook must read
+  # to the very end, and there work out where the push would go, to refuse them.
+  run run_guard_cmd "$SCRATCH" "${long}git push origin ma\"i\"n"
+  echo "late ma\"i\"n: $status: $output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"push to main/master detected"* ]]
+  make_push_repo main
+  run run_guard_cmd "$SCRATCH/repo" "${long}git push"
+  echo "late bare push on main: $status: $output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"git would push to 'main'"* ]]
 }
 
 # ---------------------------------------------------------------------------
@@ -1196,6 +1210,17 @@ cpu_below() { awk -v c="$1" -v m="$2" 'BEGIN { exit !(c + 0 < m + 0) }'; }
   echo "$output"
   [ "$status" -eq 2 ]
   [[ "$output" == *"push to main/master detected"* ]]
+  # Two late pushes that only the full reading catches (see the long-command test above): ma"i"n,
+  # and a bare push in a repository on main.
+  run run_guard_cmd "$SCRATCH" "$(printf 'cat > n.txt <<EOF\n%s\nEOF\ngit push origin ma"i"n' "$body")"
+  echo "late ma\"i\"n: $status: $output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"push to main/master detected"* ]]
+  make_push_repo main
+  run run_guard_cmd "$SCRATCH/repo" "$(printf 'cat > n.txt <<EOF\n%s\nEOF\ngit push' "$body")"
+  echo "late bare push on main: $status: $output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"git would push to 'main'"* ]]
   # The same heredoc with a harmless push: under 4 seconds of processor time (the reader before
   # this round used about 7 with macOS's bash 3.2 and awk; this one about 1).
   guard_payload "$(printf 'cat > n.txt <<EOF\n%s\nEOF\ngit push origin feature' "$body")" > "$SCRATCH/payload.json"
@@ -1245,6 +1270,18 @@ cpu_below() { awk -v c="$1" -v m="$2" 'BEGIN { exit !(c + 0 < m + 0) }'; }
   echo "status $status: $output"
   [ "$status" -eq 2 ]
   [[ "$output" == *"push to main/master detected"* ]]
+  # Two late pushes that only the full reading catches (see the long-command test above).
+  cmd="git add$files; git push origin ma\"i\"n"
+  run run_guard_cmd "$SCRATCH" "$cmd"
+  echo "late ma\"i\"n: $status: $output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"push to main/master detected"* ]]
+  make_push_repo main
+  cmd="git add$files; git push"
+  run run_guard_cmd "$SCRATCH/repo" "$cmd"
+  echo "late bare push on main: $status: $output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"git would push to 'main'"* ]]
   if [ -n "$late" ]; then
     skip "the machine was too busy: the hook was stopped at its time limit on the git add before its speed could be judged"
   fi
