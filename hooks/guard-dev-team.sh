@@ -27,9 +27,10 @@
 #      `--branches` / `--mirror` — when the hook can work out from the repository's own git
 #      settings that it would push to `main` or `master`: the current branch's name, the branch
 #      it tracks (`branch.<name>.merge`), `push.default` (`nothing`, `matching`, `current`,
-#      `simple`, `upstream`), and a `remote.<name>.push` setting if there is one (a destination
+#      `simple`, `upstream`), a `remote.<name>.push` setting if there is one (a destination
 #      it names, a `*` pattern — read as pushing any local main/master — and `:`, read exactly as
-#      `push.default=matching`). It asks git in the folder the command runs in (the hook input's
+#      `push.default=matching`), and a remote set up as a mirror (`remote.<name>.mirror`, read as
+#      `--mirror`: every branch). It asks git in the folder the command runs in (the hook input's
 #      `cwd`, then any `git -C <dir>` in the command) and passes through the command's own
 #      `-c`, `--git-dir` and `--work-tree` options.
 #      The same goes for a branch named with no destination (`git push origin feature`): git sends
@@ -582,6 +583,15 @@ implicit_targets() {
     refspec_targets $pushspecs
     return 0
   fi
+  # A remote set up as a mirror (remote.<name>.mirror = true, as `git remote add --mirror=push`
+  # writes it) is pushed to as if --mirror were given: every branch, main included, from a feature
+  # branch or a detached HEAD alike. git reads it in this same order — the remote's own push
+  # refspecs first, then the mirror setting, then push.default (do_push() in builtin/push.c) — and
+  # `git push --dry-run` against a local bare repository showed `main -> main` for each case the
+  # tests use. This hook used to skip the setting, so `git push backup` to such a remote was let
+  # through (Codex's catch-up review of 748e87c..2f91439, finding 2). A branch named on the command
+  # line needs nothing here: git refuses to combine a mirror with a refspec.
+  if [ "$(g config --bool --get "remote.$remote.mirror")" = true ]; then local_protected; return 0; fi
   default="$(g config --get push.default)" || default="simple"
   merge="$(g config --get "branch.${cur:-.}.merge")" || merge=""
   merge="${merge#refs/heads/}"

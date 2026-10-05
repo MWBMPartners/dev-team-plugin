@@ -1366,6 +1366,44 @@ cpu_below() { awk -v c="$1" -v m="$2" 'BEGIN { exit !(c + 0 < m + 0) }'; }
   [ "$status" -eq 0 ]
 }
 
+@test "guard (no branch named): a push to a remote set up as a mirror is read as pushing every branch, main included" {
+  # Codex's catch-up review of 748e87c..2f91439 (finding 2) found `git push backup` let through from
+  # a feature branch while remote.backup.mirror = true made git push main as well: git treats such a
+  # remote as if --mirror were given. The remote here is a local bare repository under $SCRATCH, and
+  # git's own dry run against it is checked first, so the test cannot pass on a wrong premise.
+  make_push_repo feature
+  git init -q --bare "$SCRATCH/backup.git"
+  git -C "$SCRATCH/repo" remote add backup "$SCRATCH/backup.git"
+  git -C "$SCRATCH/repo" config remote.backup.mirror true
+  run git -C "$SCRATCH/repo" push --dry-run -v backup
+  echo "git's own dry run: $output"
+  [[ "$output" == *"main -> main"* ]]
+  run run_guard_cmd "$SCRATCH/repo" "git push backup"
+  echo "git push backup -> $status: $output"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"git would push to 'main'"* ]]
+  # The same remote chosen by remote.pushDefault, with no remote named in the command.
+  git -C "$SCRATCH/repo" config remote.pushDefault backup
+  run run_guard_cmd "$SCRATCH/repo" "git push"
+  [ "$status" -eq 2 ]
+  git -C "$SCRATCH/repo" config --unset remote.pushDefault
+  # The setting given with -c on the command itself is read too.
+  git -C "$SCRATCH/repo" config remote.backup.mirror false
+  run run_guard_cmd "$SCRATCH/repo" "git -c remote.backup.mirror=true push backup"
+  [ "$status" -eq 2 ]
+  # Controls: mirror off, or the remote's own push refspecs (which git reads before the mirror
+  # setting, and which here send only feature) — nothing goes to main.
+  run run_guard_cmd "$SCRATCH/repo" "git push backup"
+  [ "$status" -eq 0 ]
+  git -C "$SCRATCH/repo" config remote.backup.mirror true
+  git -C "$SCRATCH/repo" config remote.backup.push refs/heads/feature:refs/heads/feature
+  run git -C "$SCRATCH/repo" push --dry-run -v backup
+  echo "git's own dry run with a push refspec: $output"
+  [[ "$output" != *"main -> main"* ]]
+  run run_guard_cmd "$SCRATCH/repo" "git push backup"
+  [ "$status" -eq 0 ]
+}
+
 @test "guard (no branch named): a named branch that remote.<name>.push, or push.default=upstream, sends to main is blocked" {
   # The stand-in review of 42bd45e..b39f40d found `git push origin feature` let through while
   # remote.origin.push = refs/heads/feature:refs/heads/main sent it to main. git maps a named
