@@ -95,6 +95,7 @@ Plugins install **once, at the user level** — the `/plugin marketplace add` + 
 | Drive a product **all the way to production**, autonomously | [dev-team-autopilot](#dev-team-autopilot) | Conductor of all the above; fire via `/loop`. |
 | Generate/maintain/audit a codebase's docs — verified against source, never invented | [dev-team-docs](#dev-team-docs) | Accuracy over volume; every claim traced to `file:line`, examples actually run. |
 | Safely migrate a framework/language/dependency major, schema, or API — staged, reversible | [dev-team-migrate](#dev-team-migrate) | Characterization-test net before anything moves; Migration Plan Gate; no big-bang by default. |
+| Find and fix what makes a web app look unfinished or AI-made (meta and social previews, 404/empty/error states, mobile layout, console noise, dead buttons) | [dev-team-polish](#dev-team-polish) | Runs the app in a real browser at many screen sizes; `guard` mode keeps the checks running in CI. A SessionStart reminder makes it recur. |
 
 Most skills also accept **plain-language equivalents** — e.g. "keep costs down" sets `models=economy`, "make it faster" sets `focus=efficiency`, "improve the UX" sets `focus=ux`. The [`/dev-team`](#commands) router picks the right skill from free text.
 
@@ -336,6 +337,16 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 
 **Artifacts.** `MIGRATION.md` (this skill's own external memory: the Migration Plan, the Stage Ledger, and the compatibility-shims-in-play table — see `references/migration-plan-protocol.md`); one commit per stage, including Stage 0 (the characterization net), on a `migrate/<date>` branch, handed back to the user for review and never auto-merged.
 
+### dev-team-polish
+
+**Purpose.** Find and fix the small details that make someone look at a web app for five seconds and think it was thrown together by an AI: default or preview domains, missing or duplicate per-page titles, descriptions, favicons, Open Graph images and canonical URLs, missing 404/loading/empty/error states, broken heading order and missing alt text, careless sitemaps, console errors and leftover logs, exposed development files, oversized JavaScript, layouts that only work at one screen size, styles that drift between pages, and buttons or links that look like they work but don't. It boots the app and checks every public route in a headless browser at phone, tablet, desktop and odd sizes.
+
+**When to use.** "Does this look vibe-coded?", "polish pass", "pre-launch check", "check SEO / social previews", "check mobile", "find dead buttons". The [polish reminder hook](#hooks--environment-switches) also prompts it every 7 days (configurable) in any repo that contains web files. Not for redesigns or new features (use [dev-team-iterate](#dev-team-iterate) or [dev-team-orchestrator](#dev-team-orchestrator)) or security audits (use [dev-team-security](#dev-team-security)).
+
+**Modes.** `audit` (report only) | `fix` (default: report, then fix clear low-risk items as small commits; product, design, domain and hosting decisions go to the owner with a recommendation) | `guard` (add one browser spec that asserts today's passing checks to the CI job the project already runs on every PR, so regressions turn the PR red).
+
+**Artifacts.** A report under three headings (**Blocked on me**, **Changed**, **Found**), with every finding carrying evidence and a severity; small `fix(web):`/`chore(web):` commits in `fix` mode; a regression spec in `guard` mode; and `.dev-team/polish-last-run` (today's date) committed so the reminder resets. Checklist and viewport matrix: `skills/dev-team-polish/references/polish-checklist.md`.
+
 ---
 
 ## Commands
@@ -351,6 +362,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 | [`/dev-team-sync-issues`][cmd-sync-issues] | `--dry-run`, `--confirm-each` | Export the suite's ledgers (feature gaps, backlog, security findings, review verdicts, gate items) to your GitHub or GitLab tracker (platform auto-detected; see [Issue sync](#issue-sync-optional)); opt-in, dedup-safe. |
 | [`/dev-team-config`][cmd-config] | `show\|init` | Print the effective config (built-in defaults overlaid with `.dev-team/config.yml`), or scaffold a starter repo-scoped config file (see [Configuration & feature toggles](#configuration--feature-toggles)). |
 | [`/dev-team-report`][cmd-report] | `[branch=<base>]` | Read-only, on-demand run report — phases/cycles, commits, agents by tier, a rough (not-a-bill) cost estimate — regardless of the `features.telemetry` toggle (see [Run reports & cost](#run-reports--cost)). |
+| [`/dev-team-polish`][cmd-polish] | `[audit\|fix\|guard] [notes]` | Run a [polish pass](#dev-team-polish) on this web app; `fix` is the default. |
 
 **Detail worth knowing:**
 
@@ -445,6 +457,7 @@ Each row is one setting; you can set as many as you like in the same file. The `
   | `dry-run` | Default plan-preview for building skills | `on`, `off` | none yet — config-only (a per-run argument still overrides for one run) | `off` |
   | `auto-handoff` | Regenerate the assistant-agnostic `HANDOFF.md` after every completed task/workstream | `on`, `off` | `DEV_TEAM_NO_AUTO_HANDOFF` | `on` |
   | `auto-commit` | Local per-task commit of each completed-and-checked workstream (never pushes, never opens a PR) | `on`, `off` | `DEV_TEAM_NO_AUTO_COMMIT` | `on` |
+  | `polish-reminder` | SessionStart reminder that a [polish check](#dev-team-polish) is due (interval set by `defaults.polish-interval-days`, default `7`) | `on`, `off` | `DEV_TEAM_NO_POLISH_REMINDER` | `on` |
 
   For `guard` specifically, the values aren't a simple on/off pair: `off` disables it repo-wide **even if** `DEV_TEAM_GUARD` is set for the session; `on` forces it active regardless of whether a run is in progress; `auto` (default) preserves today's behavior — active only while `.dev-team/autopilot.json` exists, unless `DEV_TEAM_GUARD` forces it on.
 
@@ -538,6 +551,7 @@ Since v1.2.0, each hook also reads the repo-scoped [`.dev-team/config.yml`][conf
 | [`hooks/check-update.sh`][check-update] | SessionStart | Layer-2 fallback update notifier: at most once per 24h, compares local vs. remote `plugin.json` and prints a one-line update notice if newer. Never updates anything; fails open/silent on missing `gh`/`jq` or network error. | `DEV_TEAM_NO_UPDATE_CHECK` (session), or `features.update-notifier: off` in `.dev-team/config.yml` (repo-wide) |
 | [`hooks/guard-dev-team.sh`][guard] | PreToolUse (Bash) | Best-effort safety net (one layer, never the guarantee). Blocks exactly three unrecoverable Bash actions while a run is active: `git push` to main/master, force-push to main/master, and any live Stripe key pattern (`sk_live_`/`rk_live_`/`pk_live_` — dev-team is test-mode only). Any parse error or no active run → silently allows. | `features.guard: off` in `.dev-team/config.yml` disables it repo-wide (wins even over `DEV_TEAM_GUARD`); otherwise it only engages when `.dev-team/autopilot.json` exists **or** `DEV_TEAM_GUARD` is set — unset `DEV_TEAM_GUARD` and/or remove `.dev-team/autopilot.json` to stop it firing for a session. |
 | [`hooks/sync-branches-check.sh`][sync-check] | SessionStart | Network-free, read-only notifier: counts local branches whose upstream shows `gone` and, if >0, points to `/dev-team-sync-branches`. Deletes nothing, makes no network calls, silent when nothing to report. | `DEV_TEAM_NO_BRANCH_CHECK` (session), or `features.branch-notifier: off` in `.dev-team/config.yml` (repo-wide) |
+| [`hooks/polish-reminder.sh`][polish-reminder] | SessionStart | Network-free, read-only: in a repo with tracked web files (`.html`, `.php`, `.vue`, `.svelte`, `.astro`, `.jsx`, `.tsx`), says a [polish check](#dev-team-polish) is due when `.dev-team/polish-last-run` is missing or older than `defaults.polish-interval-days` (default 7). Tells the model to run it after the current request, never in place of it. Silent otherwise. | `DEV_TEAM_NO_POLISH_REMINDER` (session), or `features.polish-reminder: off` in `.dev-team/config.yml` (repo-wide) |
 
 **All environment variables / switches** (per-session overrides layered on top of `.dev-team/config.yml`'s `features:` block — see [Configuration & feature toggles](#configuration--feature-toggles)):
 
@@ -548,6 +562,7 @@ Since v1.2.0, each hook also reads the repo-scoped [`.dev-team/config.yml`][conf
 | `DEV_TEAM_GUARD` | **Force-ON** switch (not an off-switch) for the Bash guard — makes it check every Bash command regardless of whether a run is active. | Guard scope limited to an active run (`.dev-team/autopilot.json` present). |
 | `DEV_TEAM_NO_AUTO_HANDOFF` | Off-switch for auto-handoff — set to any non-empty value and completed tasks stop triggering the extra `HANDOFF.md` regenerate for this session (the checkpoint/RECORD regenerate still happens). | Auto-handoff runs: `HANDOFF.md` is regenerated after every completed task/workstream. |
 | `DEV_TEAM_NO_AUTO_COMMIT` | Off-switch for auto-commit — set to any non-empty value and completed-and-checked tasks stop getting their own local per-task commit this session (checkpoint/cycle commits still happen). | Auto-commit runs: each completed-and-checked task/workstream lands its own local commit (never pushed). |
+| `DEV_TEAM_NO_POLISH_REMINDER` | Off-switch for the SessionStart polish reminder. Set it to any non-empty value to silence the reminder for the session. | The reminder runs every SessionStart and is silent unless a polish check is due in a web project. |
 | `DISABLE_AUTOUPDATER` | Global Claude Code var: turns off Claude Code's own auto-update entirely, including marketplace-level plugin auto-update (the plugin's Layer-1 update path). | Claude Code auto-update (and marketplace auto-update, if enabled) behaves normally. |
 | `FORCE_AUTOUPDATE_PLUGINS` | Global Claude Code var: keeps plugin auto-updates running even if `DISABLE_AUTOUPDATER` has otherwise turned off Claude Code's auto-update. | Unset. |
 
@@ -655,6 +670,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full repo layout, how to run all 
 [check-update]: hooks/check-update.sh
 [guard]: hooks/guard-dev-team.sh
 [sync-check]: hooks/sync-branches-check.sh
+[polish-reminder]: hooks/polish-reminder.sh
 [model-routing]: skills/dev-team-orchestrator/references/model-routing.md
 [orchestration-profiles]: skills/dev-team-orchestrator/references/orchestration-profiles.md
 [documentarian-protocol]: skills/dev-team-orchestrator/references/documentarian-protocol.md
@@ -688,3 +704,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full repo layout, how to run all 
 [cmd-sync-issues]: commands/dev-team-sync-issues.md
 [cmd-config]: commands/dev-team-config.md
 [cmd-report]: commands/dev-team-report.md
+[cmd-polish]: commands/dev-team-polish.md

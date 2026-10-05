@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [1.5.0] - <unreleased>
+
+### Added
+
+- **`dev-team-polish` skill** and **`/dev-team-polish`** command: find and fix the small details that make a
+  web app look unfinished or AI-made. It boots the app, checks every public route in a headless browser at
+  phone, tablet, desktop and odd viewports, and reports every finding with evidence and a severity under
+  three headings: Blocked on me, Changed, Found. It covers default or preview domains; per-page titles,
+  descriptions, favicons, Open Graph images and canonical URLs; 404, loading, empty and error states;
+  heading order, alt text and sitemaps; console errors, leftover logs, exposed development files and
+  oversized bundles; responsive layout and content edge cases; cross-page style drift; and buttons or links
+  that do nothing. Modes: `audit`, `fix` (default) and `guard` (adds a browser regression spec to the
+  project's existing PR CI job).
+- **Polish reminder** (`hooks/polish-reminder.sh`, SessionStart, `features.polish-reminder`, default `on`):
+  network-free and read-only. In a repo with tracked web files, it says a polish check is due when
+  `.dev-team/polish-last-run` is missing or older than `defaults.polish-interval-days` (default 7), and tells
+  the model to run it after the current request. Off-switch: `DEV_TEAM_NO_POLISH_REMINDER`.
+
 ## [1.4.0] - <unreleased>
 
 ### Added

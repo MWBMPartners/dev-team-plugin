@@ -1,7 +1,7 @@
 {
   "name": "dev-team",
-  "version": "1.4.0",
-  "description": "A suite of team-lead/product-owner skills that delegate software work to a tiered team of Claude subagents (Fable/Opus/Sonnet/Haiku, see model-routing): orchestrator (build), iterate (improve), security (adversarial audit), review (QA), featurefind (competitive gap analysis), autopilot (autonomous drive to production), stripe (payments build/review), ship (CI/CD, branch protection, secret scanning, releases), and ci-medic (watch PRs + safe CI-failure resolution).",
+  "version": "1.5.0",
+  "description": "A suite of team-lead/product-owner skills that delegate software work to a tiered team of Claude subagents (Fable/Opus/Sonnet/Haiku, see model-routing): orchestrator (build), iterate (improve), security (adversarial audit), review (QA), featurefind (competitive gap analysis), autopilot (autonomous drive to production), stripe (payments build/review), ship (CI/CD, branch protection, secret scanning, releases), ci-medic (watch PRs + safe CI-failure resolution), and polish (find and fix the details that make a web app look unfinished or AI-made).",
   "author": {
     "name": "MWBM Partners Ltd"
   },
@@ -17,6 +17,7 @@
     "autopilot",
     "config",
     "migrate",
-    "docs"
+    "docs",
+    "polish"
   ]
 }

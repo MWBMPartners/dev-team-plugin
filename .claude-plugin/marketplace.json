@@ -7,7 +7,7 @@
     {
       "name": "dev-team",
       "source": "./",
-      "description": "Team-lead/product-owner skills that delegate software work to a tiered team of Claude subagents (Fable/Opus/Sonnet/Haiku, see model-routing): orchestrator, iterate, security, review, featurefind, autopilot, stripe, ship, ci-medic, migrate, docs."
+      "description": "Team-lead/product-owner skills that delegate software work to a tiered team of Claude subagents (Fable/Opus/Sonnet/Haiku, see model-routing): orchestrator, iterate, security, review, featurefind, autopilot, stripe, ship, ci-medic, migrate, docs, polish."
     }
   ]
 }

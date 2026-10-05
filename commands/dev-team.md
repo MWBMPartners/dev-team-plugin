@@ -16,6 +16,7 @@ Route them to the right skill (activate it by following its SKILL.md), or if unc
 - Drive all the way to production-ready, autonomously → dev-team-autopilot (fire via `/loop dev-team-autopilot <mission>`)
 - Generate/maintain/audit project documentation, verified against source → dev-team-docs
 - Safe staged framework/dependency/schema migration ("migrate from X to Y", "upgrade to <major>", "cutover") → dev-team-migrate
+- Find and fix what makes a web app look unfinished or AI-made (meta/social previews, 404/empty/error states, mobile layout, console noise, dead buttons) → dev-team-polish (or `/dev-team-polish`)
 
 Also: `/dev-team-status` shows a live run dashboard; `/dev-team-approve <G-id> approve|reject` resolves a queued gate item; `/dev-team-update` checks for a newer plugin version; `/dev-team-sync-branches` safely prunes local branches whose remote was merged/deleted; `/dev-team-watch-prs` runs one CI-medic watch pass over this repo's open PRs (loopable); `/dev-team-sync-issues` exports the suite's ledgers (feature gaps, backlog, security findings, review verdicts, gate items) to the repo's issue tracker (GitHub or GitLab, auto-detected), opt-in and dedup-safe; `/dev-team-config show|init` prints the effective repo config or scaffolds a starter `.dev-team/config.yml`; `/dev-team-report [branch=<base>]` prints a read-only run report (phases, cycles, commits, agents by tier, a rough cost estimate) on demand.
 If the request clearly matches one skill, name it and proceed; otherwise ask one question.
