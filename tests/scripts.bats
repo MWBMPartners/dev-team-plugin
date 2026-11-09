@@ -2792,6 +2792,87 @@ cpu_below() { awk -v c="$1" -v m="$2" 'BEGIN { exit !(c + 0 < m + 0) }'; }
 }
 
 # ---------------------------------------------------------------------------
+# hooks/polish-reminder.sh
+# ---------------------------------------------------------------------------
+
+# Make $SCRATCH a git repo tracking one file named $1 (e.g. index.html or notes.txt).
+init_repo_with() {
+  ( cd "$SCRATCH" && git init -q . && : > "$1" && git add "$1" )
+}
+
+run_polish() {
+  run env -u DEV_TEAM_NO_POLISH_REMINDER \
+    bash -c "cd '$SCRATCH' && bash '$REPO_ROOT/hooks/polish-reminder.sh'"
+}
+
+@test "polish-reminder: DEV_TEAM_NO_POLISH_REMINDER=1 exits 0 with no output" {
+  init_repo_with index.html
+  run env DEV_TEAM_NO_POLISH_REMINDER=1 \
+    bash -c "cd '$SCRATCH' && bash '$REPO_ROOT/hooks/polish-reminder.sh'"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "polish-reminder: config polish-reminder=off exits 0 with no output" {
+  init_repo_with index.html
+  mkdir -p "$SCRATCH/.dev-team"
+  printf 'features:\n  polish-reminder: off\n' > "$SCRATCH/.dev-team/config.yml"
+  run_polish
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "polish-reminder: silent outside a git repo" {
+  run_polish
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "polish-reminder: silent in a repo with no web files" {
+  init_repo_with notes.txt
+  run_polish
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "polish-reminder: web repo never checked emits a valid JSON reminder" {
+  init_repo_with index.html
+  run_polish
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"dev-team-polish"* ]]
+  [[ "$output" == *"has not been run"* ]]
+  echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "SessionStart"' >/dev/null
+}
+
+@test "polish-reminder: silent when the last run is within the interval" {
+  init_repo_with index.html
+  mkdir -p "$SCRATCH/.dev-team"
+  date -u +%Y-%m-%d > "$SCRATCH/.dev-team/polish-last-run"
+  run_polish
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "polish-reminder: reminds when the last run is older than the interval" {
+  init_repo_with index.html
+  mkdir -p "$SCRATCH/.dev-team"
+  echo "2000-01-01" > "$SCRATCH/.dev-team/polish-last-run"
+  run_polish
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"last run 2000-01-01"* ]]
+}
+
+@test "polish-reminder: honours polish-interval-days from config" {
+  init_repo_with index.html
+  mkdir -p "$SCRATCH/.dev-team"
+  echo "2000-01-01" > "$SCRATCH/.dev-team/polish-last-run"
+  printf 'defaults:\n  polish-interval-days: 999999\n' > "$SCRATCH/.dev-team/config.yml"
+  run_polish
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+# ---------------------------------------------------------------------------
 # scripts/branch-hygiene.sh
 # ---------------------------------------------------------------------------
 

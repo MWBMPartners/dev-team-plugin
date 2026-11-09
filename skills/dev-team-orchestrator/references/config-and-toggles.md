@@ -98,6 +98,7 @@ defaults:            # override the skills' built-in argument defaults
   # cap: 30            # autopilot convergence cap
   # cycles: 5          # iterate cycle cap
   # issues: off        # issue-sync: off | sync | auto  (auto = per-task cadence; security findings still require sync-security)
+  # polish-interval-days: 7  # days between polish checks before the SessionStart polish reminder fires
 
 git:
   # stack-prs: false   # false (default) = every run branches FROM and targets the DEFAULT branch; never
@@ -122,6 +123,7 @@ features:            # enable/disable behaviours repo-wide (on|off; env var can 
                            #   While unset, a project instruction that explicitly forbids a second handover turns it off; a value set here wins over that instruction.
   # auto-commit: on        # local commit per completed-and-checked task/workstream  (v1.3.0; per-session override: DEV_TEAM_NO_AUTO_COMMIT)
   # pointer-sentence: ask  # ask (not yet asked: offer the .dev-team/ pointer sentence) | declined (never offer it again)  (v1.5.0)
+  # polish-reminder: on    # SessionStart notice when a dev-team-polish check is due in a web project (v1.7.0; per-session override: DEV_TEAM_NO_POLISH_REMINDER)
 ```
 
 `version: 1` is the only required key going forward — every other key has a built-in default, so a
@@ -149,6 +151,7 @@ which a per-run argument or plain language can still override for one run:
 | `gates` | `gates=hybrid\|pause-all\|autonomy-envelope` (autopilot) | `hybrid`, `pause-all`, `autonomy-envelope` | `hybrid` |
 | `cap` | `cap=N` (autopilot convergence backstop) | integer | `~30` |
 | `cycles` | `cycles=N` (iterate cycle cap) | integer | `5` |
+| `polish-interval-days` | (none; read by `hooks/polish-reminder.sh`) | positive integer | `7` |
 | `issues` | `issues=off\|sync\|auto` | `off`, `sync`, `auto` (`auto` = per-task cadence; security findings still need the separate `sync-security` opt-in — see `issue-sync-protocol.md`) | `off` |
 
 ## `git:` — branch policy
@@ -178,6 +181,7 @@ the full rules and why duplicate/stacked PRs are disallowed by default.
 | `handoff-file` | whether `.dev-team/HANDOFF.md` exists at all (v1.6.0). `off` = the plugin writes NO `.dev-team/HANDOFF.md` at all — not per task, not at a stage checkpoint or RECORD, not at the end of an autopilot cycle — auto-handoff is off with it (even a per-run `auto-handoff=on`), and cold resume uses `.dev-team/PROJECT.md` and `.dev-team/autopilot.json` instead. While the key is unset, a repository instruction that explicitly forbids a second handover sets it `off`; a value set here wins over that. The starter file leaves it, like every other setting, commented out for that reason (`conventions.md`, "Auto-handoff") | `on`, `off` — also `true`/`yes` and `false`/`no`, in any mix of capitals; anything else is named in the run's report and treated as `off`, the cautious value | none — config-only (a per-run `handoff-file=on|off` still overrides for one run) | `on` |
 | `auto-commit` | local commit per completed-and-checked task/workstream — never push, never PR (v1.3.0) | `on`, `off` | `DEV_TEAM_NO_AUTO_COMMIT` (off-switch: any non-empty value disables) | `on` |
 | `pointer-sentence` | whether an interactive run offers to add the `.dev-team/` pointer sentence to `CLAUDE.md` / `.claude/CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (v1.5.0; `conventions.md`, "Where the plugin writes, and the ownership rule", point 8) | `ask`, `declined` | none — config-only | `ask` (not yet asked) |
+| `polish-reminder` | `hooks/polish-reminder.sh` (SessionStart notice that a `dev-team-polish` check is due in a repo with web files; v1.7.0) | `on`, `off` | `DEV_TEAM_NO_POLISH_REMINDER` (off-switch: any non-empty value disables) | `on` |
 
 Apart from `/dev-team-config init` writing the keys a user chose while it ran, `pointer-sentence`
 and `handoff-file` are the only keys the plugin writes itself, and only to record
