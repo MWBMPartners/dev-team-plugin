@@ -20,6 +20,7 @@ This skill is for **defensive hardening of code you own or are authorized to aud
 - **Secrets handling:** if an agent finds a hardcoded secret/key/token, it reports its **location and type**, never the value — never paste, log, commit, or exfiltrate it. Flag it for rotation; treat it as compromised.
 - **Findings stay private:** vulnerability details and PoCs live in the repo's security docs and the run branch only. Do not publish, post, or send them anywhere external without the user's explicit say-so.
 - **Stop and ask** if the audit would touch anything outside the local sandbox, or if a finding implies an *already-active* compromise (then it's incident response, not an audit — escalate to the user immediately). Freeze ALL remediation: do NOT fix or patch, even if the fix looks clear — auto-patching can destroy forensic evidence and tip off an attacker. Branch isolation/revert does NOT cover this; evidence destruction on a live system is not git-revertible. Escalate to the user immediately and hand off as incident response.
+- **Security-policy locations are refused.** This skill never writes `SECURITY.md` at the project's top level, in `.github/`, or in `docs/` — the three places GitHub reads a public security policy from — even when an argument names one of those paths. It refuses and says why: that file is the project's public policy, and findings written into it would be published as if they were policy. This skill's register lives only at `.dev-team/SECURITY.md`. See `dev-team-orchestrator/references/conventions.md`, "Where the plugin writes, and the ownership rule" (point 6).
 
 If the target isn't clearly the user's own / authorized code, confirm authorization before Phase 0.
 
@@ -27,13 +28,13 @@ If the target isn't clearly the user's own / authorized code, confirm authorizat
 
 Same roles as the orchestrator, plus an explicit red/blue split (model routing: `skills/dev-team-orchestrator/references/model-routing.md`):
 
-- **Scouts** — the `opus-builder` agent (Opus tier), read-only. Map the app and its attack surface, **run the security scanners** (SCA/SAST/secret/container — see Phase 0), and stand up the sandbox + multi-role test fixtures.
+- **Scouts** — the `opus-builder` agent (Opus tier), read-only. Map the app and its attack surface, **run the security scanners** (SCA/SAST/secret/container — see Phase 0), and stand up the sandbox + multi-role test fixtures. Also apply "Repository instructions and normative documents" (orchestrator conventions.md): report the repository's instruction files and any normative documents, with their rule-ID scheme and profiles.
 - **Red-team agents** — the `opus-builder` agent (Opus tier). Adversarially probe each surface and **try to exploit it**, producing PoC evidence + CWE/CVSS, augmented by the scanner leads. Follow `references/red-team-protocol.md`. They modify nothing but may add isolated PoC/repro artifacts in a sandbox/test dir. Security verification stays on the Opus/frontier tier — never routed cheaper (model-routing.md, invariant 1).
 - **Validator (skeptic)** — the `opus-builder` agent (Opus tier). Before any fix effort, tries to **refute** each finding — is the sink really reachable, is the PoC real, is the severity right? Defaults to rejected/downgraded when unconfirmed. This is the false-positive gate; see `red-team-protocol.md`. Same invariant: never routed cheaper than Opus.
 - **Builders (blue team)** — the `opus-builder` agent (Opus tier). Implement the fixes (orchestrator's `task-brief-template.md`), defense-in-depth, no regressions.
 - **Checker / verifier** — the `opus-builder` agent (Opus tier). Standard checker pass **plus** re-runs the red-team PoC and bypass variants to confirm the vuln is actually closed (not just moved), **red-teams the fix diff for newly-introduced vulns**, and confirms no regression. Uses `references/remediation-and-verify-protocol.md` on top of `checker-protocol.md`. Verification stays on the Opus/frontier tier — never routed cheaper (model-routing.md, invariant 1).
 - **Completeness critic** — the `opus-builder` agent (Opus tier), end of run. Asks "what class/surface did we *not* test, what claim is unverified?" against the coverage ledger; what it finds becomes the next round.
-- **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Owns `SECURITY.md` (the audit's external memory): threat model, the **coverage ledger**, the **findings register** (with CWE/CVSS), severity, status, fixes, and verification results.
+- **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Owns `.dev-team/SECURITY.md` (the audit's external memory): threat model, the **coverage ledger**, the **findings register** (with CWE/CVSS), severity, status, fixes, and verification results.
 
 ## The operating loop
 
@@ -53,14 +54,23 @@ PHASE 0: THREAT MODEL + ATTACK-SURFACE MAP + TOOLING SWEEP + MULTI-ROLE FIXTURES
 
 ### Phase 0 — Threat model & attack-surface map
 
+**At the start of the run, before any agent is spawned:** take the instruction snapshot
+(`dev-team-orchestrator/references/conventions.md`, "Repository instructions and normative
+documents", step 1) — or, when this run resumes a recorded, unfinished one (the suite's Cold-resume
+contract, same file), check and reuse that run's recorded snapshot instead, stopping with a plain
+message if the check fails and never taking a new one in its place (a run recorded before 1.6.0 has
+none: see step 1) — and settle `handoff-file` once ("Auto-handoff", same file); pass the snapshot in
+every brief and the `handoff-file` value in every documentarian brief. Under the autopilot
+conductor, use the conductor's snapshot and value instead of taking your own.
+
 You're always in an existing repo, so **scout first**. Follow `references/threat-model-and-surface-protocol.md`. In short:
 
-0. **Resume check (do this first).** Look for a current `SECURITY.md` — its **coverage ledger** and **findings register** — from a prior `dev-team-security` run in this repo. If it exists and validates as current (git-drift check + a quick spot-check, same discipline as `dev-team-iterate`'s Phase 0), **RESUME**: reuse the coverage ledger and findings register as-is, and pick up red-teaming only the checklist classes still `tested? = no`/`partial` and any `open`/unresolved finding — don't re-run the full sweep. If it's missing, stale, fails the spot-check, or the tree is dirty in a way that invalidates it, do a **full Phase 0** and write it fresh. Either way, update the run record. See `dev-team-orchestrator/references/conventions.md` ("Cold-resume").
+0. **Resume check (do this first).** Look for a current `.dev-team/SECURITY.md` (found through the lookup order) — its **coverage ledger** and **findings register** — from a prior `dev-team-security` run in this repo. If it exists and validates as current (git-drift check + a quick spot-check, same discipline as `dev-team-iterate`'s Phase 0), **RESUME**: reuse the coverage ledger and findings register as-is, and pick up red-teaming only the checklist classes still `tested? = no`/`partial` and any `open`/unresolved finding — don't re-run the full sweep. If it's missing, stale, fails the spot-check, or the tree is dirty in a way that invalidates it, do a **full Phase 0** and write it fresh. Either way, update the run record. See `dev-team-orchestrator/references/conventions.md` ("Cold-resume").
 1. **Scouts** map: stack, entry points, trust boundaries, data flows, authN/authZ model, external integrations, secrets handling, deployment/config, and the dependency manifest. Establish how to run a **local sandbox instance**, how tests run, and **seed multi-role test fixtures** — accounts at different privilege levels (anon, user, admin, cross-tenant) so access-control classes (IDOR/BOLA/BFLA/privilege escalation) can actually be tested.
 2. **Tooling sweep** — don't rely on reasoning alone. Run whatever scanners the stack supports (SCA: `npm audit`/`pip-audit`/`osv-scanner`; SAST: `semgrep`/`bandit`/`gosec`; secrets incl. **git history**: `gitleaks`/`trufflehog`; containers/IaC: `trivy`) and load the results into the findings register as **starting leads** for the red team. Tools give deterministic evidence and catch what reasoning misses.
 3. Build a lightweight **threat model**: assets (what's worth protecting), entry points, trust boundaries, and the likely adversaries/abuse cases.
 4. Enumerate the **attack surface** against the comprehensive vulnerability-class checklist in the protocol (injection, broken access control, authN/session, crypto, secrets, SSRF, deserialization, XSS/CSRF, file handling/path traversal, business-logic/race, data exposure, API abuse, dependency/supply-chain, config/hardening, client-side, IaC/container). Aim for **complete coverage of the checklist**, not a sampling.
-5. The documentarian writes the threat model, the surface map, and a **coverage ledger** (each checklist class → tested? by tool/agent? result?) into `SECURITY.md`.
+5. The documentarian writes the threat model, the surface map, and a **coverage ledger** (each checklist class → tested? by tool/agent? result?) into `.dev-team/SECURITY.md`.
 
 Then report the plan and any already-obvious critical issue to the user. Unlike a feature build, you don't need a feature-approval gate to start hardening — but **CRITICAL findings go to the user the moment they're confirmed**, not at the end.
 
@@ -111,13 +121,13 @@ Then **report**:
 - **Durable hardening** — propose wiring the new security regression tests + a SAST/SCA gate into CI, and a dependency-update policy, so the audit isn't only point-in-time.
 - **Limitations (state them plainly):** this is LLM-simulated, tool-assisted security testing — not a substitute for a professional pentest or bug bounty. Dynamic/runtime classes (timing, infra, prod-only data) and anything outside the sandbox are only partially covered.
 
-A later `dev-team-security` run reads `SECURITY.md` and resumes from the register and coverage ledger.
+A later `dev-team-security` run reads `.dev-team/SECURITY.md` and resumes from the register and coverage ledger.
 
 ## Arguments
 
 Optional run arguments (defaults in brackets):
 
-- `dry-run=on|off` — run Phase 0 (threat model, attack-surface map, coverage ledger) and write the briefs each red/blue-team wave WOULD receive, but spawn no red-team/validator/builder agents and make no file or git changes; stop after planning and report the plan for approval. Precedence: this argument > `features.dry-run` in `.dev-team/config.yml` > built-in default [off]. Plain language ("just show me the plan", "dry run first") also sets it. See `dev-team-orchestrator/references/conventions.md` ("Dry-run / plan-preview").
+- `dry-run=on|off` — run Phase 0 (threat model, attack-surface map, coverage ledger) and write the briefs each red/blue-team wave WOULD receive, but spawn no red-team/validator/builder agents and make no file or git changes in the project; stop after planning and report the plan for approval. Precedence: this argument > `features.dry-run` in `.dev-team/config.yml` > built-in default [off]. Plain language ("just show me the plan", "dry run first") also sets it. See `dev-team-orchestrator/references/conventions.md` ("Dry-run / plan-preview").
 - `severity-floor=critical|high|medium|low` — the lowest severity to **fix** this run; below it is documented only [high → fix Critical+High, document the rest].
 - `scope=full|surface-list` — audit the whole checklist or a named subset (e.g. `scope=authz,injection,secrets`) [full].
 - `rounds=N` — max red-team rounds before stopping [until-dry, cap 4].
@@ -135,7 +145,7 @@ Optional run arguments (defaults in brackets):
 - Checker triage (`checker-protocol.md`) — you read only NEEDS-LEAD-REVIEW; here the checker also re-attacks.
 - Failed/stuck agents: diagnose, re-brief, two strikes then re-scope.
 - Debate mode (`debate-protocol.md`) for contested remediation strategies.
-- Documentarian (`documentarian-protocol.md`) — the `sonnet-scribe` agent owns the security doc (`SECURITY.md` here).
+- Documentarian (`documentarian-protocol.md`) — the `sonnet-scribe` agent owns the security doc (`.dev-team/SECURITY.md` here).
 - Composing other skills: route any security/testing skill the user has to the relevant agents.
 
 ## References (new — read at the matching step)

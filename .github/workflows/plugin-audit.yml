@@ -15,6 +15,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y jq
       - name: Model-id + plugin-structure audit
         run: bash scripts/audit-model-ids.sh
+      - name: Ledger-path audit (issue #41 — catches a stale top-level ledger path in our own docs)
+        run: bash scripts/audit-ledger-paths.sh
   test:
     name: test
     runs-on: ubuntu-latest
@@ -22,6 +24,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install jq, shellcheck, bats
         run: sudo apt-get update && sudo apt-get install -y jq shellcheck bats
+      # Ubuntu 24.04's system Python marks itself "externally managed" (PEP 668), so a plain
+      # "pip install" into it is refused rather than silently succeeding — pipx installs into its
+      # own isolated environment instead, which Ubuntu allows. pipx itself ships pre-installed on
+      # GitHub's hosted Ubuntu runners (confirmed in actions/runner-images' own Ubuntu 24.04
+      # tool list, fetched 13 September 2026, which lists "Pipx 1.16.7"), so no extra install step
+      # is needed for pipx itself, only for the tool we want it to install.
+      - name: Install check-jsonschema via pipx (Ubuntu 24.04's system pip refuses a plain "pip install")
+        run: pipx install check-jsonschema
       - name: Smoke test (plugin-structure delivery)
         run: bash tests/smoke-structure.sh
       - name: Shellcheck

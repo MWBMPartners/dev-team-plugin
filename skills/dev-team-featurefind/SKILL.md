@@ -1,6 +1,6 @@
 ---
 name: dev-team-featurefind
-description: Research similar/competitor products and find the features your implementation is MISSING, then score each gap by how important it is to add within the project's aim — producing a scored feature-gap ledger (FEATURES.md) for you and the dev-team conductor to act on. Run as a team lead delegating to a team of opus-builder subagents (Opus tier): scouts read your current feature set, market researchers map comparables with citations, a skeptic validates every claimed gap, and a documentarian writes the ledger. Use this skill whenever the user asks "what features am I missing", "what should I add", "how do I compare to competitor X", wants a "competitive analysis", "feature gap analysis", "feature ideas", to "benchmark against similar products", or mentions "featurefind". Also use it as the discovery front-end before a feature-building push. Sibling of dev-team-orchestrator/iterate/security. Do NOT use it to BUILD features (that goes through dev-team-orchestrator/autopilot and the Feature Spec Gate), for a general "improve my app" request (use dev-team-iterate), for a factual product question like "what does X support" (just answer it), for market research unrelated to a codebase, or for one-off questions.
+description: Research similar/competitor products and find the features your implementation is MISSING, then score each gap by how important it is to add within the project's aim — producing a scored feature-gap ledger (.dev-team/FEATURES.md) for you and the dev-team conductor to act on. Run as a team lead delegating to a team of opus-builder subagents (Opus tier): scouts read your current feature set, market researchers map comparables with citations, a skeptic validates every claimed gap, and a documentarian writes the ledger. Use this skill whenever the user asks "what features am I missing", "what should I add", "how do I compare to competitor X", wants a "competitive analysis", "feature gap analysis", "feature ideas", to "benchmark against similar products", or mentions "featurefind". Also use it as the discovery front-end before a feature-building push. Sibling of dev-team-orchestrator/iterate/security. Do NOT use it to BUILD features (that goes through dev-team-orchestrator/autopilot and the Feature Spec Gate), for a general "improve my app" request (use dev-team-iterate), for a factual product question like "what does X support" (just answer it), for market research unrelated to a codebase, or for one-off questions.
 ---
 
 # Dev Team Feature Find
@@ -19,12 +19,12 @@ A competitor has a hundred features. Most of them are **not** gaps in your produ
 
 Same lead-delegates-to-`opus-builder` model as the orchestrator, with research-specific roles (model routing: `skills/dev-team-orchestrator/references/model-routing.md`):
 
-- **Scouts** — the `opus-builder` agent (Opus tier), read-only. Map the **current implementation's feature set**: what the app actually does today, surface by surface. If a prior `dev-team-iterate` run wrote a **Codebase Map** to `PROJECT.md`, don't blindly reuse it — first run `dev-team-iterate`'s Step-0 freshness check (`references/audit-and-backlog-protocol.md` Step 0) before trusting it (see the freshness rule under Phase 0).
+- **Scouts** — the `opus-builder` agent (Opus tier), read-only. Map the **current implementation's feature set**: what the app actually does today, surface by surface. If a prior `dev-team-iterate` run wrote a **Codebase Map** to `.dev-team/PROJECT.md`, don't blindly reuse it — first run `dev-team-iterate`'s Step-0 freshness check (`references/audit-and-backlog-protocol.md` Step 0) before trusting it (see the freshness rule under Phase 0).
 - **Market researchers** — the `opus-builder` agent (Opus tier), with web access (`WebSearch`/`WebFetch`). Each owns a slice — one comparable product, or one feature domain across several products — and returns its feature inventory **with a source citation per feature**. Reasoning alone hallucinates competitor features; citations are this skill's evidence-not-claims rule.
 - **Synthesizer / scorer** — the `opus-builder` agent (Opus tier). Diffs competitor features against the current feature set, dedups, and scores each candidate gap with the rubric in `references/gap-scoring-rubric.md`.
 - **Validator (skeptic)** — the `opus-builder` agent (Opus tier). The false-positive gate. For each candidate gap it tries to **refute**: does the citation actually support "competitor has this"? Is the feature genuinely *absent* from our app (not just named differently)? Is it *in scope* for our aim? Defaults to dropping/down-scoping when unconfirmed. See `references/research-and-comparable-protocol.md`. This gate stays on the Opus/frontier tier — never routed cheaper (model-routing.md, invariant 1).
 - **Completeness critic** — the `opus-builder` agent (Opus tier), end of run. Asks "which obvious comparable or feature category did we never look at?" against the coverage list; gaps it finds become another research round.
-- **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Owns **`FEATURES.md`**, the feature-gap ledger (external memory for this and future runs), and syncs the top in-scope gaps into `PROJECT.md`'s Proposed-Features ledger if that file exists.
+- **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Owns **`.dev-team/FEATURES.md`**, the feature-gap ledger (external memory for this and future runs), and syncs the top in-scope gaps into `.dev-team/PROJECT.md`'s Proposed-Features ledger if it exists (found through the lookup order).
 
 ## The operating loop
 
@@ -37,19 +37,28 @@ PHASE 0: FRAME (scout current feature set + infer aim/category; reuse Codebase M
    → SCORE each candidate within the aim (importance · prevalence · scope-fit · differentiation · effort · risk)
    → VALIDATE (skeptic refutes: citation holds? actually absent? in scope?) → drop false / present / out-of-scope
    → COMPLETENESS CRITIC (missed comparables / categories?) → another round if it finds gaps
-   → WRITE the scored ledger to FEATURES.md → REPORT (top in-scope gaps, table-stakes vs differentiators, what's out of scope and why)
+   → WRITE the scored ledger to .dev-team/FEATURES.md → REPORT (top in-scope gaps, table-stakes vs differentiators, what's out of scope and why)
 ```
 
 ### Phase 0 — Frame the product
+
+**At the start of the run, before any agent is spawned:** take the instruction snapshot
+(`dev-team-orchestrator/references/conventions.md`, "Repository instructions and normative
+documents", step 1) — or, when this run resumes a recorded, unfinished one (the suite's Cold-resume
+contract, same file), check and reuse that run's recorded snapshot instead, stopping with a plain
+message if the check fails and never taking a new one in its place (a run recorded before 1.6.0 has
+none: see step 1) — and settle `handoff-file` once ("Auto-handoff", same file); pass the snapshot in
+every brief and the `handoff-file` value in every documentarian brief. Under the autopilot
+conductor, use the conductor's snapshot and value instead of taking your own.
 
 You're always in an existing repo, so **scout first**. Spawn scout(s) to establish, as first-class outputs:
 
 - **What the app does today** — its surfaces and the features it already ships. This is the baseline you diff against; getting it wrong invents gaps that aren't gaps.
 - **Scope evidence from the code** — the architecture and data model (what the product is *about*), existing integrations and dependencies (the world it lives in), and especially any *partial, scaffolded, or feature-flagged* work, TODOs, or roadmap notes (where it's *headed*). This is the primary input to scope-fit: it tells you which competitor features the product is naturally built toward (in-scope, and often low-effort because the seams already exist) versus which would require a foreign subsystem it isn't oriented around (out-of-scope, or high-effort/high-risk if genuinely aligned). Capture concrete signals (file/module names, entities, integration points), not impressions.
-- **The inferred aim** — 1–2 sentences: *"[App] is a [category] that helps [who] do [core task]."* — synthesized from the code above, not guessed. (Reuse the inferred purpose from `PROJECT.md` if `dev-team-iterate` already wrote one.)
+- **The inferred aim** — 1–2 sentences: *"[App] is a [category] that helps [who] do [core task]."* — synthesized from the code above, not guessed. (Reuse the inferred purpose from `.dev-team/PROJECT.md` if `dev-team-iterate` already wrote one.)
 - **The category and likely comparables** — what class of product this is, and an initial list of direct competitors, adjacent tools, and category leaders to research.
 
-If a `PROJECT.md` **Codebase Map** exists, do **not** blindly reuse it — first run `dev-team-iterate`'s Step-0 freshness check (`references/audit-and-backlog-protocol.md` Step 0): the drift check `git diff --stat <map-commit>..HEAD` from the **Run record**'s map-commit, a 2–3 claim spot-check against live code (focus on the surfaces the gap analysis will diff competitor features against), and a delta-scout of the drifted areas. Reuse the map for **unchanged** areas; re-confirm the current feature inventory against live code for **changed** areas; full re-scout on huge drift or a failed/non-git check.
+If `.dev-team/PROJECT.md` exists (found through the lookup order) and has a **Codebase Map**, do **not** blindly reuse it — first run `dev-team-iterate`'s Step-0 freshness check (`references/audit-and-backlog-protocol.md` Step 0): the drift check `git diff --stat <map-commit>..HEAD` from the **Run record**'s map-commit, a 2–3 claim spot-check against live code (focus on the surfaces the gap analysis will diff competitor features against), and a delta-scout of the drifted areas. Reuse the map for **unchanged** areas; re-confirm the current feature inventory against live code for **changed** areas; full re-scout on huge drift or a failed/non-git check.
 
 ### The Scope Gate (one light stop)
 
@@ -94,11 +103,11 @@ Before declaring the ledger done, run the completeness critic against the covera
 
 ### Output — the ledger & report
 
-The documentarian writes **`FEATURES.md`** (schema in `references/gap-scoring-rubric.md`): the confirmed aim, the comparable set with sources, and the scored gap register (in-scope gaps ranked by importance, plus the out-of-scope section with reasons). It also **syncs the top in-scope gaps into `PROJECT.md`'s Proposed-Features ledger** when that file exists, so `dev-team-iterate` / `dev-team-autopilot` can pick them up.
+The documentarian writes **`.dev-team/FEATURES.md`** (schema in `references/gap-scoring-rubric.md`): the confirmed aim, the comparable set with sources, and the scored gap register (in-scope gaps ranked by importance, plus the out-of-scope section with reasons). It also **syncs the top in-scope gaps into `.dev-team/PROJECT.md`'s Proposed-Features ledger** when it exists (found through the lookup order), so `dev-team-iterate` / `dev-team-autopilot` can pick them up.
 
 Then report to the user like a product lead: the handful of gaps that matter most and why, table-stakes vs differentiators, what you deliberately left out of scope, and the explicit reminder that **building any of these is gated** — the user's Feature Spec Gate standalone, or the conductor's autonomy test under autopilot — featurefind proposes; it never builds.
 
-A later `dev-team-featurefind` run reads `FEATURES.md`, reuses the comparable set, and refreshes the ledger (the product and the market both moved) — delta, not cold restart.
+A later `dev-team-featurefind` run reads `.dev-team/FEATURES.md`, reuses the comparable set, and refreshes the ledger (the product and the market both moved) — delta, not cold restart.
 
 ## Running inside the conductor
 
@@ -106,7 +115,7 @@ A later `dev-team-featurefind` run reads `FEATURES.md`, reuses the comparable se
 
 - The conductor supplies the **confirmed aim and scope boundary** from its mission state — skip the Scope Gate (the user already approved the mission).
 - Under autopilot, the Codebase Map may be produced by the same DISCOVER phase (`dev-team-iterate`'s audit runs just before featurefind) rather than a strictly prior run — treat a same-phase map as fresh.
-- Write/refresh `FEATURES.md` and sync in-scope gaps to the Proposed-Features ledger as usual; the conductor reads those to plan its feature phase.
+- Write/refresh `.dev-team/FEATURES.md` and sync in-scope gaps to the Proposed-Features ledger as usual; the conductor reads those to plan its feature phase.
 - Surface nothing for direct user approval here — the conductor owns the Feature Spec Gate under its hybrid gate policy. featurefind's job inside the loop is purely to keep the scored gap ledger current.
 
 ## Arguments
@@ -127,13 +136,13 @@ Optional run arguments (defaults in brackets):
 - **Brief discipline** — `references/task-brief-template.md`; full briefs, and **evidence-not-claims becomes citation-per-feature**.
 - **The skeptic/validator gate** — same false-positive discipline as `dev-team-security`'s validator.
 - **Completeness critic** — same end-of-run "what did we miss" pass.
-- **Documentarian** — `references/documentarian-protocol.md`; the `sonnet-scribe` agent owns the ledger doc (`FEATURES.md` here).
+- **Documentarian** — `references/documentarian-protocol.md`; the `sonnet-scribe` agent owns the ledger doc (`.dev-team/FEATURES.md` here).
 - **Composing other skills** — route any product/market skill the user has to the researchers.
 
 ## References (read at the matching step)
 
 - `references/research-and-comparable-protocol.md` — how to discover comparables, enumerate their features, the citation/evidence discipline, the validator's refute checklist, and the web-research caveats. Read before the research wave; paste the researcher + validator briefs into those agents.
-- `references/gap-scoring-rubric.md` — the scoring rubric (importance within the aim), the table-stakes/differentiator/out-of-scope classification, and the `FEATURES.md` ledger schema. Read before scoring.
+- `references/gap-scoring-rubric.md` — the scoring rubric (importance within the aim), the table-stakes/differentiator/out-of-scope classification, and the `.dev-team/FEATURES.md` ledger schema. Read before scoring.
 
 Reused from `dev-team-orchestrator/references/`: `task-brief-template.md`, `documentarian-protocol.md`.
 

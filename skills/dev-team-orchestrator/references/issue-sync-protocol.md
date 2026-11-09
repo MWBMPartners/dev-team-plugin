@@ -12,7 +12,7 @@ featurefind, review, autopilot, migrate), or run `/dev-team-sync-issues` manuall
 unless the switch is `sync`/`auto` or the command is invoked. `sync` exports at the normal sync points;
 `auto` behaves like `sync` but on a **per-task cadence** — it continuously reflects work in the tracker
 as each item completes/closes, instead of only at those sync points. Both are still confirm-first on the
-FIRST sync per repo (see Confirm-first) and still dedup-safe. `SECURITY.md` findings are the one
+FIRST sync per repo (see Confirm-first) and still dedup-safe. `.dev-team/SECURITY.md` findings are the one
 exception: `issues=sync`/`auto` alone does NOT sync them — that needs the separate `issues=sync-security`
 opt-in (see Safety rule 5).
 
@@ -29,16 +29,20 @@ One issue per OPEN ledger item, by source:
 
 | Source ledger | Item prefix | Issue label |
 |---|---|---|
-| `FEATURES.md` (featurefind) | `FG-` | `for consideration` (→ `enhancement` once approved) |
-| `PROJECT.md` Backlog (iterate) | `B-` | `enhancement` |
-| `PROJECT.md` Proposed-Features ledger | (feature) | `for consideration` |
-| `SECURITY.md` findings (security) — **opt-in only, redacted; see Safety rule 5** | `F-` | `security` |
-| `VERIFICATION.md` verdicts (review) | `V-` (fail) / `I-` | `bug` / `enhancement` |
-| `MIGRATION.md` Stage Ledger (migrate) | `M-` | `enhancement` |
+| `.dev-team/FEATURES.md` (featurefind) | `FG-` | `for consideration` (→ `enhancement` once approved) |
+| `.dev-team/PROJECT.md` Backlog (iterate) | `B-` | `enhancement` |
+| `.dev-team/PROJECT.md` Proposed-Features ledger | (feature) | `for consideration` |
+| `.dev-team/SECURITY.md` findings (security) — **opt-in only, redacted; see Safety rule 5** | `F-` | `security` |
+| `.dev-team/VERIFICATION.md` verdicts (review) | `V-` (fail) / `I-` | `bug` / `enhancement` |
+| `.dev-team/MIGRATION.md` Stage Ledger (migrate) | `M-` | `enhancement` |
 | `.dev-team/autopilot.json` gate-ledger | `G-` | `for consideration` |
 
 Title = a short, stable summary of the item. Body = the item's fields (description, impact,
-evidence, rationale) plus a hidden footer marker `<!-- dev-team:<prefix>-<id> -->`.
+evidence, rationale) plus a hidden footer marker `<!-- dev-team:<prefix>-<id> -->`. This hidden id
+marker identifies one synced item on the tracker; it is unrelated to the dev-team ownership marker
+(`<!-- dev-team: ledger=<kind> schema=1.0 -->`, `conventions.md`) that marks a whole ledger file as
+the plugin's own — the two are never confused for each other, and this id marker plays no part in
+deciding whether the plugin may write to a file.
 
 ## Dedup is the core (never spam duplicates)
 Each ledger item carries an **`issue:` field** holding its GitHub/GitLab issue number once synced (the
@@ -90,17 +94,19 @@ the `for consideration` convention (color `D4C5F9`) for propose-only items, plus
    hand-assembled command string. This mirrors ci-medic's
    untrusted-names rule (`dev-team-ci-medic/SKILL.md`) applied to ledger text instead of
    branch/ref names.
-5. **Security findings are redacted and opt-in only.** Syncing `SECURITY.md` findings (`F-`
+5. **Security findings are redacted and opt-in only.** Syncing `.dev-team/SECURITY.md` findings (`F-`
    prefix, `security` label) is NOT part of the default `issues=sync` switch — it requires a
    separate, explicit opt-in (e.g. `issues=sync-security`) because a GitHub/GitLab issue is far more
-   visible than the local `SECURITY.md` file. When opted in, the synced issue body carries ONLY
+   visible than the local `.dev-team/SECURITY.md` file. When opted in, the synced issue body carries ONLY
    the finding's title, severity, and CWE/location — NEVER the `evidence`/PoC/repro field. This
    holds even on update passes: re-syncing a security item never adds evidence/PoC text to the
    issue body or a comment. Aligns with dev-team-security's "findings stay private" posture.
 
 ## How the scribe runs one pass
-1. Read the ledgers present (FEATURES.md / PROJECT.md / SECURITY.md / VERIFICATION.md /
-   .dev-team/autopilot.json).
+1. Read the ledgers present, using the lookup order in `conventions.md`'s "Where the plugin writes,
+   and the ownership rule" (point 5), which never reads a file without the dev-team marker as the
+   ledger: `.dev-team/FEATURES.md` / `.dev-team/PROJECT.md` / `.dev-team/SECURITY.md` /
+   `.dev-team/VERIFICATION.md` / `.dev-team/autopilot.json`.
 2. For each OPEN item: create-or-update per the dedup rule; write back the `issue:` ref.
 3. For each item now done: close its issue with the commit/PR reference.
 4. Report the one-line summary. This is cheap, mechanical bookkeeping — the scribe's job, never

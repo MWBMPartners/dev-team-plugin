@@ -16,7 +16,7 @@ restate a weight number elsewhere, point here instead. It backs two call sites:
 - **Skill/mode + phases run** — e.g. "dev-team-autopilot: DISCOVER → STABILIZE (in-progress)", or
   "dev-team-orchestrator: stages 1–3 of 4".
 - **Cycles/stages completed** — autopilot's `cycle` count and `phase_cursor`, or the orchestrator's
-  `## Stage plan` status column in `PROJECT.md`.
+  `## Stage plan` status column in `.dev-team/PROJECT.md`.
 - **Agents spawned by tier** — from `.dev-team/autopilot.json`'s `budget.spawns_by_tier` when
   present, else counted from the run's briefs. See "Live vs on-demand" below — the second path
   only works when the reporter is the same live session that issued those briefs; a cold report
@@ -39,7 +39,7 @@ restate a weight number elsewhere, point here instead. It backs two call sites:
   spawns): it can only compute from what's persisted on disk. If `.dev-team/autopilot.json` exists,
   its `budget.spawns_by_tier` is the source. If it doesn't exist, there is no persisted spawn ledger
   for a plain (non-autopilot) run — report tier spawn counts as **"not tracked outside an autopilot
-  run"** rather than inventing a number. Everything else derivable from `git log` and `PROJECT.md`
+  run"** rather than inventing a number. Everything else derivable from `git log` and `.dev-team/PROJECT.md`
   (commits, stages, wall-clock) still prints normally.
 
 ## Rough cost estimate method (single source of truth for the weights — HERE ONLY)

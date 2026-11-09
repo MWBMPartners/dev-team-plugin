@@ -81,7 +81,7 @@ A finding moves to **fixed-verified** only on a CLEAN security verification. If 
 - Commit one commit per verified finding (or a coherent batch of related fixes) on the `security-audit/<date>` branch; message: `security: fix F-0XX [class] — [short title]`.
 - This commit is the rollback point. A later fix that breaks something reverts here.
 
-## Findings-register row (maintained in SECURITY.md)
+## Findings-register row (maintained in `.dev-team/SECURITY.md`)
 
 ```markdown
 | id | title | class | cwe | severity | cvss | status | location | fix commit | verification |

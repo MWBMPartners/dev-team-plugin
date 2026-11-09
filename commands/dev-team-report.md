@@ -10,8 +10,13 @@ the telemetry-toggle semantics — lives in
 command is **read-only**: it never creates, edits, or touches any file, and never runs `git fetch`
 or any other network/mutating git command.
 
-1. **Check for dev-team state.** Look for `.dev-team/autopilot.json` and `PROJECT.md`. If **neither**
-   exists, say plainly "no dev-team run detected in this repo" and point to `/dev-team` (to start
+1. **Check for dev-team state.** Look for `.dev-team/autopilot.json`, and for `.dev-team/PROJECT.md`
+   through the lookup order (`conventions.md`, "Where the plugin writes, and the ownership rule",
+   point 5), which never reads a file without the dev-team marker as the ledger — a legacy root
+   `PROJECT.md` without the marker does not count as dev-team state. A legacy root `PROJECT.md`
+   that does carry the marker is read where it is: this command moves and commits nothing, and the
+   report says the move is pending — "`PROJECT.md` is still at the top level of the project — run
+   `/dev-team-move-ledgers` to move it into `.dev-team/`." (point 5, read-only commands). If **neither** exists, say plainly "no dev-team run detected in this repo" and point to `/dev-team` (to start
    one) or `/dev-team-status` (for a live dashboard), then stop.
 2. **Resolve the base branch.** Precedence: the `branch=<base>` argument if given > `.dev-team/config.yml`'s
    `git.default-branch` if it names an explicit branch > auto-detect (`git symbolic-ref --quiet
@@ -20,7 +25,7 @@ or any other network/mutating git command.
    an unresolvable auto-detect just falls through to the next rule, never an error.
 3. **Gather the facts**, per `run-report.md`:
    - Skill/mode + phases/stages: from `autopilot.json`'s `plan` / `phase_cursor` if present, else
-     `PROJECT.md`'s `## Stage plan` and `## Current status`.
+     `.dev-team/PROJECT.md`'s `## Stage plan` and `## Current status` (the file found in step 1).
    - Cycles/stages completed.
    - Agents spawned by tier: `autopilot.json`'s `budget.spawns_by_tier` if present; if
      `autopilot.json` doesn't exist, report tier spawn counts as **"not tracked outside an autopilot
