@@ -17,12 +17,12 @@ Same three roles as the orchestrator (model routing: `skills/dev-team-orchestrat
 
 - **Builders / scouts** — the `opus-builder` agent (Opus tier). Implement and investigate.
 - **Checker** — the `opus-builder` agent (Opus tier). Reviews each cycle against its contract; here it *also* enforces the **UX rubric** and **perf-evidence** rules (see below). Triages: clean / flagged-and-handled / NEEDS-LEAD-REVIEW. Verification stays on the Opus/frontier tier — never routed cheaper (model-routing.md, invariant 1).
-- **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Owns `PROJECT.md`, which here carries extra sections: the **Codebase Map** (a durable "what the code does" reference), a **run record** (`map-commit` + date, for the resume check), the **scored backlog**, the **Proposed-Features ledger**, and the **trajectory ledger** (metrics over time). It is your external memory *and* the persistent state that lets a later run **reuse the map and resume instead of re-scouting from scratch**. The documentarian keeps the Codebase Map current as cycles change the code. The Codebase Map plus a tight `Current status` are the suite's lean-memory mechanism — cheap resume instead of full re-context (model-routing.md, invariant 2).
+- **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Owns `.dev-team/PROJECT.md`, which here carries extra sections: the **Codebase Map** (a durable "what the code does" reference), a **run record** (`map-commit` + date, for the resume check), the **scored backlog**, the **Proposed-Features ledger**, and the **trajectory ledger** (metrics over time). It is your external memory *and* the persistent state that lets a later run **reuse the map and resume instead of re-scouting from scratch**. The documentarian keeps the Codebase Map current as cycles change the code. The Codebase Map plus a tight `Current status` are the suite's lean-memory mechanism — cheap resume instead of full re-context (model-routing.md, invariant 2).
 
 ## The operating loop
 
 ```
-PHASE 0: RESUME CHECK (PROJECT.md + Codebase Map exist & current?
+PHASE 0: RESUME CHECK (.dev-team/PROJECT.md + Codebase Map exist & current?
                        → reuse map, delta-scout only what drifted;
                        else full scout + write the map)
    → REVERSE-ENGINEER + AUDIT → scored backlog + inferred purpose
@@ -36,13 +36,22 @@ PHASE 0: RESUME CHECK (PROJECT.md + Codebase Map exist & current?
 
 ### Phase 0 — Reverse-engineer the purpose and audit
 
+**At the start of the run, before any agent is spawned:** take the instruction snapshot
+(`dev-team-orchestrator/references/conventions.md`, "Repository instructions and normative
+documents", step 1) — or, when this run resumes a recorded, unfinished one (the suite's Cold-resume
+contract, same file), check and reuse that run's recorded snapshot instead, stopping with a plain
+message if the check fails and never taking a new one in its place (a run recorded before 1.6.0 has
+none: see step 1) — and settle `handoff-file` once ("Auto-handoff", same file); pass the snapshot in
+every brief and the `handoff-file` value in every documentarian brief. Under the autopilot
+conductor, use the conductor's snapshot and value instead of taking your own.
+
 You are always in an existing repo. Follow `references/audit-and-backlog-protocol.md`. In short:
 
-0. **Resume check (do this first).** Look for a `PROJECT.md` with a **Codebase Map** + run record from a prior `dev-team-iterate` run. If it exists and validates as current (git-drift check + a quick spot-check), **reuse it as context and delta-scout only what changed** since the last run — don't re-gather the whole codebase. If it's missing, stale, fails the spot-check, or it's not a git repo, do a **full scout** and write the map fresh. Either way, update the run record (commit + date). *This is what makes re-runs cheap: full context once, reference + delta thereafter.* (This is the generalized **Cold-resume** contract in `dev-team-orchestrator/references/conventions.md` — iterate already implements it, unchanged here; no new behavior to add.)
+0. **Resume check (do this first).** Look for a `.dev-team/PROJECT.md` (found through the lookup order) with a **Codebase Map** + run record from a prior `dev-team-iterate` run. If it exists and validates as current (git-drift check + a quick spot-check), **reuse it as context and delta-scout only what changed** since the last run — don't re-gather the whole codebase. If it's missing, stale, fails the spot-check, or it's not a git repo, do a **full scout** and write the map fresh. Either way, update the run record (commit + date). *This is what makes re-runs cheap: full context once, reference + delta thereafter.* (This is the generalized **Cold-resume** contract in `dev-team-orchestrator/references/conventions.md` — iterate already implements it, unchanged here; no new behavior to add.)
 1. **Scouts (read-only)** map the repo: stack, entry points, run/build/test commands, conventions, dependency manifest, **test coverage**, and what the app actually *does* — full on a first run, only the drifted areas on a resume. They write/update the **Codebase Map**.
 2. Synthesize an **inferred purpose** — 1–2 sentences: what this app is, who it's for, what the core user task is. (On resume, reuse the stored purpose unless drift changed it.)
-3. **Audit agents** produce a **scored backlog**: each item has `{area, type, description, impact, effort, risk, evidence}`, scored *conservatively*. Audit dimensions include correctness/bugs, UX (per the rubric), feature gaps, code redundancy, **IA/UX redundancy** (overlapping tabs/views/controls), efficiency/perf, tests, docs, and **security & dependency hygiene**. The backlog is **re-derived each run** (the code changed since last time) but cheaply — seeded by the Codebase Map rather than a cold read.
-4. The documentarian writes/updates the Codebase Map, run record, inferred purpose, backlog, and trajectory baseline in `PROJECT.md`.
+3. **Audit agents** produce a **scored backlog**: each item has `{area, type, description, impact, effort, risk, evidence}`, scored *conservatively*. Audit dimensions include correctness/bugs, UX (per the rubric), feature gaps, code redundancy, **IA/UX redundancy** (overlapping tabs/views/controls), efficiency/perf, tests, docs, **security & dependency hygiene**, and **conformance to the repository's normative documents**. The backlog is **re-derived each run** (the code changed since last time) but cheaply — seeded by the Codebase Map rather than a cold read.
+4. The documentarian writes/updates the Codebase Map, run record, inferred purpose, backlog, and trajectory baseline in `.dev-team/PROJECT.md`.
 
 ### The Approval Gate (autonomy for improvement work)
 
@@ -77,7 +86,7 @@ This is the **UX-first** policy: simplification and small UX wins are prioritize
 
 - **Build autonomously (non-feature work):** refactors, dedup, perf, bug fixes, and **UX polish/robustness** — validation, empty/loading/error states, a11y fixes, consolidating redundant surfaces. These don't change *what the app can do*, so they ship under the invariants without a feature gate.
 - **Every net-new feature goes through the Feature Spec Gate (below) before implementation — regardless of size.** A "feature" = net-new user-facing capability or behavior. The skill never builds a feature the user hasn't approved, both *that* it's included and *exactly how it works*. (The robustness/polish items above are not features.)
-- Candidate features live in the **Proposed-Features ledger** in `PROJECT.md` with rationale + purpose-fit. Major dependency upgrades are also propose-only (they break things); patch-level security bumps may be built.
+- Candidate features live in the **Proposed-Features ledger** in `.dev-team/PROJECT.md` with rationale + purpose-fit. Major dependency upgrades are also propose-only (they break things); patch-level security bumps may be built.
 - `propose-threshold` tunes only the non-feature/UX build-vs-propose boundary; it does **not** let any feature skip the spec gate.
 
 ### The Feature Spec Gate (features only)
@@ -128,7 +137,7 @@ The loop ends — and stopping is a **success state, not a failure** — when:
 - the **cycle cap** is reached (default ~5), **OR**
 - the token/effort budget is exhausted.
 
-Then **report and hand back**: what changed across cycles, the trajectory ledger (metrics before → after), the remaining low-impact backlog, and the **Proposed-Features ledger** for the user to pick the next round from. A later `dev-team-iterate` run reads `PROJECT.md`, **reuses the Codebase Map** (delta-updating only what drifted via the Step-0 freshness check), and resumes from the persisted backlog and ledger — skipping the full re-scout.
+Then **report and hand back**: what changed across cycles, the trajectory ledger (metrics before → after), the remaining low-impact backlog, and the **Proposed-Features ledger** for the user to pick the next round from. A later `dev-team-iterate` run reads `.dev-team/PROJECT.md`, **reuses the Codebase Map** (delta-updating only what drifted via the Step-0 freshness check), and resumes from the persisted backlog and ledger — skipping the full re-scout.
 
 **Restraint is the rule.** The audit scores impact conservatively and is forbidden from manufacturing work to justify the loop. "Nothing high-impact left — here's what I'd leave alone" is the correct, expected outcome. Do not gold-plate, do not add features the purpose doesn't call for, do not churn for the metric.
 
@@ -136,7 +145,7 @@ Then **report and hand back**: what changed across cycles, the trajectory ledger
 
 This skill accepts optional arguments to tune a run (defaults in brackets):
 
-- `dry-run=on|off` — run Phase 0 (resume/scout, purpose, scored backlog) and write the cycle plan you WOULD run, but delegate no builders and make no file or git changes; report the plan for approval. Precedence: this argument > `features.dry-run` in `.dev-team/config.yml` > built-in default [off]. See `dev-team-orchestrator/references/conventions.md` ("Dry-run / plan-preview").
+- `dry-run=on|off` — run Phase 0 (resume/scout, purpose, scored backlog) and write the cycle plan you WOULD run, but delegate no builders and make no file or git changes in the project; report the plan for approval. Precedence: this argument > `features.dry-run` in `.dev-team/config.yml` > built-in default [off]. See `dev-team-orchestrator/references/conventions.md` ("Dry-run / plan-preview").
 - `cycles=N` — the cycle cap [5].
 - `propose-threshold=small|medium|large` — for NON-FEATURE work, how big a change must be before it's propose-only instead of built [medium: small/isolated improvements build; large refactors/perf/dep-changes propose]. Features are out of scope for this knob — they always go through the Feature Spec Gate (see "Build small · spec-gate every feature").
 - `focus=<dimension(s)>` — **drive** the run toward one or more dimensions (`features`, `ux`, `correctness`, `efficiency`, `redundancy`, `security`, `docs`), not just bias scoring. Accepts the flag form *or plain language in the invocation* — "focus on adding features", "improve the UX", "make it faster", "clean up the duplication" all set it. Multiple allowed ("features and ux"). [default: none — balanced, UX-first.] See **Running with a focus** below.
@@ -189,7 +198,7 @@ Read the orchestrator skill for the detail on each:
 - **Checker triage** — `references/checker-protocol.md`; you read only NEEDS-LEAD-REVIEW.
 - **Failed/stuck agents** — diagnose, re-brief with specifics, two strikes then re-scope.
 - **Debate mode** — `references/debate-protocol.md` for consequential, contested decisions (e.g. a big architectural refactor strategy surfaced by the audit).
-- **Documentarian** — `references/documentarian-protocol.md`; the `sonnet-scribe` agent (Sonnet tier) owns `PROJECT.md`.
+- **Documentarian** — `references/documentarian-protocol.md`; the `sonnet-scribe` agent (Sonnet tier) owns `.dev-team/PROJECT.md`.
 - **Composing other skills** — route the user's UI/testing/style skills to the relevant agents and have the checker verify conformance.
 
 ## References (new — read at the matching step)

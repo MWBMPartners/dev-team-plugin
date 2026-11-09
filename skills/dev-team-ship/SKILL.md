@@ -62,7 +62,7 @@ Same shape as the orchestrator, specialized for delivery infrastructure:
 - **Scouts** — the `opus-builder` agent (Opus tier), read-only. Inventory existing
   workflows and their job `name:` fields, existing branch protection AND rulesets, any
   existing secret scanning, the CHANGELOG/version/tag conventions in use, and any
-  auto-commit/auto-merge/auto-tag step that could hit the `GITHUB_TOKEN` trap.
+  auto-commit/auto-merge/auto-tag step that could hit the `GITHUB_TOKEN` trap. Also apply "Repository instructions and normative documents" (orchestrator conventions.md): report the repository's instruction files and any normative documents, with their rule-ID scheme and profiles.
 - **Builders** — the `opus-builder` agent (Opus tier). Scaffold/patch CI workflows, wire
   the gitleaks CLI, configure branch protection/rulesets, and stand up the release flow,
   via the orchestrator's `task-brief-template.md`.
@@ -74,10 +74,19 @@ Same shape as the orchestrator, specialized for delivery infrastructure:
   stays on the Opus/frontier tier — never routed cheaper (model-routing.md, invariant 1).
 - **Documentarian** — the `sonnet-scribe` agent (Sonnet tier). Records what pipeline now
   exists — the workflows, the required-check names, the scanning setup, the release flow
-  — in `PROJECT.md` (Current status + a decision-log entry for any real tradeoff). Ship
+  — in `.dev-team/PROJECT.md` (Current status + a decision-log entry for any real tradeoff). Ship
   writes CI/config files, not a new ledger.
 
 ## Picking the mode
+
+**At the start of the run, before any agent is spawned:** take the instruction snapshot
+(`dev-team-orchestrator/references/conventions.md`, "Repository instructions and normative
+documents", step 1) — or, when this run resumes a recorded, unfinished one (the suite's Cold-resume
+contract, same file), check and reuse that run's recorded snapshot instead, stopping with a plain
+message if the check fails and never taking a new one in its place (a run recorded before 1.6.0 has
+none: see step 1) — and settle `handoff-file` once ("Auto-handoff", same file); pass the snapshot in
+every brief and the `handoff-file` value in every documentarian brief. Under the autopilot
+conductor, use the conductor's snapshot and value instead of taking your own.
 
 - **`setup`** — the repo has no CI workflow, no branch protection/ruleset, no secret
   scanning, and/or no release flow. Stand it all up from scratch.
@@ -116,7 +125,7 @@ config with byte-for-byte required-check names), and `references/release-protoco
    orphan, the gitleaks CLI genuinely ran (paste output), and any push-based chain was
    bridged and tested.
 7. **Document**: the `sonnet-scribe` documentarian records what pipeline now exists in
-   `PROJECT.md`.
+   `.dev-team/PROJECT.md`.
 8. **Hand back secrets**: any secret the pipeline needs (a PAT for the anti-recursion
    bridge, a `GITLEAKS_LICENSE` only if the user explicitly wants the paid action's
    PR-comment feature) is handed to the user as exact web-UI steps (rule 4) — never set
@@ -145,7 +154,7 @@ Follow `references/branch-protection-protocol.md`'s cross-check and
    gitleaks CLI actually scans, no broken merge→deploy (or release→publish) chain, and the
    release flow still works.
 5. **Document & report**: the `sonnet-scribe` documentarian records the audit result and
-   any fix in `PROJECT.md`; report what was fixed vs proposed vs already clean.
+   any fix in `.dev-team/PROJECT.md`; report what was fixed vs proposed vs already clean.
 
 ## Definition of done
 
@@ -195,7 +204,7 @@ Optional run arguments (defaults in brackets):
 - Checker triage (`checker-protocol.md`) — runs on `opus-builder`; verification stays on
   the Opus/frontier tier, never routed cheaper (model-routing.md invariant 1).
 - Documentarian (`documentarian-protocol.md`) — the `sonnet-scribe` agent records what
-  shipped in `PROJECT.md`; ship introduces no new ledger.
+  shipped in `.dev-team/PROJECT.md`; ship introduces no new ledger.
 - Failed/stuck agents: diagnose, re-brief, two strikes then re-scope.
 - Debate mode (`debate-protocol.md`) for a contested infra decision (rulesets vs classic
   protection, automated vs manual release).

@@ -1,6 +1,6 @@
 ---
 name: dev-team-stripe
-description: Build or review Stripe integration pathways with a team of `opus-builder` subagents (Opus tier), with Stripe-specific correctness and security expertise. In BUILD mode it implements payment flows (Checkout, Payment Element, PaymentIntents, subscriptions/billing, Connect, webhooks) via the orchestrator workflow; in REVIEW mode it audits existing Stripe code for correctness and security (idempotency, webhook signature verification, API-key handling, PCI scope, authz/IDOR on Stripe objects, amount tampering, SCA/3DS) and fixes what it finds. Leverages the official Stripe Claude plugin (stripe@claude-plugins-official), the stripe-best-practices skill, and the Stripe MCP — all in TEST MODE by default. Use when the user wants to build, integrate, audit, harden, or verify anything involving Stripe / payments / subscriptions / Connect / webhooks. Sibling of dev-team-orchestrator. Takes precedence over dev-team-security / dev-team-review / dev-team-iterate when the work involves Stripe / payments. Do NOT use for non-Stripe work or one-off questions; a generic post-run QA pass over a prior dev-team run's recorded PROJECT.md/SECURITY.md claims (even one touching Stripe as one workstream) is dev-team-review's job.
+description: Build or review Stripe integration pathways with a team of `opus-builder` subagents (Opus tier), with Stripe-specific correctness and security expertise. In BUILD mode it implements payment flows (Checkout, Payment Element, PaymentIntents, subscriptions/billing, Connect, webhooks) via the orchestrator workflow; in REVIEW mode it audits existing Stripe code for correctness and security (idempotency, webhook signature verification, API-key handling, PCI scope, authz/IDOR on Stripe objects, amount tampering, SCA/3DS) and fixes what it finds. Leverages the official Stripe Claude plugin (stripe@claude-plugins-official), the stripe-best-practices skill, and the Stripe MCP — all in TEST MODE by default. Use when the user wants to build, integrate, audit, harden, or verify anything involving Stripe / payments / subscriptions / Connect / webhooks. Sibling of dev-team-orchestrator. Takes precedence over dev-team-security / dev-team-review / dev-team-iterate when the work involves Stripe / payments. Do NOT use for non-Stripe work or one-off questions; a generic post-run QA pass over a prior dev-team run's recorded .dev-team/PROJECT.md/.dev-team/SECURITY.md claims (even one touching Stripe as one workstream) is dev-team-review's job.
 ---
 
 # Dev Team Stripe
@@ -42,9 +42,18 @@ This skill is built to ride on Stripe's own tooling. Survey what's available and
   - **Android** (`stripe-android`, Kotlin/Java) → route the **`stripe-android-payments` skill** + the **Native Android** section of `references/stripe-checklist.md`. Covers PaymentSheet (Views & Compose)/FlowController/CustomerSheet/Google Pay, publishable-key-only (no `sk_`/`rk_` in the APK — R8 won't protect it), 3DS via `PaymentLauncher` (Custom Tabs — no manual deep-link wiring), and surviving process death.
 - **Stripe MCP** — agents can reach Stripe MCP tools via ToolSearch (docs search, API helpers). Use for grounding against current API behavior; do not let it perform live mutations.
 
-Record which tooling is in play in `PROJECT.md` (the documentarian) so it sticks across the team.
+Record which tooling is in play in `.dev-team/PROJECT.md` (the documentarian) so it sticks across the team.
 
 ## Picking the mode
+
+**At the start of the run, before any agent is spawned:** take the instruction snapshot
+(`dev-team-orchestrator/references/conventions.md`, "Repository instructions and normative
+documents", step 1) — or, when this run resumes a recorded, unfinished one (the suite's Cold-resume
+contract, same file), check and reuse that run's recorded snapshot instead, stopping with a plain
+message if the check fails and never taking a new one in its place (a run recorded before 1.6.0 has
+none: see step 1) — and settle `handoff-file` once ("Auto-handoff", same file); pass the snapshot in
+every brief and the `handoff-file` value in every documentarian brief. Under the autopilot
+conductor, use the conductor's snapshot and value instead of taking your own.
 
 - **BUILD** — "add Stripe checkout", "implement subscriptions", "set up Connect onboarding", "handle webhooks". Run the orchestrator loop with Stripe rules baked in.
 - **REVIEW** — "audit our Stripe integration", "is our billing correct/secure", "check our webhook handling". Run a Stripe-scoped correctness + security audit, then fix.
@@ -73,7 +82,7 @@ Follow `references/build-and-review-protocol.md` (review half). It's a Stripe-sc
 ## Arguments
 
 - `mode=build|review` — pick the mode [infer from the request; ask if ambiguous].
-- `dry-run=on|off` — produce the full plan and stop, spawning no builders/red-team agents and making no file or git changes (BUILD: the stage/workstream plan + builder briefs; REVIEW: the pathway map + audit/red-team briefs); report the plan for approval. Precedence: this argument > `features.dry-run` in `.dev-team/config.yml` > built-in default [off]. Plain language ("just show me the plan", "dry run first") also sets it. See `dev-team-orchestrator/references/conventions.md` ("Dry-run / plan-preview").
+- `dry-run=on|off` — produce the full plan and stop, spawning no builders/red-team agents and making no file or git changes in the project (BUILD: the stage/workstream plan + builder briefs; REVIEW: the pathway map + audit/red-team briefs); report the plan for approval. Precedence: this argument > `features.dry-run` in `.dev-team/config.yml` > built-in default [off]. Plain language ("just show me the plan", "dry run first") also sets it. See `dev-team-orchestrator/references/conventions.md` ("Dry-run / plan-preview").
 - `surface=checkout|payment-element|payment-intents|billing|connect|webhooks|ios-native|android-native|auto` — the Stripe surface in scope [auto-detect the platform from the repo].
 - `severity-floor=critical|high|medium|low` — (review) lowest severity to fix this run [high].
 - `live=confirm` — explicit, one-time acknowledgement required before ANY live-mode action [absent → test mode only].
@@ -81,7 +90,7 @@ Follow `references/build-and-review-protocol.md` (review half). It's a Stripe-sc
 
 ## What carries over from the dev-team family (unchanged)
 
-- Orchestrator: team sizing, parallelism, interface/contract-up-front, **you own dependency & API-version decisions**, brief discipline, checker triage (runs on `opus-builder` — verification stays on the Opus/frontier tier, never routed cheaper; model-routing.md invariant 1), debate for big surface decisions, the `sonnet-scribe` documentarian on `PROJECT.md`.
+- Orchestrator: team sizing, parallelism, interface/contract-up-front, **you own dependency & API-version decisions**, brief discipline, checker triage (runs on `opus-builder` — verification stays on the Opus/frontier tier, never routed cheaper; model-routing.md invariant 1), debate for big surface decisions, the `sonnet-scribe` documentarian on `.dev-team/PROJECT.md`.
 - Security (review mode): red-team + severity + adversarial validation + re-attack-to-confirm (`dev-team-security` references).
 - Review (review mode): independent verification, evidence-not-claims, re-verify after fix (`dev-team-review` references).
 - **Composing other skills** — route `stripe-best-practices` and any user UI/testing skill to the relevant agents and have the checker verify conformance.

@@ -17,7 +17,7 @@ one edit per model release instead of six that rot together.
 |---|---|---|---|
 | Reasoning | `deep-architect` | `fable` | Architecture, subtle multi-file bugs, algorithm design, concurrency/data-model trade-offs, big cross-cutting refactors, debate advocates. The genuinely hard stuff. |
 | Build/Verify | `opus-builder` | `opus` | Building features, scouting, and ALL verification (checker, red-team, validator, reviewer). The default worker. |
-| Scribe | `sonnet-scribe` | `sonnet` | Documentarian: PROJECT.md / HANDOFF.md / FEATURES.md / SECURITY.md / VERIFICATION.md upkeep, ledgers, run records. |
+| Scribe | `sonnet-scribe` | `sonnet` | Documentarian: `.dev-team/PROJECT.md` / `.dev-team/HANDOFF.md` / `.dev-team/FEATURES.md` / `.dev-team/SECURITY.md` / `.dev-team/VERIFICATION.md` upkeep, ledgers, run records. |
 | Mechanical | `quick-edits` | `haiku` | Renames, formatting, import sorting, docstrings, boilerplate, trivial config. |
 
 ## Orchestrator tier (the lead)

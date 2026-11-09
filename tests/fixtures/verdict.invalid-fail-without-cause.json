@@ -1,0 +1,17 @@
+{
+  "dev-team": "ledger=verdict schema=1.0",
+  "overall": "FAIL",
+  "checked": 2,
+  "verified": 2,
+  "failed": 0,
+  "drifted": 0,
+  "hollow": 0,
+  "unverifiable": 0,
+  "integration": "pass",
+  "regressions": [],
+  "improvement_findings": 0,
+  "claims": [
+    { "id": "V-001", "verdict": "VERIFIED", "severity": "n/a", "confidence": "high" },
+    { "id": "V-002", "verdict": "VERIFIED", "severity": "high", "confidence": "high" }
+  ]
+}

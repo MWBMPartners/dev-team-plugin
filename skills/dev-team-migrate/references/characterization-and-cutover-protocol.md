@@ -113,7 +113,7 @@ an interface many callers share.
   the new path exclusively.
 
 **Every shim is tracked in the `Compatibility shims in play` table** (`migration-plan-protocol.md`'s
-`MIGRATION.md` schema) with an explicit **removal owner** — the later stage number that removes it.
+`.dev-team/MIGRATION.md` schema) with an explicit **removal owner** — the later stage number that removes it.
 A shim with no scheduled removal is precisely the "leaving both paths half-wired" anti-pattern; it
 does not get left implicit.
 
@@ -150,7 +150,7 @@ state — this is not optional and not foldable into an earlier stage:
    catch a case where removing "dead" code silently changed behavior that was still (invisibly)
    depended on.
 3. **Run the project's normal test suite** end to end and confirm no functional regression.
-4. The documentarian marks the Migration Plan `status: complete` in `MIGRATION.md`, records the final
+4. The documentarian marks the Migration Plan `status: complete` in `.dev-team/MIGRATION.md`, records the final
    Stage Ledger state, and confirms the `Compatibility shims in play` table is empty (every row
    resolved to removed).
 
