@@ -84,7 +84,23 @@ working branch, merged into `alpha` by one pull request**, opened when the owner
 | Q4 | `deep-architect` default model | **Change the default to Opus now** (not the recommended "leave it") | **To do:** change the default in `agents/deep-architect.md` and anything that describes it (model-routing reference, README, CHANGELOG, `.claude/` and `.OpenAI/` notes), then run the model-id audit and bats. This also needs a version/CHANGELOG entry. Do it on the new working branch, not before. |
 | Q5 | Device-wide rules on the owner's computer | **Yes, ask a local session** | The wording is in `.claude/device-wide-rules.md`. It needs a session running on the owner's own computer, because a cloud session cannot reach `~/.claude/CLAUDE.md` or `~/.codex/AGENTS.md`. Not done; the owner runs it. |
 
-Still waiting on the owner: the four #45 sub-choices above.
+The four #45 sub-choices were answered later the same day — see the next table. **No owner question
+is open any more.**
+
+### #45 sub-choices — answered 17 November 2026 (recorded only; none of this has been built yet)
+
+These decide what goes in the `profile: standard` preset chosen in Q3. The feature map with the evidence
+for each is `.claude/plans/owner-standard-features/feature-map.md` (and `feature-map-round-2.md`).
+
+| Item | Question | Owner's answer | What it means for the next session |
+| --- | --- | --- | --- |
+| F13 | Push after each task | **A setting, off by default** | The plugin keeps never pushing on its own unless the setting is on. The `standard` preset turns it on. Needs a new setting in `config-and-toggles.md`, the steps in the skills that say "never push", the README, the CHANGELOG and tests. The guard's rule against pushing to `main` must still apply. |
+| F10 | Codex replacing or adding to the Claude checker | **In addition, when available** | The Claude checker always runs. Codex adds an independent second review where it is installed and has allowance; if it cannot run, say so and treat the work as "not fully reviewed" (rule 5). |
+| F5 | "One after another" scope | **Analysis and planning only; debates stay side by side** | Opus analysis and planning steps run in sequence, each building on or checking the last. Debates keep their side-by-side design so debaters cannot see each other's arguments. |
+| F7/F8 | Cheaper building as default | **Part of the preset only** | The built-in default is unchanged. `profile: standard` picks Sonnet or Haiku for building, Opus only for complex changes. |
+
+All of these belong with #45 and #46 on the new orchestrator branch (Q2); the preset itself is built
+there, not now.
 
 ### Follow-up issues #42, #43, #44 — answered 17 November 2026 (recorded only; none of this has been built yet)
 
