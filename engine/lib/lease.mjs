@@ -4,7 +4,7 @@
 //          paused phase from a crashed one (a paused lease is never treated as crashed), and makes sure two processes
 //          cannot both take a phase. The lock is a folder made with an exclusive mkdir, the same trick the autopilot
 //          lock uses, with the holder's details in a small file inside it.
-import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, renameSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, renameSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { hostname } from 'node:os';
 import { Conflict } from './plan.mjs';
@@ -15,7 +15,7 @@ const STALE_AFTER_MIN = 90;
 const OWNER_KEYS = ['provider', 'model', 'runtime', 'role'];
 
 const dirOf = (base, job, phase) => { for (const v of [job, phase]) if (typeof v !== 'string' || !SAFE.test(v) || v.includes('..') || v.startsWith('.')) throw new RangeError('job and phase must be plain names'); return join(base, 'leases', `${job}.${phase}.lock`); };
-function checkOwner(o) {
+export function checkOwner(o) {
   if (!o || typeof o !== 'object') throw new RangeError('owner must be an object');
   for (const k of OWNER_KEYS) if (typeof o[k] !== 'string' || o[k] === '' || o[k].length > 80) throw new RangeError(`owner.${k} must be short text`);
   if (o.session !== undefined && (typeof o.session !== 'string' || o.session.length > 120)) throw new RangeError('owner.session must be short text');
@@ -43,9 +43,20 @@ export function acquire(base, { job, phase, owner }, now = new Date()) {
   write(dir, h); return h;
 }
 
+/** Is another reclaim under way? A gate folder left by a crashed process is removed once it is two minutes old. */
+const GATE_STALE_MS = 120000;
+function gateBusy(dir) {
+  const gate = `${dir}.reclaim`;
+  if (!existsSync(gate)) return false;
+  try { if (Date.now() - statSync(gate).mtimeMs > GATE_STALE_MS) { rmSync(gate, { recursive: true, force: true }); return false; } } catch { return false; }
+  return true;
+}
+
 /** Can this lease be reclaimed right now? Throws a Conflict saying why not. Call it BEFORE taking a snapshot. */
 export function assertReclaimable(base, { job, phase }, now = new Date()) {
-  const dir = dirOf(base, job, phase); const h = readHolder(dir);
+  const dir = dirOf(base, job, phase);
+  if (gateBusy(dir)) throw new Conflict('another process is reclaiming this lease right now');
+  const h = readHolder(dir);
   if (!h) throw new Conflict('there is no readable engine lease for this phase (if the run never took one, take a snapshot with `snapshot create --reason reclaim` and carry on)');
   if (h.state === 'paused') throw new Conflict('a paused lease is never reclaimed as crashed');
   if (ageMinutes(h, now) < STALE_AFTER_MIN) throw new Conflict('the lease is not stale');
@@ -57,6 +68,7 @@ export function reclaim(base, { job, phase, owner, snapshotRef }, now = new Date
   const dir = dirOf(base, job, phase); checkOwner(owner);
   // Two reclaimers at once: only the one that makes this folder first goes on; it is removed afterwards.
   const gate = `${dir}.reclaim`;
+  if (gateBusy(dir)) throw new Conflict('another process is reclaiming this lease right now');
   try { mkdirSync(gate); } catch { throw new Conflict('another process is reclaiming this lease right now'); }
   try { return reclaimLocked(dir, owner, snapshotRef, now); } finally { rmSync(gate, { recursive: true, force: true }); }
 }

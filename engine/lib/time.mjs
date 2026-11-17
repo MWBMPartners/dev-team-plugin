@@ -26,6 +26,10 @@ export function zonedToUtc(y, mo, d, h, mi, zone) {
   return guess - before; // a time that does not exist: use the offset from before the jump, which lands just after it
 }
 
+/** Does this calendar date really exist (so Feb 30 is refused, not rolled into March)? */
+const realDate = (y, m, d) => { const x = new Date(Date.UTC(y, m - 1, d)); return x.getUTCFullYear() === y && x.getUTCMonth() === m - 1 && x.getUTCDate() === d; };
+const NONE = { resetAt: null, assumptions: [], confidence: 'NONE' };
+
 const datePartsIn = (zone, ts) => { const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: zone, year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(new Date(ts)).filter((x) => x.type !== 'literal').map((x) => [x.type, Number(x.value)])); return { y: p.year, m: p.month, d: p.day }; };
 
 /**
@@ -51,28 +55,38 @@ export function parseClockTime(text, { zoneStated = null, machineZone, now }) {
   if (!zone && /\bUTC\b|\bGMT\b/.test(s)) zone = 'UTC';
   if (zone && !validZone(zone)) zone = null;
   if (!zone) { zone = machineZone; assumptions.push('ZONE_MACHINE'); }
-  // 2b. ISO date and time ("2026-11-25 09:00 UTC").
-  const iso = /\b(\d{4})-(\d{2})-(\d{2})[T\s]+(\d{1,2}):(\d{2})/.exec(s);
-  if (iso) { const hh = Number(iso[4]), mm = Number(iso[5]); if (hh <= 23 && mm <= 59 && Number(iso[2]) >= 1 && Number(iso[2]) <= 12 && Number(iso[3]) >= 1 && Number(iso[3]) <= 31) return { resetAt: new Date(zonedToUtc(Number(iso[1]), Number(iso[2]), Number(iso[3]), hh, mm, zone)).toISOString(), assumptions, confidence: assumptions.length ? 'LOW' : 'HIGH' }; }
+  // 2b. ISO date and time ("2026-11-25 09:00 UTC", "2026-11-25T09:00:00Z", "...+02:00"). A stated offset wins over any zone.
+  const iso = /\b(\d{4})-(\d{2})-(\d{2})[T\s]+(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?\s*(Z\b|[+-]\d{2}:?\d{2}\b)?/.exec(s);
+  if (iso) {
+    const hh = Number(iso[4]), mm = Number(iso[5]), y = Number(iso[1]), mo = Number(iso[2]), d = Number(iso[3]);
+    if (hh > 23 || mm > 59 || !realDate(y, mo, d)) return NONE;
+    if (iso[6]) { const m = /^([+-])(\d{2}):?(\d{2})$/.exec(iso[6]); const off = iso[6] === 'Z' ? 0 : (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) * 60000; return { resetAt: new Date(Date.UTC(y, mo - 1, d, hh, mm) - off).toISOString(), assumptions: [], confidence: 'HIGH' }; }
+    return { resetAt: new Date(zonedToUtc(y, mo, d, hh, mm, zone)).toISOString(), assumptions, confidence: assumptions.length ? 'LOW' : 'HIGH' };
+  }
   // 3. A full date and time ("Sep 14th, 2026 2:31 AM").
-  const full = new RegExp(`\\b(${MONTHS.join('|')})[a-z]*\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4})[,\\s]+(\\d{1,2}):(\\d{2})\\s*(am|pm)?`, 'i').exec(s);
+  const full = new RegExp(`\\b(${MONTHS.join('|')})[a-z]*\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4})(?:[,\\s]+(?:at\\s+)?(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?)?`, 'i').exec(s);
   const clock = (h, mi, ap) => { let hh = Number(h); if (ap) { const pm = ap.toLowerCase() === 'pm'; if (hh < 1 || hh > 12) return null; hh = (hh % 12) + (pm ? 12 : 0); } if (hh > 23 || Number(mi) > 59) return null; return [hh, Number(mi)]; };
   if (full) {
-    const c = clock(full[4], full[5], full[6]);
-    if (c) return { resetAt: new Date(zonedToUtc(Number(full[3]), MONTHS.indexOf(full[1].toLowerCase()) + 1, Number(full[2]), c[0], c[1], zone)).toISOString(), assumptions, confidence: assumptions.length ? 'LOW' : 'HIGH' };
+    // A year is present, so this is a full date: it is read completely or not at all (never as "the next occurrence").
+    const hasTime = full[4] !== undefined && (full[5] !== undefined || full[6] !== undefined);
+    const c = hasTime ? clock(full[4], full[5] ?? '0', full[6]) : null;
+    const y = Number(full[3]), mo = MONTHS.indexOf(full[1].toLowerCase()) + 1, d = Number(full[2]);
+    if (!c || !realDate(y, mo, d)) return NONE;
+    return { resetAt: new Date(zonedToUtc(y, mo, d, c[0], c[1], zone)).toISOString(), assumptions, confidence: assumptions.length ? 'LOW' : 'HIGH' };
   }
   // 3b. A month and day with no year ("Nov 20 at 9:00 AM"): the next such date, and say so.
   const md = new RegExp(`\\b(${MONTHS.join('|')})[a-z]*\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b(?!,?\\s+\\d{4})`, 'i').exec(s);
   if (md) {
     const cm = /\b(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*(am|pm)\b/i.exec(s.slice((md.index ?? 0) + md[0].length)) ?? /\b([01]?\d|2[0-3]):([0-5]\d)\b/.exec(s.slice((md.index ?? 0) + md[0].length));
     const cc = cm ? (cm[3] ? clock(cm[1], cm[2] ?? '0', cm[3]) : clock(cm[1], cm[2], null)) : null;
-    if (!cc || Number(md[2]) < 1 || Number(md[2]) > 31) return { resetAt: null, assumptions: [], confidence: 'NONE' };
-    const month = MONTHS.indexOf(md[1].toLowerCase()) + 1; let year = datePartsIn(zone, now.getTime()).y;
-    let u = zonedToUtc(year, month, Number(md[2]), cc[0], cc[1], zone); if (u <= now.getTime()) u = zonedToUtc(year + 1, month, Number(md[2]), cc[0], cc[1], zone);
+    const month = MONTHS.indexOf(md[1].toLowerCase()) + 1, day = Number(md[2]); const year = datePartsIn(zone, now.getTime()).y;
+    if (!cc || day < 1 || !(realDate(year, month, day) || realDate(year + 1, month, day))) return NONE;
+    let u = realDate(year, month, day) ? zonedToUtc(year, month, day, cc[0], cc[1], zone) : -Infinity;
+    if (u <= now.getTime()) { if (!realDate(year + 1, month, day)) return NONE; u = zonedToUtc(year + 1, month, day, cc[0], cc[1], zone); }
     return { resetAt: new Date(u).toISOString(), assumptions: [...assumptions, 'YEAR_INFERRED'], confidence: 'LOW' };
   }
   // 3c. Any other kind of date (a weekday, 25/11) cannot be read safely: no reset time rather than a wrong one.
-  if (/\b(mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)[a-z]*\b/i.test(s) && /\d/.test(s) || /\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/.test(s) || /\b\d{4}-\d{2}-\d{2}\b/.test(s)) return { resetAt: null, assumptions: [], confidence: 'NONE' };
+  if (/\b(mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/i.test(s) && /\d/.test(s) || /\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/.test(s) || /\b\d{4}-\d{2}-\d{2}\b/.test(s)) return { resetAt: null, assumptions: [], confidence: 'NONE' };
   // 4. A clock time with no date: its next occurrence.
   const m12 = /\b(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*(am|pm)\b/i.exec(s), m24 = /\b([01]?\d|2[0-3]):([0-5]\d)\b/.exec(s);
   const c = m12 ? clock(m12[1], m12[2] ?? '0', m12[3]) : m24 ? clock(m24[1], m24[2], null) : null;

@@ -55,3 +55,11 @@ test('review plan: specialists by task type and component, an adversarial pass a
   assert.equal(p.contract.freshContext, true); assert.equal(p.contract.adversarial, true); assert.ok(p.contract.instructions.some((x) => /attack/.test(x))); assert.equal(p.reviewer.independence, 'CROSS_PROVIDER');
   assert.throws(() => planReview({ jobId: 'j', phase: 'v', files: 'x', builtBy: built, models }), RangeError);
 });
+
+test('review never uses an ask-first model without approval; local models are exempt; approval releases it', () => {
+  const ms = [{ ...M('claude', 'opus', 3), alias: 'opus' }, { ...M('claude', 'fable', 4), alias: 'fable', classes: ['fable'] }];
+  const r = chooseReviewer({ builtBy: { provider: 'claude', model: 'opus' }, risk: 'NORMAL', models: ms, askFirst: ['fable'] });
+  assert.ok(r.skipped.some((s) => s.model === 'claude/fable' && s.reason === 'NEEDS_APPROVAL')); assert.equal(r.independence, 'SAME_MODEL_FRESH_CONTEXT');
+  const ok = chooseReviewer({ builtBy: { provider: 'claude', model: 'opus' }, risk: 'NORMAL', models: ms, askFirst: ['fable'], approved: ['fable'] }); assert.equal(ok.chosen.id, 'fable');
+  const loc = chooseReviewer({ builtBy: { provider: 'claude', model: 'opus' }, risk: 'NORMAL', models: [...ms, { ...M('ollama', 'big', 3), local: true }], askFirst: ['unpriced', 'big'] }); assert.ok(!loc.skipped.some((s) => s.model === 'ollama/big'));
+});

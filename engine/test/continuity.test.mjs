@@ -144,3 +144,16 @@ test('lease: a heartbeat in the future never keeps a lease fresh; two reclaimers
 test('fallback: a failed model with no numeric tier is refused instead of offering weaker models', () => {
   assert.throws(() => ladder(M, { provider: 'claude', id: 'x', tier: null }), RangeError); assert.throws(() => ladder(M, { provider: 'claude', id: 'x' }), RangeError);
 });
+
+test('a stale reclaim gate left by a crash is cleared after two minutes; a fresh one blocks; a bad owner is refused before anything is saved', async () => {
+  const { utimesSync } = await import('node:fs');
+  const b = base(); lease.acquire(b, { ...J, owner: A }, t0);
+  const dir = join(b, 'leases', 'j-aaaaaaaaaaaa.build.lock'); const h = JSON.parse(readFileSync(join(dir, 'holder.json'), 'utf8'));
+  writeFileSync(join(dir, 'holder.json'), JSON.stringify({ ...h, heartbeatAt: '2020-01-01T00:00:00.000Z' }));
+  mkdirSync(`${dir}.reclaim`);
+  assert.throws(() => lease.assertReclaimable(b, J, t0), /reclaiming this lease right now/);
+  const old = new Date(Date.now() - 600000); utimesSync(`${dir}.reclaim`, old, old);
+  assert.doesNotThrow(() => lease.assertReclaimable(b, J, t0));
+  assert.equal(lease.reclaim(b, { ...J, owner: A, snapshotRef: null }, t0).state, 'running'); assert.ok(!existsSync(`${dir}.reclaim`));
+  assert.throws(() => lease.checkOwner({ provider: 'x' }), RangeError);
+});

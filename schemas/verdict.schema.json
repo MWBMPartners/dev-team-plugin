@@ -3,7 +3,7 @@
   "$id": "https://github.com/MWBMPartners/dev-team-plugin/schemas/verdict.schema.json",
   "title": "dev-team verdict.json",
   "description": "Shape of .dev-team/verdict.json, the machine-readable summary the dev-team-review skill writes alongside its human-readable .dev-team/VERIFICATION.md report (see skills/dev-team-review/references/verdict-and-report-protocol.md, 'VERIFICATION.md structure'). It exists so a CI step can gate a build on the review's outcome (exit non-zero on a FAIL verdict) without having to parse the markdown report. This file is JSON, which has no comment syntax of its own, so every field's reason for existing and who reads it is recorded here in its 'description' instead of in '//' comments that would make the file invalid JSON.",
-  "$comment": "File: schemas/verdict.schema.json. Validates tests/fixtures/verdict.sample.json (see tests/scripts.bats) and is meant to be run in CI against every verdict.json a dev-team-review run produces, using check-jsonschema (pip install check-jsonschema; see .github/workflows/plugin-audit.yml). Written for issue #41 (moving dev-team's own files into .dev-team/), which is also why the 'dev-team' marker field below exists on this ledger the same way it exists on every markdown one. Note on 'additionalProperties: false' just below: it is set on purpose, so that a field added under a new or misspelled name (e.g. 'verified_count' instead of 'verified') fails this check loudly and immediately, in CI, rather than being silently accepted and only noticed much later by a person reading the JSON by eye. A genuinely new field is added here, with its own description, in the same change that starts emitting it — this schema is not meant to be a ceiling on the format, only a guard against silent drift. The four 'allOf' rules below only reject verdict shapes that verdict-and-report-protocol.md's 'Overall verdict rule' already calls impossible (e.g. overall PASS while the integration check failed, or overall FAIL with no critical FAILED claim and a passing integration check) — they are not a new, stricter format, just this schema catching a self-contradictory file that the old schema let through. One thing they deliberately do NOT do: nothing here requires PASS_WITH_GAPS to actually contain a gap (a HOLLOW, DRIFTED, or non-critical FAILED claim). That is left unconstrained from below on purpose, because the protocol allows PASS_WITH_GAPS whenever nothing critical failed and the integration check passed — a review can carry a real gap of a kind this schema does not track at all (for example a shortfall noted only in the VERIFICATION.md prose), so a PASS_WITH_GAPS verdict with no matching per-claim entry is not a shape the protocol calls impossible, and this schema only rejects shapes the protocol calls impossible. Rules that JSON Schema cannot express — the claims list length matching 'checked', the five counts adding up to 'checked', each count matching the number of claims carrying that verdict, and claim ids being unique (JSON Schema's 'uniqueItems' compares whole objects, not one field of them) — are checked by scripts/check-verdict.sh, which must be run alongside this schema, not instead of it.",
+  "$comment": "File: schemas/verdict.schema.json. Validates tests/fixtures/verdict.sample.json (see tests/scripts.bats) and is meant to be run in CI against every verdict.json a dev-team-review run produces, using check-jsonschema (pip install check-jsonschema; see .github/workflows/plugin-audit.yml). Written for issue #41 (moving dev-team's own files into .dev-team/), which is also why the 'dev-team' marker field below exists on this ledger the same way it exists on every markdown one. Note on 'additionalProperties: false' just below: it is set on purpose, so that a field added under a new or misspelled name (e.g. 'verified_count' instead of 'verified') fails this check loudly and immediately, in CI, rather than being silently accepted and only noticed much later by a person reading the JSON by eye. A genuinely new field is added here, with its own description, in the same change that starts emitting it \u2014 this schema is not meant to be a ceiling on the format, only a guard against silent drift. The four 'allOf' rules below only reject verdict shapes that verdict-and-report-protocol.md's 'Overall verdict rule' already calls impossible (e.g. overall PASS while the integration check failed, or overall FAIL with no critical FAILED claim and a passing integration check) \u2014 they are not a new, stricter format, just this schema catching a self-contradictory file that the old schema let through. One thing they deliberately do NOT do: nothing here requires PASS_WITH_GAPS to actually contain a gap (a HOLLOW, DRIFTED, or non-critical FAILED claim). That is left unconstrained from below on purpose, because the protocol allows PASS_WITH_GAPS whenever nothing critical failed and the integration check passed \u2014 a review can carry a real gap of a kind this schema does not track at all (for example a shortfall noted only in the VERIFICATION.md prose), so a PASS_WITH_GAPS verdict with no matching per-claim entry is not a shape the protocol calls impossible, and this schema only rejects shapes the protocol calls impossible. Rules that JSON Schema cannot express \u2014 the claims list length matching 'checked', the five counts adding up to 'checked', each count matching the number of claims carrying that verdict, and claim ids being unique (JSON Schema's 'uniqueItems' compares whole objects, not one field of them) \u2014 are checked by scripts/check-verdict.sh, which must be run alongside this schema, not instead of it.",
   "type": "object",
   "required": [
     "dev-team",
@@ -21,10 +21,14 @@
   "properties": {
     "dev-team": {
       "const": "ledger=verdict schema=1.0",
-      "description": "The dev-team ownership marker for this file, in the form every dev-team ledger carries (see conventions.md, 'Where the plugin writes, and the ownership rule'). Its purpose is NOT versioning by itself — it is the proof that a JSON file found at .dev-team/verdict.json is this plugin's own, not a same-named file left there by something else, so that a reader (or a future ownership check) can tell the difference without guessing."
+      "description": "The dev-team ownership marker for this file, in the form every dev-team ledger carries (see conventions.md, 'Where the plugin writes, and the ownership rule'). Its purpose is NOT versioning by itself \u2014 it is the proof that a JSON file found at .dev-team/verdict.json is this plugin's own, not a same-named file left there by something else, so that a reader (or a future ownership check) can tell the difference without guessing."
     },
     "overall": {
-      "enum": ["PASS", "PASS_WITH_GAPS", "FAIL"],
+      "enum": [
+        "PASS",
+        "PASS_WITH_GAPS",
+        "FAIL"
+      ],
       "description": "The headline verdict for the whole review, gated by the worst claim that matters rather than an average of all claims (see verdict-and-report-protocol.md, 'Overall verdict rule'). PASS: every claim that matters is VERIFIED and the integration check passed. PASS_WITH_GAPS: nothing critical failed, but there are real gaps (HOLLOW tests, DRIFTED records, non-critical FAILED claims). FAIL: a critical claim failed, or the app does not actually run end to end. A CI gate normally fails the build only on FAIL."
     },
     "checked": {
@@ -50,7 +54,7 @@
     "hollow": {
       "type": "integer",
       "minimum": 0,
-      "description": "Count of claims whose verdict is HOLLOW: something that passes on paper (a test, a check) but was found not to actually exercise what it claims to — for example a coverage number that never touches the code path it is supposed to cover."
+      "description": "Count of claims whose verdict is HOLLOW: something that passes on paper (a test, a check) but was found not to actually exercise what it claims to \u2014 for example a coverage number that never touches the code path it is supposed to cover."
     },
     "unverifiable": {
       "type": "integer",
@@ -58,8 +62,11 @@
       "description": "Count of claims whose verdict is UNVERIFIABLE: the reviewer could not get fresh evidence either way (no environment to run it in, no way to reproduce it), so the claim is neither confirmed nor denied."
     },
     "integration": {
-      "enum": ["pass", "fail"],
-      "description": "Result of the clean-room integration check: built and run from a fresh checkout, does the primary user task actually work end to end. This is deliberately separate from the per-claim counts above, because a project can have every individual claim VERIFIED and still not actually run — this field is what catches that case, and a 'fail' here forces 'overall' to FAIL regardless of the claim counts."
+      "enum": [
+        "pass",
+        "fail"
+      ],
+      "description": "Result of the clean-room integration check: built and run from a fresh checkout, does the primary user task actually work end to end. This is deliberately separate from the per-claim counts above, because a project can have every individual claim VERIFIED and still not actually run \u2014 this field is what catches that case, and a 'fail' here forces 'overall' to FAIL regardless of the claim counts."
     },
     "regressions": {
       "type": "array",
@@ -68,21 +75,26 @@
       "items": {
         "type": "string",
         "pattern": "^V-[0-9]{3,}$",
-        "description": "A verification-claim id in this plugin's id scheme (see conventions.md, 'ID prefixes') — always 'V-' followed by at least three digits, e.g. V-001 or V-104."
+        "description": "A verification-claim id in this plugin's id scheme (see conventions.md, 'ID prefixes') \u2014 always 'V-' followed by at least three digits, e.g. V-001 or V-104."
       }
     },
     "improvement_findings": {
       "type": "integer",
       "minimum": 0,
-      "description": "Count of improvement findings (id prefix I-0xx) raised alongside the verdict: things that work correctly but could be made leaner or faster. These do not affect 'overall' — a project can PASS while still carrying improvement findings — and only feed the optional fix phase when the review's 'improve' setting is on (see verdict-and-report-protocol.md, 'Fix phase'). Optional because a quick-depth review may skip the efficiency pass entirely."
+      "description": "Count of improvement findings (id prefix I-0xx) raised alongside the verdict: things that work correctly but could be made leaner or faster. These do not affect 'overall' \u2014 a project can PASS while still carrying improvement findings \u2014 and only feed the optional fix phase when the review's 'improve' setting is on (see verdict-and-report-protocol.md, 'Fix phase'). Optional because a quick-depth review may skip the efficiency pass entirely."
     },
     "claims": {
       "type": "array",
-      "description": "One entry per claim this review pass checked — the machine-readable form of the 'Per-claim results' table in VERIFICATION.md. Every id counted in 'checked' above must appear exactly once here (checked by scripts/check-verdict.sh).",
+      "description": "One entry per claim this review pass checked \u2014 the machine-readable form of the 'Per-claim results' table in VERIFICATION.md. Every id counted in 'checked' above must appear exactly once here (checked by scripts/check-verdict.sh).",
       "items": {
         "type": "object",
-        "required": ["id", "verdict", "severity", "confidence"],
-        "description": "A single claim's result. Deliberately NOT locked down with additionalProperties:false the way the top-level object is — a claim may carry extra fields (a short description of what was claimed, a link to the fresh evidence) that are useful to a human reading the JSON directly but are not needed by an automated CI gate, so they are allowed rather than rejected.",
+        "required": [
+          "id",
+          "verdict",
+          "severity",
+          "confidence"
+        ],
+        "description": "A single claim's result. Deliberately NOT locked down with additionalProperties:false the way the top-level object is \u2014 a claim may carry extra fields (a short description of what was claimed, a link to the fresh evidence) that are useful to a human reading the JSON directly but are not needed by an automated CI gate, so they are allowed rather than rejected.",
         "properties": {
           "id": {
             "type": "string",
@@ -90,30 +102,94 @@
             "description": "This claim's verification-record id, e.g. V-001. Matches an id in the project's own VERIFICATION.md 'Per-claim results' table."
           },
           "verdict": {
-            "enum": ["VERIFIED", "FAILED", "DRIFTED", "HOLLOW", "UNVERIFIABLE"],
+            "enum": [
+              "VERIFIED",
+              "FAILED",
+              "DRIFTED",
+              "HOLLOW",
+              "UNVERIFIABLE"
+            ],
             "description": "This one claim's result. See the top-level 'verified'/'failed'/'drifted'/'hollow'/'unverifiable' fields for what each word means; the counts above are simply how many claims carry each of these five values."
           },
           "severity": {
-            "enum": ["critical", "high", "medium", "low", "n/a"],
-            "description": "How much it would matter if this claim were wrong — not how bad the verdict already is. 'n/a' is for claims (for example a fully VERIFIED, non-critical one) where severity was never a live question. A FAILED claim at 'critical' severity forces the overall verdict to FAIL. A critical DRIFTED or UNVERIFIABLE claim does not force FAIL, but it does rule out PASS, leaving PASS_WITH_GAPS (see verdict-and-report-protocol.md, 'Overall verdict rule', and the sample fixture's V-003)."
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low",
+              "n/a"
+            ],
+            "description": "How much it would matter if this claim were wrong \u2014 not how bad the verdict already is. 'n/a' is for claims (for example a fully VERIFIED, non-critical one) where severity was never a live question. A FAILED claim at 'critical' severity forces the overall verdict to FAIL. A critical DRIFTED or UNVERIFIABLE claim does not force FAIL, but it does rule out PASS, leaving PASS_WITH_GAPS (see verdict-and-report-protocol.md, 'Overall verdict rule', and the sample fixture's V-003)."
           },
           "confidence": {
-            "enum": ["high", "medium", "low"],
-            "description": "How sure the verifier is of this particular verdict, independent of severity — for example a DRIFTED verdict reached from a single ambiguous log line would be 'low' confidence even if the claim itself is critical."
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "description": "How sure the verifier is of this particular verdict, independent of severity \u2014 for example a DRIFTED verdict reached from a single ambiguous log line would be 'low' confidence even if the claim itself is critical."
+          },
+          "status": {
+            "description": "Where a reported problem stands: OPEN, ACCEPTED, REJECTED, FALSE_POSITIVE, DEFERRED, FIXED or VERIFIED (added in 2.0).",
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "ACCEPTED",
+              "REJECTED",
+              "FALSE_POSITIVE",
+              "DEFERRED",
+              "FIXED",
+              "VERIFIED"
+            ]
+          },
+          "reviewer": {
+            "description": "Who reported this claim's problem (added in 2.0).",
+            "type": "string"
+          },
+          "resolution": {
+            "description": "How it was resolved, in words (added in 2.0).",
+            "type": "string"
           }
         }
       }
+    },
+    "reviewer": {
+      "description": "Who did the review, as provider/model (added in 2.0; optional so 1.x files stay valid).",
+      "type": "string"
+    },
+    "independence": {
+      "description": "How independent the reviewer was from the builder: CROSS_PROVIDER, SAME_PROVIDER_DIFFERENT_MODEL or SAME_MODEL_FRESH_CONTEXT (added in 2.0).",
+      "type": "string",
+      "enum": [
+        "CROSS_PROVIDER",
+        "SAME_PROVIDER_DIFFERENT_MODEL",
+        "SAME_MODEL_FRESH_CONTEXT"
+      ]
+    },
+    "review_contract": {
+      "description": "The brief the reviewer was given (added in 2.0).",
+      "type": "object"
     }
   },
   "allOf": [
     {
       "$comment": "A failed clean-room integration check always makes the overall verdict FAIL, whatever the claim counts say. See verdict-and-report-protocol.md, 'Overall verdict rule'.",
       "if": {
-        "properties": { "integration": { "const": "fail" } },
-        "required": ["integration"]
+        "properties": {
+          "integration": {
+            "const": "fail"
+          }
+        },
+        "required": [
+          "integration"
+        ]
       },
       "then": {
-        "properties": { "overall": { "const": "FAIL" } }
+        "properties": {
+          "overall": {
+            "const": "FAIL"
+          }
+        }
       }
     },
     {
@@ -123,38 +199,73 @@
           "claims": {
             "contains": {
               "properties": {
-                "verdict": { "const": "FAILED" },
-                "severity": { "const": "critical" }
+                "verdict": {
+                  "const": "FAILED"
+                },
+                "severity": {
+                  "const": "critical"
+                }
               },
-              "required": ["verdict", "severity"]
+              "required": [
+                "verdict",
+                "severity"
+              ]
             }
           }
         },
-        "required": ["claims"]
+        "required": [
+          "claims"
+        ]
       },
       "then": {
-        "properties": { "overall": { "const": "FAIL" } }
+        "properties": {
+          "overall": {
+            "const": "FAIL"
+          }
+        }
       }
     },
     {
       "$comment": "PASS means nothing FAILED, nothing HOLLOW, integration passed, and no critical claim is DRIFTED or UNVERIFIABLE.",
       "if": {
-        "properties": { "overall": { "const": "PASS" } },
-        "required": ["overall"]
+        "properties": {
+          "overall": {
+            "const": "PASS"
+          }
+        },
+        "required": [
+          "overall"
+        ]
       },
       "then": {
         "properties": {
-          "failed": { "const": 0 },
-          "hollow": { "const": 0 },
-          "integration": { "const": "pass" },
+          "failed": {
+            "const": 0
+          },
+          "hollow": {
+            "const": 0
+          },
+          "integration": {
+            "const": "pass"
+          },
           "claims": {
             "not": {
               "contains": {
                 "properties": {
-                  "severity": { "const": "critical" },
-                  "verdict": { "enum": ["DRIFTED", "UNVERIFIABLE"] }
+                  "severity": {
+                    "const": "critical"
+                  },
+                  "verdict": {
+                    "enum": [
+                      "DRIFTED",
+                      "UNVERIFIABLE"
+                    ]
+                  }
                 },
-                "required": ["verdict", "severity"]
+                "required": [
+                  "verdict",
+                  "severity"
+                ]
               }
             }
           }
@@ -162,30 +273,51 @@
       }
     },
     {
-      "$comment": "FAIL must have a cause. The first three rules above only ever push the verdict TOWARDS FAIL (integration failed, or a critical claim FAILED); nothing stopped a producer writing FAIL on its own with neither cause true, which is exactly as impossible under the protocol as a PASS with a failed integration check. See verdict-and-report-protocol.md, 'Overall verdict rule': \"FAIL — any critical done-criterion / feature / security claim FAILED, or the integration check failed (app doesn't run / core task broken).\" So a FAIL verdict must show one of those two causes in the rest of the file.",
+      "$comment": "FAIL must have a cause. The first three rules above only ever push the verdict TOWARDS FAIL (integration failed, or a critical claim FAILED); nothing stopped a producer writing FAIL on its own with neither cause true, which is exactly as impossible under the protocol as a PASS with a failed integration check. See verdict-and-report-protocol.md, 'Overall verdict rule': \"FAIL \u2014 any critical done-criterion / feature / security claim FAILED, or the integration check failed (app doesn't run / core task broken).\" So a FAIL verdict must show one of those two causes in the rest of the file.",
       "if": {
-        "properties": { "overall": { "const": "FAIL" } },
-        "required": ["overall"]
+        "properties": {
+          "overall": {
+            "const": "FAIL"
+          }
+        },
+        "required": [
+          "overall"
+        ]
       },
       "then": {
         "anyOf": [
           {
-            "properties": { "integration": { "const": "fail" } },
-            "required": ["integration"]
+            "properties": {
+              "integration": {
+                "const": "fail"
+              }
+            },
+            "required": [
+              "integration"
+            ]
           },
           {
             "properties": {
               "claims": {
                 "contains": {
                   "properties": {
-                    "verdict": { "const": "FAILED" },
-                    "severity": { "const": "critical" }
+                    "verdict": {
+                      "const": "FAILED"
+                    },
+                    "severity": {
+                      "const": "critical"
+                    }
                   },
-                  "required": ["verdict", "severity"]
+                  "required": [
+                    "verdict",
+                    "severity"
+                  ]
                 }
               }
             },
-            "required": ["claims"]
+            "required": [
+              "claims"
+            ]
           }
         ]
       }

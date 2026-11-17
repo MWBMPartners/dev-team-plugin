@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Orchestrator engine, increment 5**: review independence (`review plan`): the checker is never the builder, a
+  different provider is preferred more the riskier the work (required for critical work where possible), the
+  independence level is recorded and never overstated, ask-first models are never used for review unasked;
+  the finding lifecycle (`findings add|update|precision`); `schemas/verdict.schema.json` gains optional
+  `reviewer`, `independence`, `review_contract` and per-claim `status`, `reviewer`, `resolution`.
+
 - **Orchestrator engine, increment 4**: quota-message reading with times that are never invented (and tested
   across the London clock change), leases that tell a paused phase from a crashed one, work snapshots that save
   new files too and refuse secrets, pause and resume by the same agent, fallback and takeover ladders, failure

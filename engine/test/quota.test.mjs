@@ -73,3 +73,15 @@ test('time and quota: a later "in" clause is found; "5h30m" is read; a short rat
   const r = parseQuotaMessage('429: rate limit exceeded, retry after 20 seconds', { provider: 'x', machineZone: L, now }); assert.equal(r.state, 'RATE_LIMITED'); assert.equal(pauseOrBlock(r, now).action, 'RETRY_LATER');
   assert.equal(parseQuotaMessage("You've hit your GPT-5 usage limit", { provider: 'codex', machineZone: L, now }).scope, 'MODEL_FAMILY');
 });
+
+// ---- Second review of increment 4 ----
+test('time: a full date with "at 9:00 AM" or "9 AM" is read completely; a stated offset or Z wins; words that merely start like a weekday do not matter; impossible dates are refused', () => {
+  const now = at('2026-11-17T10:00:00Z'), p = (s, z = 'America/New_York') => parseClockTime(s, { machineZone: z, now }).resetAt;
+  assert.equal(p('resets Nov 20, 2026 at 9:00 AM', 'UTC'), '2026-11-20T09:00:00.000Z'); assert.equal(p('resets Nov 20, 2026 9 AM', 'UTC'), '2026-11-20T09:00:00.000Z'); assert.equal(p('resets Mar 5th 2027 9am', 'UTC'), '2027-03-05T09:00:00.000Z');
+  assert.equal(p('resets Nov 20, 2026', 'UTC'), null); // a year but no time: never "the next occurrence"
+  assert.equal(p('resets 2026-11-25T09:00:00Z'), '2026-11-25T09:00:00.000Z'); assert.equal(p('resets 2026-11-25T09:00:00+02:00', 'UTC'), '2026-11-25T07:00:00.000Z');
+  assert.equal(p('Monthly usage limit reached. Resets at 5pm.', 'UTC'), '2026-11-17T17:00:00.000Z'); assert.equal(p('Friendly note: resets at 5pm', 'UTC'), '2026-11-17T17:00:00.000Z');
+  assert.equal(p('resets Tuesday at 9am', 'UTC'), null);
+  for (const t of ['resets Feb 30 at 9am', 'resets 2026-02-30 09:00 UTC', 'resets Feb 30, 2026 9 AM']) assert.equal(p(t, 'UTC'), null, t);
+  assert.equal(p('resets Feb 29 at 9am', 'UTC'), null); // no such date this year or next: no reset time rather than a guess
+});

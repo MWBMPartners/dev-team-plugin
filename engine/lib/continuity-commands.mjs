@@ -52,6 +52,7 @@ export const continuityCommands = {
       if (a.sub === 'reclaim') {
         // Check the lease first (nothing is saved for a lease that cannot be reclaimed), then save the work, and only
         // then take the lease over. The snapshot is always reported, even if the takeover is refused after it.
+        lease.checkOwner(args.owner); // a bad owner is refused before anything is saved
         lease.assertReclaimable(base, args);
         const snap = createSnapshot(root, { job: args.job, phase: args.phase, reason: 'reclaim' });
         try { return { code: ExitCodes.OK, result: { lease: lease.reclaim(base, { ...args, snapshotRef: snap.snapshotRef }), snapshot: snap } }; }
@@ -59,6 +60,7 @@ export const continuityCommands = {
       }
       if (a.sub === 'pause') {
         const obs = typeof a.flags['observation-file'] === 'string' ? readJson(a.flags['observation-file'], 'the observation file') : { resetAt: typeof a.flags['resets-at'] === 'string' ? a.flags['resets-at'] : null };
+        lease.checkOwner(args.owner);
         const d = pauseOrBlock(obs, new Date()); if (d.action !== 'PAUSE') throw new Conflict(`cannot pause: ${d.reason}`); // before saving anything
         const snap = createSnapshot(root, { job: args.job, phase: args.phase, reason: 'pause' });
         try { return { code: ExitCodes.OK, result: { lease: lease.pause(base, { ...args, observation: obs, snapshotRef: snap.snapshotRef }), snapshot: snap } }; }
@@ -67,6 +69,7 @@ export const continuityCommands = {
     } catch (e) {
       if (e instanceof Conflict) return conflict(/^STALE_LOCK/.test(e.message) ? 'STALE_LOCK' : 'LEASE_CONFLICT', e);
       if (e instanceof SecretFound) return { code: ExitCodes.VERIFY_FAILED, result: null, problems: [{ code: 'SECRET_IN_SNAPSHOT', message: e.message }] };
+      if (e instanceof SnapshotConflict) return conflict('SNAPSHOT_CONFLICT', e);
       throw e;
     }
     throw new BadInput('usage: lease acquire|heartbeat|pause|resume|reclaim|release|status --job J --phase P --provider X --model M --runtime R --role ROLE [--session S]');

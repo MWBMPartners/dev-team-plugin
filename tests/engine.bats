@@ -220,3 +220,21 @@ teardown() { rm -rf "$SCRATCH"; }
   [ "$status" -eq 5 ]
   [ -z "$(git -C "$SCRATCH/repo" for-each-ref refs/dev-team)" ]
 }
+
+@test "engine.sh: review plan picks a cross-provider reviewer, never an ask-first model unasked; findings follow the lifecycle" {
+  printf '{"jobId":"j-aaaaaaaaaaaa","phase":"verify","risk":"NORMAL","files":["a.js"],"builtBy":{"provider":"claude","model":"opus"},"projectDir":"%s"}' "$SCRATCH" > "$SCRATCH/i.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" review plan --input "$SCRATCH/i.json"
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r .result.reviewer.independence)" = "CROSS_PROVIDER" ]
+  [ "$(printf '%s' "$output" | jq '[.result.reviewer.skipped[] | select(.reason=="NEEDS_APPROVAL")] | length > 0')" = "true" ]
+  f="$SCRATCH/findings.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" findings add --state-file "$f" --file a.js --rule R1 --summary "Missing check" --severity BLOCKING --reviewer codex
+  [ "$status" -eq 0 ]
+  id="$(printf '%s' "$output" | jq -r .result.id)"
+  run bash "$REPO_ROOT/scripts/engine.sh" findings update --state-file "$f" --id "$id" --status FIXED --by lead
+  [ "$status" -eq 2 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" findings update --state-file "$f" --id "$id" --status ACCEPTED --by lead
+  [ "$status" -eq 0 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" findings precision --state-file "$f"
+  [ "$(printf '%s' "$output" | jq -r .result.codex.accepted)" = "1" ]
+}

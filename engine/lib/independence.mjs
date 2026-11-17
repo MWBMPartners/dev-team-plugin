@@ -1,4 +1,5 @@
 // @ts-check
+import { isAskFirst } from './routing.mjs';
 // File:    engine/lib/independence.mjs
 // Purpose: Chooses who checks a piece of work so that the checker is never the builder, and records HOW independent
 //          the check was. The more risk, the more the check should come from a different provider:
@@ -16,7 +17,7 @@ const STAGE_MAX = { NEW: -1, PROVISIONAL: 0, CANARY: 1, VALIDATED: 2, TRUSTED: 3
 const RISK_RANK = { LOW: 0, NORMAL: 1, HIGH: 2, CRITICAL: 3 };
 
 /**
- * @param {{builtBy: {provider: string, model: string}, risk?: string, models: any[], exhausted?: string[], minTier?: number}} i
+ * @param {{builtBy: {provider: string, model: string}, risk?: string, models: any[], exhausted?: string[], minTier?: number, askFirst?: string[], approved?: string[]}} i
  * models: {provider, id, tier, canaryStage, availability, lifecycleStatus, costBand}
  */
 export function chooseReviewer(i) {
@@ -26,8 +27,11 @@ export function chooseReviewer(i) {
   const minTier = i.minTier ?? 3, exhausted = (i.exhausted ?? []).map((x) => String(x).toLowerCase());
   const skipped = [];
   const eligible = [];
+  const askFirst = (i.askFirst ?? []).map((x) => String(x).toLowerCase()), approved = (i.approved ?? []).map((x) => String(x).toLowerCase());
   for (const m of i.models) {
     const tag = `${m.provider}/${m.id}`;
+    // A model on the ask-first list is never used for a review either, unless it was approved for this task. Local models are exempt.
+    if (!m.local && askFirst.length && isAskFirst({ alias: m.alias ?? m.id, id: m.id, classes: m.classes ?? [], priced: m.priced !== false }, askFirst) && !approved.includes(String(m.alias ?? m.id).toLowerCase()) && !approved.includes(String(m.id).toLowerCase())) { skipped.push({ model: tag, reason: 'NEEDS_APPROVAL' }); continue; }
     if (m.tier < minTier) { skipped.push({ model: tag, reason: 'BELOW_REVIEW_FLOOR' }); continue; }
     if (m.lifecycleStatus === 'RETIRED' || m.availability === 'UNAVAILABLE') { skipped.push({ model: tag, reason: 'UNAVAILABLE' }); continue; }
     if (exhausted.includes(String(m.provider).toLowerCase())) { skipped.push({ model: tag, reason: 'QUOTA_EXHAUSTED' }); continue; }

@@ -19,12 +19,12 @@ export function specialistsFor(taskTypes, risk = 'NORMAL', components = []) {
 }
 
 /**
- * @param {{jobId: string, phase: string, planId?: string, planHash?: string, risk?: string, files: string[], invariants?: string[], taskTypes?: string[], components?: string[], builtBy: {provider: string, model: string}, models: any[], exhausted?: string[]}} i
+ * @param {{jobId: string, phase: string, planId?: string, planHash?: string, risk?: string, files: string[], invariants?: string[], taskTypes?: string[], components?: string[], builtBy: {provider: string, model: string}, models: any[], exhausted?: string[], askFirst?: string[], approved?: string[]}} i
  */
 export function planReview(i) {
   const risk = String(i.risk ?? 'NORMAL').toUpperCase();
   if (!Array.isArray(i.files) || i.files.some((f) => typeof f !== 'string')) throw new RangeError('files must be a list of paths');
-  const route = chooseReviewer({ builtBy: i.builtBy, risk, models: i.models, exhausted: i.exhausted });
+  const route = chooseReviewer({ builtBy: i.builtBy, risk, models: i.models, exhausted: i.exhausted, askFirst: i.askFirst, approved: i.approved });
   const sp = specialistsFor(i.taskTypes ?? [], risk, i.components ?? []);
   return {
     contract: {

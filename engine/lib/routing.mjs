@@ -39,7 +39,7 @@ export function requiredTier(role, risk = 'NORMAL', complex = false) {
   return t;
 }
 
-const isAskFirst = (m, list) => (m.pinnedId && list.includes(lc(m.pinnedId))) || list.includes(lc(m.alias)) || list.includes(lc(m.id)) || m.classes.some((c) => list.includes(lc(c))) || (!m.priced && list.includes('unpriced'));
+export const isAskFirst = (m, list) => (m.pinnedId && list.includes(lc(m.pinnedId))) || list.includes(lc(m.alias)) || list.includes(lc(m.id)) || m.classes.some((c) => list.includes(lc(c))) || (!m.priced && list.includes('unpriced'));
 
 /**
  * @param {{role: string, risk?: string, complex?: boolean, approved?: string[], exhausted?: string[], providers?: string[], builtBy?: string}} req
