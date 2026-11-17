@@ -20,6 +20,28 @@ one edit per model release instead of six that rot together.
 | Scribe | `sonnet-scribe` | `sonnet` | Documentarian: `.dev-team/PROJECT.md` / `.dev-team/HANDOFF.md` / `.dev-team/FEATURES.md` / `.dev-team/SECURITY.md` / `.dev-team/VERIFICATION.md` upkeep, ledgers, run records. |
 | Mechanical | `quick-edits` | `haiku` | Renames, formatting, import sorting, docstrings, boilerplate, trivial config. |
 
+## Role-named agents (added 17 November 2026)
+
+Agent files are now named after the job, not the model, because the model is chosen when a worker is started (by
+the engine, or by the lead from the tables here) and Claude Code reads the **thinking effort** from the agent's own
+file. Each file carries a default `model:` (only a default) and an `effort:`. The old names still work for one
+release and are removed in 2.1.0.
+
+| Role file | Effort | Default model | Read-only | Replaces |
+|---|---|---|---|---|
+| `scout` | low | haiku | yes | `quick-edits` (and scouting) |
+| `scribe` | low | sonnet | no | `sonnet-scribe` |
+| `engineer` | medium | sonnet | no | `sonnet-builder` |
+| `engineer-high` | high | sonnet | no | (harder building) |
+| `architect-high` / `architect` / `architect-max` | high / xhigh / max | opus | no | `deep-architect`, and `opus-builder` for strong building |
+| `principal-xhigh` / `principal` | xhigh / max | fable | no | Fable use; **needs the owner's approval** (ask-first list) |
+| `reviewer` / `reviewer-xhigh` | high / xhigh | opus | yes | `opus-builder` as a verifier |
+
+`engine.sh route` with `taskTypes` returns `decision.spawn.agentFile` for Claude workers, and says so when the
+exact role-and-effort pairing has no file and the nearest one was used. The `effort:` line is an instruction to
+Claude Code that has not yet been confirmed by a hand test (HT-2b); if a version ignores it, the agent still runs
+at its normal effort.
+
 ## Orchestrator tier (the lead)
 Model routing above binds SUBAGENTS. The lead/orchestrator is the *session* model, which the
 plugin cannot set. For maximum taste, run the session on Opus (or Fable, if you accept the cost): `/model opus` before

@@ -401,3 +401,29 @@ test('a damaged decision with non-object held-back entries is reported as unread
   writeFileSync(join(dir, 'd-dddddddddddd.json'), JSON.stringify({ id: 'x', result: { reasons: [5], heldBack: [] } }));
   assert.throws(() => getDecision(dir, 'd-dddddddddddd'), DecisionUnreadable);
 });
+
+// ---- Increment 2: role-named agent files ----
+import { claudeAgentFile } from '../lib/effort.mjs';
+import { readdirSync } from 'node:fs';
+test('every agent file the engine can name exists, and the role pairs follow the plan', () => {
+  const have = new Set(readdirSync(join(pluginRoot(), 'agents')).map((f) => f.replace(/\.md$/, '')));
+  for (const role of ['scout', 'mechanical', 'documentarian', 'builder', 'architect', 'reviewer']) for (const e of ['MINIMAL', 'LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH', 'MAXIMUM']) for (const tier of [1, 3, 4]) assert.ok(have.has(claudeAgentFile(role, e, tier).file), `${role} ${e} ${tier}`);
+  assert.equal(claudeAgentFile('architect', 'VERY_HIGH', 3).file, 'architect'); assert.equal(claudeAgentFile('architect', 'MAXIMUM', 3).file, 'architect-max');
+  assert.equal(claudeAgentFile('architect', 'MAXIMUM', 4).file, 'principal'); assert.equal(claudeAgentFile('reviewer', 'HIGH', 3).file, 'reviewer');
+  assert.equal(claudeAgentFile('reviewer', 'MAXIMUM', 3).exact, false); assert.equal(claudeAgentFile('scout', 'LOW', 1).file, 'scout');
+  assert.equal(claudeAgentFile('builder', 'MEDIUM', 2).file, 'engineer'); assert.equal(claudeAgentFile('builder', 'HIGH', 2).file, 'engineer-high');
+});
+test('route names the agent file for Claude workers and leaves it out for other providers', () => {
+  const r = route({ role: 'reviewer', taskTypes: ['CODE_REVIEW'], risk: 'NORMAL', providers: ['claude'] }, seed, cfg());
+  assert.equal(r.decision.spawn.agentFile, 'reviewer');
+  const o = route({ role: 'reviewer', taskTypes: ['CODE_REVIEW'], risk: 'NORMAL', providers: ['codex'] }, seed, cfg());
+  assert.equal(o.decision.spawn.agentFile, undefined);
+});
+test('agent files: each has name, description, model, effort and tools; old names are deprecated aliases; effort and models are as in the plan', () => {
+  const dir = join(pluginRoot(), 'agents');
+  const fm = (n) => Object.fromEntries(readFileSync(join(dir, `${n}.md`), 'utf8').split('---')[1].trim().split('\n').map((l) => [l.slice(0, l.indexOf(':')), l.slice(l.indexOf(':') + 1).trim()]));
+  const plan = { scout: ['low', 'haiku'], scribe: ['low', 'sonnet'], engineer: ['medium', 'sonnet'], 'engineer-high': ['high', 'sonnet'], architect: ['xhigh', 'opus'], 'architect-high': ['high', 'opus'], 'architect-max': ['max', 'opus'], principal: ['max', 'fable'], 'principal-xhigh': ['xhigh', 'fable'], reviewer: ['high', 'opus'], 'reviewer-xhigh': ['xhigh', 'opus'] };
+  for (const [n, [eff, model]] of Object.entries(plan)) { const f = fm(n); assert.equal(f.name, n); assert.equal(f.effort, eff); assert.equal(f.model, model); assert.ok(f.description && f.tools); }
+  for (const n of ['opus-builder', 'sonnet-builder', 'sonnet-scribe', 'quick-edits', 'deep-architect']) assert.match(fm(n).description, /^Deprecated alias for .+; removed in 2\.1\.0\./);
+  for (const n of ['reviewer', 'reviewer-xhigh', 'scout']) assert.ok(!/Edit|Write/.test(fm(n).tools), `${n} must be read-only`);
+});

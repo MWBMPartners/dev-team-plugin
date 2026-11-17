@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Orchestrator engine, increment 2: role-named agents.** Eleven new agent files named after the job (`scout`,
+  `scribe`, `engineer`, `engineer-high`, `architect-high`, `architect`, `architect-max`, `principal-xhigh`,
+  `principal`, `reviewer`, `reviewer-xhigh`), each with a default model and an `effort:` line; reviewers and the
+  scout are read-only. The old five names remain as deprecated aliases, removed in 2.1.0. `route` names the agent
+  file for Claude workers. The `effort:` line is unconfirmed until hand test HT-2b.
+
 - **Orchestrator engine, rest of increment 3**: job files from templates (`job init|status|record`),
   git-backed checkpoints (`checkpoint create|verify`) and the progress table (`report --progress`).
 

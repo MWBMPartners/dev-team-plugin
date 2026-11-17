@@ -3,7 +3,7 @@
 // Purpose: Chooses a model for one job, the same way every time, and writes down why. It never starts
 //          a worker; it returns an instruction the lead carries out.
 import { floorFor } from './tiers.mjs';
-import { wantedEffort, applyEffort } from './effort.mjs';
+import { wantedEffort, applyEffort, claudeAgentFile } from './effort.mjs';
 
 // Rules it follows (from the locked plan):
 //   - Strength is judged by tier, never by a model's name (tier 1 utility .. tier 4 principal).
@@ -148,7 +148,7 @@ export function route(req, models, cfg) {
   if (!pick.verified) warnings.push(`${pick.provider} has not been tried against a real account (unverified).`);
   return {
     ok: true, code: 'OK',
-    decision: { effort: effortFor(req, pick), provider: pick.provider, model: pick.alias, exactId: pick.pinnedId ?? null, tier: pick.tier, local: pick.local, costBand: pick.costBand, independence, spawn: { provider: pick.provider, model: pick.alias, exactId: pick.pinnedId ?? null } },
+    decision: { effort: effortFor(req, pick), provider: pick.provider, model: pick.alias, exactId: pick.pinnedId ?? null, tier: pick.tier, local: pick.local, costBand: pick.costBand, independence, spawn: { provider: pick.provider, model: pick.alias, exactId: pick.pinnedId ?? null, ...agentFor(req, pick) } },
     reasons, dropped, heldBack: heldBack.map(brief), alternatives: usable.slice(1, 4).map((m) => ({ model: m.alias, provider: m.provider, exactId: m.pinnedId ?? null })), warnings, questions,
   };
 }
@@ -161,4 +161,11 @@ function effortFor(req, pick) {
   const risk = String(req.risk ?? 'NORMAL').toUpperCase();
   const wanted = wantedEffort(req.taskTypes, risk, { escalate: req.escalateEffort === true });
   return { wanted, ...applyEffort(wanted, pick.effortLevels ?? 'UNKNOWN') };
+}
+
+/** For Claude Code workers: the agent file to start (it carries the effort). Other providers have none. */
+function agentFor(req, pick) {
+  if (pick.provider !== 'claude' || !Array.isArray(req.taskTypes)) return {};
+  const wanted = wantedEffort(req.taskTypes, String(req.risk ?? 'NORMAL').toUpperCase(), { escalate: req.escalateEffort === true });
+  try { const a = claudeAgentFile(req.role, wanted, pick.tier); return { agentFile: a.file, agentNote: a.note }; } catch { return {}; }
 }

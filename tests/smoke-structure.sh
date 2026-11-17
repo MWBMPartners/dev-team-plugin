@@ -21,7 +21,7 @@ frontmatter() { awk '/^---$/{n++; next} n==1' "$1" 2>/dev/null; }
 
 # 1) agents/ exists at the plugin root with the 5 endpoint files; each has frontmatter with
 #    name:, description:, model:, tools: (same roster as scripts/audit-model-ids.sh).
-for a in deep-architect opus-builder sonnet-scribe quick-edits sonnet-builder; do
+for a in deep-architect opus-builder sonnet-scribe quick-edits sonnet-builder scout scribe engineer engineer-high architect architect-high architect-max principal principal-xhigh reviewer reviewer-xhigh; do
   f="agents/$a.md"
   if [ ! -f "$f" ]; then
     note "missing agent file: $f"

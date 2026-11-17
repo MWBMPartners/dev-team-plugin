@@ -1,6 +1,6 @@
 ---
 name: quick-edits
-description: Mechanical tier (Haiku). Use PROACTIVELY for fast, low-reasoning work — renames, formatting, import sorting, docstrings, boilerplate, simple find-and-replace across files, trivial config edits. Do not use for anything needing design judgment — route that to opus-builder or deep-architect.
+description: Deprecated alias for scout; removed in 2.1.0. Mechanical tier (Haiku). Use PROACTIVELY for fast, low-reasoning work — renames, formatting, import sorting, docstrings, boilerplate, simple find-and-replace across files, trivial config edits. Do not use for anything needing design judgment — route that to opus-builder or deep-architect.
 model: haiku
 tools: Read, Edit, Bash
 ---

@@ -51,3 +51,34 @@ export function applyEffort(wanted, supported) {
   if (!best) return { level: null, exact: false, note: 'None of the tool\'s levels is one the engine knows, so none is set.' };
   return { level: best.hit, exact: best.i === target, note: best.i === target ? 'Exact match.' : `Wanted ${wanted}; the closest level offered is ${best.hit}.` };
 }
+
+// Claude Code reads a worker's thinking effort from the agent's own file (it cannot be set when starting one), so
+// each role and effort pairs with an agent file. A pairing with no file is moved to the nearest one that exists,
+// and the move is recorded.
+const ORDER = ['MINIMAL', 'LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH', 'MAXIMUM'];
+const AGENT_FILES = {
+  scout: { LOW: 'scout', MEDIUM: 'engineer', HIGH: 'engineer-high' },
+  mechanical: { LOW: 'scout', MEDIUM: 'engineer', HIGH: 'engineer-high' },
+  documentarian: { LOW: 'scribe' },
+  builder: { MEDIUM: 'engineer', HIGH: 'engineer-high' },
+  architect: { HIGH: 'architect-high', VERY_HIGH: 'architect', MAXIMUM: 'architect-max' },
+  reviewer: { HIGH: 'reviewer', VERY_HIGH: 'reviewer-xhigh' },
+};
+// A tier-4 (principal) model uses the principal files for architect work.
+const PRINCIPAL = { VERY_HIGH: 'principal-xhigh', MAXIMUM: 'principal', HIGH: 'principal-xhigh' };
+
+/**
+ * The Claude Code agent file for a role at an effort. `tier` is the chosen model's tier.
+ * @param {string} role @param {string} effort one of the six effort levels @param {number} tier
+ * @returns {{file: string, exact: boolean, note: string}}
+ */
+export function claudeAgentFile(role, effort, tier) {
+  assertEnum('effort', effort, EFFORT);
+  const map = role === 'architect' && tier >= 4 ? PRINCIPAL : AGENT_FILES[role];
+  if (!map) throw new RangeError(`unknown role "${String(role).slice(0, 30)}"`);
+  const want = ORDER.indexOf(effort);
+  let best = null;
+  for (const [lvl, file] of Object.entries(map)) { const d = Math.abs(ORDER.indexOf(lvl) - want); if (best === null || d < best.d || (d === best.d && ORDER.indexOf(lvl) > ORDER.indexOf(best.lvl))) best = { lvl, file, d }; }
+  const exact = best.d === 0;
+  return { file: best.file, exact, note: exact ? 'Exact match.' : `A ${role} file at ${effort} effort does not exist; ${best.file} (${best.lvl}) is the nearest.` };
+}

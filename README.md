@@ -486,6 +486,8 @@ Every dev-team run can summarize what it did and roughly what it cost — legibl
 
 The suite routes each kind of work to a named agent/tier. Source of truth: [model-routing.md][model-routing]; the optional taste profile is in [orchestration-profiles.md][orchestration-profiles].
 
+**Role-named agents (2.0).** The agents are now named after the job: `scout`, `scribe`, `engineer`, `engineer-high`, `architect-high`, `architect`, `architect-max`, `principal-xhigh`, `principal`, `reviewer` and `reviewer-xhigh`. Each carries a default model and a thinking effort; the engine picks the real model when the worker is started. The five names in the table below still work for one release as deprecated aliases and are removed in 2.1.0. See [model-routing.md][model-routing], "Role-named agents".
+
 | Tier | Agent | Alias | Used for |
 |---|---|---|---|
 | Reasoning | [`deep-architect`][deep-architect] | opus | Architecture, subtle multi-file bugs, algorithm design, concurrency/data-model trade-offs, big cross-cutting refactors, debate advocates — the genuinely hard stuff. Also the recommended taste-first orchestrator tier. |
@@ -683,7 +685,7 @@ The model-id audit script performs five checks and exits non-zero (`AUDIT FAIL: 
 
 1. No dated model id appears in any `.md`/`.json`/`.yml`/`.yaml` file **except** [model-routing.md][model-routing] (prevents model-id drift/rot).
 2. Both `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` parse as valid JSON.
-3. Each of the five endpoint agent files ([`deep-architect`][deep-architect], [`opus-builder`][opus-builder], [`sonnet-scribe`][sonnet-scribe], [`quick-edits`][quick-edits], [`sonnet-builder`][sonnet-builder]) exists **and** carries a `model:` frontmatter line.
+3. Each endpoint agent file exists **and** carries a `model:` frontmatter line: the eleven role-named agents (`scout`, `scribe`, `engineer`, `engineer-high`, `architect`, `architect-high`, `architect-max`, `principal`, `principal-xhigh`, `reviewer`, `reviewer-xhigh`) and the five deprecated old names kept for one release ([`deep-architect`][deep-architect], [`opus-builder`][opus-builder], [`sonnet-scribe`][sonnet-scribe], [`quick-edits`][quick-edits], [`sonnet-builder`][sonnet-builder]).
 4. No `.claude/agents/` directory exists (plugin agents must live under `agents/` at the plugin root, or installers won't receive them).
 5. **Docs-coverage:** every `skills/dev-team-*/` directory name and every `commands/*.md` basename must appear as a substring somewhere in `README.md` — fails (`AUDIT FAIL: <name> not documented in README`) if a skill or command ships without being documented here, so this file can't silently drift out of date again.
 

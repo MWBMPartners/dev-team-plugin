@@ -1,6 +1,6 @@
 ---
 name: deep-architect
-description: Reasoning tier (Opus by default; Fable only on request and with approval). Use ONLY for genuinely hard reasoning — architecture decisions, subtle multi-file bugs, algorithm design, concurrency or data-model trade-offs, large cross-cutting refactors, and debate advocates. Overkill for routine building; route standard coding to opus-builder and mechanical edits to quick-edits.
+description: Deprecated alias for architect; removed in 2.1.0. Reasoning tier (Opus by default; Fable only on request and with approval). Use ONLY for genuinely hard reasoning — architecture decisions, subtle multi-file bugs, algorithm design, concurrency or data-model trade-offs, large cross-cutting refactors, and debate advocates. Overkill for routine building; route standard coding to opus-builder and mechanical edits to quick-edits.
 model: opus
 tools: Read, Edit, Bash, Grep, Glob
 ---

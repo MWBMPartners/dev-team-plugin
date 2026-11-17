@@ -1,6 +1,6 @@
 ---
 name: sonnet-scribe
-description: Scribe tier (Sonnet). Use for the documentarian role — creating and updating .dev-team/PROJECT.md, .dev-team/HANDOFF.md, .dev-team/FEATURES.md, .dev-team/SECURITY.md, .dev-team/VERIFICATION.md, run records, and ledgers. Recording state doesn't need a frontier model. Route production coding to opus-builder and hard reasoning to deep-architect; do not use for design decisions.
+description: Deprecated alias for scribe; removed in 2.1.0. Scribe tier (Sonnet). Use for the documentarian role — creating and updating .dev-team/PROJECT.md, .dev-team/HANDOFF.md, .dev-team/FEATURES.md, .dev-team/SECURITY.md, .dev-team/VERIFICATION.md, run records, and ledgers. Recording state doesn't need a frontier model. Route production coding to opus-builder and hard reasoning to deep-architect; do not use for design decisions.
 model: sonnet
 tools: Read, Edit, Write, Bash, Grep, Glob
 ---
