@@ -80,7 +80,7 @@ Checks run at `158f4bc`: both audits, smoke test, shellcheck, bats 211 of 211. T
 
 ### Engine progress, 17 November 2026 (autonomous run, end of day)
 
-Everything is on `claude/busy-knuth-bc35ok`, pushed. **No part has had a Codex review** (Codex is not installed in the
+Everything is on `claude/busy-knuth-bc35ok`, pushed (last engine commit `04f2eae`; 205 unit tests, 32 launcher tests, 211 older tests, completion gate all PASS). **No part has had a Codex review** (Codex is not installed in the
 cloud session). Instead every part had 2 to 17 rounds of independent review by fresh Opus agents that did not write it,
 with every real finding fixed and tested, so all of it counts as **not fully reviewed**. Run `bash scripts/completion-gate.sh`
 for the full checklist (it runs every check and says PASS/FAIL).
@@ -96,9 +96,9 @@ for the full checklist (it runs every check and says PASS/FAIL).
 | 5 review independence, finding lifecycle, review contract | Built, reviewed (2 rounds) |
 | 6 action levels, policy packs, invariants, rollback rule, `check-no-lang-ext-urls.sh` | Built, reviewed (2 rounds) |
 | 7 reserves, budgets, cost estimates | Built, reviewed (1 round, fixes in) |
-| 8 learning, competency, canary promotion, probes, health | **Not built** |
+| 8 learning records, competency, canary stages, health states | Core built and reviewed (2 rounds). **Not built:** probes, tool-reliability counters, shadow evaluation, history views; **not wired into `route`** (competency and canary are not yet used for routing). Known gap: no rate limit on recording |
 | 9 signed remote catalogue (plugin side; pinned key is a placeholder nobody can sign for) | Built, reviewed (1 round) |
-| 10 decomposition, parallelism, integration engineer, provenance | **Not built** (needs hand test HT-4 first) |
+| 10 decomposition, parallelism, integration engineer, provenance | **Not built**: the plan requires hand test HT-4 (can sub-agents spawn sub-agents) first, which needs a real Claude Code session |
 | 11 owner practice bundle | Part built: `git.push-after-task` + `push check`, named-issue and end-of-run rules. **Not wired:** no skill calls `engine.sh push check` yet, so the setting documents the rule and the engine can answer it, but skills still follow their old "never push" text. F2 (`init --rules`) and F15 not built |
 | 12 completion gate, docs, version 2.0.0 | `scripts/completion-gate.sh` built and passing. **Not done:** the 30 documentation topics, README "Orchestrator (2.0)" section, CHANGELOG 2.0.0 finalisation, `plugin.json` version bump (left at 1.7.0 on purpose: do not call this 2.0.0 until 8 and 10 and the hand tests are done, owner's call) |
 

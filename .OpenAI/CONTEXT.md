@@ -53,3 +53,5 @@ work it does is then reviewed by Claude Code when Claude Code is back.
 > 17 Nov 2026 (end of session): groups A-D built on `claude/busy-knuth-bc35ok`; none yet reviewed by Codex. See `.claude/HANDOFF.md`.
 
 > 17 Nov 2026 (final): engine increments 0a and the core of 1 built on `claude/busy-knuth-bc35ok` (69 unit tests, 13 launcher tests, 211 older tests). 17 stand-in review rounds, last one clean on code; Codex still to review. Resume at increment 0b: see `.claude/HANDOFF.md` "Engine status".
+
+> 17 Nov 2026 (very end): engine increments 0a to 9 and parts of 8, 11, 12 built on `claude/busy-knuth-bc35ok`; 10 not built; version left at 1.7.0. Run `bash scripts/completion-gate.sh`. Details: `.claude/HANDOFF.md` "Engine progress".
