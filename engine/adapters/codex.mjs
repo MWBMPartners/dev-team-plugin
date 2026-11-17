@@ -48,15 +48,16 @@ export const codex = {
     const available = f.source === 'live' && f.loggedIn === true ? 'AVAILABLE' : 'UNKNOWN';
     const prov = { providerModelId: 'RUNTIME_DISCOVERY', lifecycleStatus: 'RUNTIME_DISCOVERY', lastValidated: 'RUNTIME_DISCOVERY', relativeCostClass: 'COMPAT_DATA' };
     if (available === 'AVAILABLE') prov.availability = 'RUNTIME_DISCOVERY';
-    if (typeof f.context_window === 'number') prov.contextWindow = 'RUNTIME_DISCOVERY';
-    if (Array.isArray(f.supported_reasoning_levels)) prov.reasoningControls = 'RUNTIME_DISCOVERY';
+    if (Number.isInteger(f.context_window)) prov.contextWindow = 'RUNTIME_DISCOVERY';
+    const defEffort = typeof f.configEffort === 'string' ? f.configEffort : typeof f.default_reasoning_level === 'string' ? f.default_reasoning_level : null;
+    if (Array.isArray(f.supported_reasoning_levels) && f.supported_reasoning_levels.every((x) => typeof x === 'string')) prov.reasoningControls = 'RUNTIME_DISCOVERY';
     if (fam) { prov.capabilityTier = 'HEURISTIC'; prov.canaryStage = 'COMPAT_DATA'; }
-    if (f.configEffort || f.default_reasoning_level) prov.defaultReasoning = 'RUNTIME_DISCOVERY';
+    if (defEffort) prov.defaultReasoning = 'RUNTIME_DISCOVERY';
     return makeProfile({
       provider: 'openai', runtime: 'codex', providerModelId: raw.id, availability: available, lifecycleStatus: lifecycle,
-      contextWindow: typeof f.context_window === 'number' ? f.context_window : 'UNKNOWN',
-      reasoningControls: Array.isArray(f.supported_reasoning_levels) ? f.supported_reasoning_levels : 'UNKNOWN',
-      defaultReasoning: f.configEffort ?? f.default_reasoning_level ?? 'UNKNOWN',
+      contextWindow: Number.isInteger(f.context_window) ? f.context_window : 'UNKNOWN',
+      reasoningControls: Array.isArray(f.supported_reasoning_levels) && f.supported_reasoning_levels.every((x) => typeof x === 'string') ? f.supported_reasoning_levels : 'UNKNOWN',
+      defaultReasoning: defEffort ?? 'UNKNOWN',
       runtimeCapabilities: this.supports, capabilityTier: fam ? fam.tierHint : 'UNKNOWN', canaryStage: fam ? 'VALIDATED' : 'PROVISIONAL',
       relativeCostClass: 2, confidence: fam ? 0.6 : 0.3, lastValidated: ctx.nowIso,
     }, prov);

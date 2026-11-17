@@ -134,3 +134,16 @@ test('an older fallback file never retires a model; a retired model no longer sa
   const lines = readFileSync(join(ev, '2026-11-17.jsonl'), 'utf8');
   assert.ok(lines.includes('DISCOVERY_COMPLETED') && lines.includes('MODEL_RETIRED_CANDIDATE'));
 });
+
+test('odd Codex values never make a saved list that fails its own schema', async () => {
+  const dir = tmp(); const odd = JSON.stringify({ models: [{ slug: 'a', context_window: 272000.5, visibility: 'list' }, { slug: 'b', default_reasoning_level: 3, supported_reasoning_levels: [1], visibility: 'list' }] });
+  const r = await discover({ adapters: [codex], dataDir: dir, run: okRun(odd), home: dir });
+  assert.equal(r.profiles.length, 2); assert.ok(r.profiles.every((p) => p.contextWindow === 'UNKNOWN' && p.defaultReasoning === 'UNKNOWN'));
+  const again = await discover({ adapters: [codex], dataDir: dir, run: async () => { throw new Error('should not be asked: the cache is fresh'); }, home: dir });
+  assert.equal(again.problems.length, 0); assert.equal(again.profiles.length, 2);
+});
+test('a profile that fails its schema is reported and not saved', async () => {
+  const bad = { id: 'bad', provider: 'p', verified: false, supports: {}, async discoverModels() { return { models: [{ id: 'x', facts: {} }] }; }, normaliseProfile() { return { provider: 'p' }; }, classifyError() { return null; } };
+  const r = await discover({ adapters: [bad], dataDir: tmp(), run: async () => ({}), home: tmp() });
+  assert.ok(r.problems.some((p) => p.code === 'PROFILE_INVALID')); assert.equal(r.profiles.length, 0);
+});

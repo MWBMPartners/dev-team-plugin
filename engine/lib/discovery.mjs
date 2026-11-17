@@ -45,7 +45,19 @@ export async function discover(o) {
       continue;
     }
     const ctx = { nowIso };
-    const profiles = found.models.map((m) => a.normaliseProfile(m, ctx));
+    // A profile that fails its own schema is reported and left out: it must never be saved, or the whole
+    // saved list would fail to read next time and the tracking of vanished models would stop.
+    const profileSchema = loadSchema(join(pluginRoot(), 'schemas', 'local', 'model-capability-profile.schema.json'));
+    const profiles = [];
+    for (const m of found.models) {
+      const p = a.normaliseProfile(m, ctx);
+      if (validate(profileSchema, p).ok) profiles.push(p); else out.problems.push({ code: 'PROFILE_INVALID', message: `${a.id}: the record for "${String(m.id).slice(0, 40)}" was malformed and was left out` });
+    }
+    if (!profiles.length) {
+      // Every record was malformed: treat it as a failed discovery, never write an empty list.
+      if (prev) { const kept = { ...prev, stale: true }; writeJsonAtomic(path, kept); out.cacheWrites.push(path); out.profiles.push(...kept.profiles); out.stale.push(a.id); }
+      continue;
+    }
     const seen = new Set(profiles.map((p) => p.providerModelId));
     for (const old of prev?.profiles ?? []) {
       if (seen.has(old.providerModelId)) continue;
