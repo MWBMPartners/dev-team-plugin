@@ -60,3 +60,24 @@ The owner's words are summarised, not quoted. Standing rules 12–15 in `.claude
 
 Order of precedence for route order, highest first: this session's choice > the project's remembered
 answer > the device default > the user's general default > the built-in default (local first).
+
+## Q8 research — expensive, high-quality models to consider for "ask first" (17 November 2026)
+
+**Treat every number as unverified.** One web search found only secondary price-comparison sites, which
+disagree with each other and name some models no official page was checked for. Check each maker's own
+pricing page before relying on a figure. Prices are US dollars per million tokens (input / output).
+
+| Maker | Model named | Price reported | Notes |
+| --- | --- | --- | --- |
+| Anthropic | Claude Fable 5.1 / 5.2 | 10 / 50 (5.1) or 8 / 40 (5.2) — sources disagree | Already the owner's example |
+| Anthropic | Claude Mythos | not found | Named by the owner; no price found |
+| Anthropic | Claude Opus 5.5 | 4 / 20 | The plugin's default for hard reasoning, so not a candidate |
+| OpenAI (Codex/ChatGPT) | GPT-6 Astra | 10 / 50 | Priciest OpenAI flagship found; name seen on one site only |
+| Google | Gemini 4 Argon | 2 / 10 or 4 / 20 — sources disagree | Introductory rate said to end 30 Nov 2026 |
+| xAI | Grok 4.3 | output 2.5 only | No input price found; probably not expensive |
+| DeepSeek | V3.2, R1 | 0.28 / 0.42 | Cheap; not a candidate |
+| Moonshot | Kimi K2.5 | none (can be self-hosted) | Cheap or free; not a candidate |
+
+Sources: [aitoolsreview](https://aitoolsreview.co.uk/insights/ai-api-pricing-comparison),
+[respan](https://www.respan.ai/articles/ai-token-cost), [Nadir](https://getnadir.com/blog/llm-api-pricing-june-2026-complete-comparison/),
+[BenchLM](https://benchlm.ai/llm-pricing-trends), [TechJack](https://techjacksolutions.com/ai-tools/rankings/cheapest-frontier-ai-apis/).
