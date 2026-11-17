@@ -78,30 +78,41 @@ Checks run at `158f4bc`: both audits, smoke test, shellcheck, bats 211 of 211. T
 - **Next:** increment 0b, then the rest of increment 1 (`explain`, `dry-run`, effort mapping), then 2,
   3, 4 in order (`plan.md` section 4). Hand tests HT-0 to HT-3 need the owner's real Claude Code session.
 
-### Engine progress, second half of 17 November (autonomous run)
+### Engine progress, 17 November 2026 (autonomous run, end of day)
 
-Everything below is on `claude/busy-knuth-bc35ok`, pushed. **None of it has had a Codex review** (Codex is not
-installed in the cloud session); each part had 2 to 3 rounds of independent review by fresh Opus agents, every
-finding fixed with a test, so it counts as **not fully reviewed**.
+Everything is on `claude/busy-knuth-bc35ok`, pushed. **No part has had a Codex review** (Codex is not installed in the
+cloud session). Instead every part had 2 to 17 rounds of independent review by fresh Opus agents that did not write it,
+with every real finding fixed and tested, so all of it counts as **not fully reviewed**. Run `bash scripts/completion-gate.sh`
+for the full checklist (it runs every check and says PASS/FAIL).
 
-| Item | State |
+| Increment | State |
 | --- | --- |
-| Increment 0a, 0b, 1 (routing core, floors, effort, decisions, explain, dry-run) | Built and reviewed (3 rounds for routing; 2 for 0b and for the rest of 1) |
-| 1a: Ollama, Copilot, DeepSeek adapters | Built (unverified) |
-| 6a: ask-first and pins enforced by `route` | Built (done within the 17 review rounds) |
-| 11a / 12a: `docs check`, `docs check --api` | Built; **not independently reviewed** |
-| Increment 3: plan lock/verify/diff, drift, evidence gate, attempts, job files, checkpoints, progress table | Built; plan/drift/evidence/attempts had 3 review rounds, jobs/checkpoints 2 (the last round's findings are fixed; a final re-review of `git diff 5099769..HEAD -- engine` is still owed) |
-| Increment 2 (role-named agent files with effort variants and deprecated aliases) | **Not built.** It means 11 new agent files, old names kept as aliases, and edits to the audit script and smoke test |
-| Increments 4 to 10 (leases, quota, snapshots, pause/resume, review independence, invariants and gates, budgets, learning, signed catalogue, decomposition) | **Not built** |
-| Increment 11 (owner practice bundle: push-after-task etc.) and 12 (completion gate, 2.0.0) | **Not built** |
-| Not done and blocked on the owner | Codex review; editor hand tests; hand tests HT-0 to HT-3 (need a real Claude Code session) |
+| 0a launcher, doctor, schemas | Built, reviewed |
+| 0b adapters (Claude Code, Codex, Gemini, Kimi, Grok, Copilot, DeepSeek, Ollama), discovery cache, simulator, events, `autopilot.json` schema (#43) | Built, reviewed |
+| 1 routing, floors, effort, decisions, explain, dry-run, ask-first, pins, local-first/cloud-first | Built, reviewed (17 rounds on the core) |
+| 2 role-named agent files with effort, old names kept as deprecated aliases (DEP-K: old names still appear in skill text) | Built, reviewed |
+| 3 plan lock, drift, evidence gate, attempts, jobs, checkpoints, progress table | Built, reviewed |
+| 4 quota reading, leases, snapshots, pause/resume, fallback, takeover; autopilot recovery rule rewritten for when the engine is present | Built, reviewed (3 rounds) |
+| 5 review independence, finding lifecycle, review contract | Built, reviewed (2 rounds) |
+| 6 action levels, policy packs, invariants, rollback rule, `check-no-lang-ext-urls.sh` | Built, reviewed (2 rounds) |
+| 7 reserves, budgets, cost estimates | Built, reviewed (1 round, fixes in) |
+| 8 learning, competency, canary promotion, probes, health | **Not built** |
+| 9 signed remote catalogue (plugin side; pinned key is a placeholder nobody can sign for) | Built, reviewed (1 round) |
+| 10 decomposition, parallelism, integration engineer, provenance | **Not built** (needs hand test HT-4 first) |
+| 11 owner practice bundle | Part built: `git.push-after-task` + `push check`, named-issue and end-of-run rules. **Not wired:** no skill calls `engine.sh push check` yet, so the setting documents the rule and the engine can answer it, but skills still follow their old "never push" text. F2 (`init --rules`) and F15 not built |
+| 12 completion gate, docs, version 2.0.0 | `scripts/completion-gate.sh` built and passing. **Not done:** the 30 documentation topics, README "Orchestrator (2.0)" section, CHANGELOG 2.0.0 finalisation, `plugin.json` version bump (left at 1.7.0 on purpose: do not call this 2.0.0 until 8 and 10 and the hand tests are done, owner's call) |
 
-Tests: 121 engine unit tests (`node --test engine/test/*.test.mjs`), 19 launcher tests (`bats tests/engine.bats`),
-211 older tests, both audits, smoke test, shellcheck, schema manifest. Departures: `docs/orchestrator/departures.md`
-(DEP-A to DEP-J). Engine commands: `docs/orchestrator/engine-commands.md`.
+**Still needs the owner's own machine or session:** a Codex review of `git diff 87c0f70..HEAD`; hand tests HT-0 to HT-4 (a real
+Claude Code session: whether `CLAUDE_PLUGIN_DATA` reaches skills and hooks, resuming an agent by id, whether the spawn-time
+model parameter overrides the agent file and whether `effort:` in an agent file is honoured, whether the ledger guard fires
+for a sub-agent's Write, nested sub-agents); the editor hand tests; the real model-price check for Q8.
 
-**Next, in order:** re-review the jobs fixes; increment 2; increment 4 (leases, quota observations, snapshots); then
-5 (review independence), 6 (gates and approvals), 11 (practice bundle, including `git.push-after-task`) and 12.
+**Known unverified assumptions in the code:** quota message wording (synthetic samples only); Claude `auth status --json`
+output; Codex `debug models` shape (synthetic sample); every non-Claude/Codex provider; the `effort:` agent line.
+
+**Lessons recorded:** a hand-written YAML reader is a long tail (it now fails closed, do not extend it); each review round
+that found real bugs also found bugs in the previous round's fixes, so re-review every fix; the engine's data folder must
+never be inside the project in tests (it makes the tree look dirty).
 
 ### Added later on 17 November — owner's new requirements (work branch `claude/busy-knuth-bc35ok`)
 
