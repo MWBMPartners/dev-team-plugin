@@ -8,11 +8,17 @@ import { redact } from '../lib/redact.mjs';
 import { runDoctor } from '../lib/doctor.mjs';
 import { validate, loadSchema, validateManifest } from '../lib/schema.mjs';
 import { pluginRoot, BadInput } from '../lib/paths.mjs';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { runScenario } from '../sim/run.mjs';
 import { execFile as execFileCb } from 'node:child_process';
 import { promisify } from 'node:util';
 import { loadRouting, saveDeviceOrder } from '../lib/config.mjs';
 import { discoverOllama } from '../lib/discover.mjs';
+import { discover as discoverAll } from '../lib/discovery.mjs';
+import { listAdapters } from '../adapters/index.mjs';
+import { dataDir } from '../lib/paths.mjs';
+import { homedir } from 'node:os';
 import { route, BadRequest } from '../lib/routing.mjs';
 const execFile = promisify(execFileCb);
 const seedPath = () => resolve(pluginRoot(), 'engine', 'data', 'catalogue.seed.json');
@@ -21,9 +27,16 @@ import { resolve } from 'node:path';
 
 /** @type {Record<string, (a: ReturnType<typeof parseArgs>) => Promise<{code: number, result: unknown, problems?: {code: string, message: string}[]}>>} */
 export const commands = {
-  async discover() {
-    const found = await discoverOllama(execFile);
-    return { code: ExitCodes.OK, result: { provider: 'ollama', found: found.length, models: found } };
+  async discover(a) {
+    // `discover --local` lists models a local Ollama install has. Plain `discover` asks the adapters
+    // (Claude Code, Codex and the unverified ones) and keeps a cache per runtime in the data folder.
+    if (a.flags.local) {
+      const found = await discoverOllama(execFile);
+      return { code: ExitCodes.OK, result: { provider: 'ollama', found: found.length, models: found } };
+    }
+    const r = await discoverAll({ adapters: listAdapters(), dataDir: dataDir(), run: execFile, home: homedir(), refresh: a.flags.refresh === true,
+      providers: typeof a.flags.provider === 'string' ? [a.flags.provider] : undefined });
+    return { code: ExitCodes.OK, result: r, problems: r.problems };
   },
   async config(a) {
     if (a.sub === 'device-set') {
@@ -45,6 +58,16 @@ export const commands = {
     if (Array.isArray(req.providers) && req.providers.some((p) => String(p).toLowerCase() === 'ollama')) models = [...models, ...(await discoverOllama(execFile))];
     const out = route(req, models, cfg);
     return { code: out.ok ? ExitCodes.OK : ExitCodes.NEGATIVE, result: out, problems: out.ok ? [] : [{ code: out.code, message: out.reasons[out.reasons.length - 1] }] };
+  },
+  async sim(a) {
+    if (a.sub !== 'run') throw new BadInput('usage: sim run --scenario <name> | --all');
+    const dir = resolve(pluginRoot(), 'engine', 'sim', 'scenarios');
+    const names = a.flags.all ? readdirSync(dir).filter((f) => f.endsWith('.json')) : [`${String(a.flags.scenario ?? '').replace(/[^A-Za-z0-9._-]/g, '')}.json`];
+    if (!a.flags.all && !a.flags.scenario) throw new BadInput('--scenario <name> or --all is needed');
+    const results = [];
+    for (const n of names) { if (!existsSync(join(dir, n))) throw new BadInput(`no scenario named ${n}`); results.push(await runScenario(join(dir, n))); }
+    const failed = results.flatMap((r) => r.assertions.filter((x) => !x.ok).map((x) => ({ code: 'SIM_FAILED', message: `${r.name}: ${x.detail}` })));
+    return { code: failed.length ? ExitCodes.NEGATIVE : ExitCodes.OK, result: { scenarios: results.map((r) => ({ name: r.name, assertions: r.assertions.length, failed: r.assertions.filter((x) => !x.ok).length })) }, problems: failed };
   },
   async doctor() { return { code: ExitCodes.OK, result: await runDoctor() }; },
   async schema(a) {

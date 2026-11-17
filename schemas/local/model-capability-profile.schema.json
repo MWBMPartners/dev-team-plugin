@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dev-team model capability profile",
+  "description": "One complete record about one model on one runtime. Every field is present; the text UNKNOWN means it is not known. Provenance says where each known field came from.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "provider",
+    "runtime",
+    "providerModelId",
+    "availability",
+    "lifecycleStatus",
+    "contextWindow",
+    "reasoningControls",
+    "defaultReasoning",
+    "runtimeCapabilities",
+    "capabilityTier",
+    "canaryStage",
+    "latencyClass",
+    "monetaryCost",
+    "tokenCost",
+    "creditCost",
+    "pricing",
+    "rateLimits",
+    "relativeCostClass",
+    "confidence",
+    "lastValidated",
+    "provenance"
+  ],
+  "properties": {
+    "provider": {
+      "description": "The provider word, such as anthropic or openai.",
+      "type": [
+        "string"
+      ]
+    },
+    "runtime": {
+      "description": "The tool that runs the model, such as claude-code or codex.",
+      "type": [
+        "string"
+      ]
+    },
+    "providerModelId": {
+      "description": "The model's name as the provider or tool gives it.",
+      "type": [
+        "string"
+      ]
+    },
+    "availability": {
+      "description": "AVAILABLE when confirmed usable now, otherwise UNKNOWN.",
+      "type": "string",
+      "enum": [
+        "AVAILABLE",
+        "UNAVAILABLE",
+        "UNKNOWN"
+      ]
+    },
+    "lifecycleStatus": {
+      "description": "Where the model is in its life: ACTIVE, LEGACY (a successor is named), RETIRED? (missing once), RETIRED (missing twice), or UNKNOWN.",
+      "type": "string",
+      "enum": [
+        "ACTIVE",
+        "LEGACY",
+        "RETIRED?",
+        "RETIRED",
+        "UNKNOWN"
+      ]
+    },
+    "contextWindow": {
+      "description": "How much text the model can take in at once, in tokens, or UNKNOWN.",
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "reasoningControls": {
+      "description": "The effort levels that can be set, or UNKNOWN.",
+      "type": [
+        "array",
+        "string"
+      ]
+    },
+    "defaultReasoning": {
+      "description": "The effort level used when none is set, or UNKNOWN.",
+      "type": [
+        "string"
+      ]
+    },
+    "runtimeCapabilities": {
+      "description": "What the runtime can do (file access, shell, and so on), or UNKNOWN.",
+      "type": [
+        "object",
+        "string"
+      ]
+    },
+    "capabilityTier": {
+      "description": "Strength: 1 utility to 4 principal, or UNKNOWN.",
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "canaryStage": {
+      "description": "How far the model is trusted: PROVISIONAL, VALIDATED, TRUSTED or UNKNOWN.",
+      "type": "string",
+      "enum": [
+        "PROVISIONAL",
+        "VALIDATED",
+        "TRUSTED",
+        "UNKNOWN"
+      ]
+    },
+    "latencyClass": {
+      "description": "How quickly it answers, or UNKNOWN.",
+      "type": [
+        "string"
+      ]
+    },
+    "monetaryCost": {
+      "description": "Money cost, or UNKNOWN.",
+      "type": [
+        "string",
+        "number"
+      ]
+    },
+    "tokenCost": {
+      "description": "Cost per token, or UNKNOWN.",
+      "type": [
+        "string",
+        "number"
+      ]
+    },
+    "creditCost": {
+      "description": "Cost in credits, or UNKNOWN.",
+      "type": [
+        "string",
+        "number"
+      ]
+    },
+    "pricing": {
+      "description": "Published pricing, or UNKNOWN.",
+      "type": [
+        "string",
+        "object"
+      ]
+    },
+    "rateLimits": {
+      "description": "Published limits, or UNKNOWN.",
+      "type": [
+        "string",
+        "object"
+      ]
+    },
+    "relativeCostClass": {
+      "description": "A rough relative cost from 1 (cheap) to 9 (dear), or UNKNOWN. Not a bill.",
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "confidence": {
+      "description": "How sure the engine is of this record, 0 to 1.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "lastValidated": {
+      "description": "When the record was last checked, or UNKNOWN.",
+      "type": [
+        "string"
+      ]
+    },
+    "provenance": {
+      "description": "For each field that was actually filled in, where it came from: RUNTIME_DISCOVERY, COMPAT_DATA or HEURISTIC.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "enum": [
+          "RUNTIME_DISCOVERY",
+          "COMPAT_DATA",
+          "HEURISTIC"
+        ]
+      }
+    }
+  }
+}

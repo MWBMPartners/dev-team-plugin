@@ -99,3 +99,16 @@ teardown() { rm -rf "$SCRATCH"; }
   run bash "$REPO_ROOT/scripts/engine.sh" route --request-file "$SCRATCH/req.json"
   [ "$status" -eq 2 ]
 }
+
+@test "engine.sh: sim run --all passes the shipped scenarios; an unknown scenario exits 2" {
+  run bash "$REPO_ROOT/scripts/engine.sh" sim run --all
+  [ "$status" -eq 0 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" sim run --scenario nonsense
+  [ "$status" -eq 2 ]
+}
+
+@test "engine.sh: discover with no tools installed reports failures but exits 0 and writes no empty cache" {
+  run env PATH="$(dirname "$(command -v node)"):/usr/bin:/bin" HOME="$SCRATCH/home" bash "$REPO_ROOT/scripts/engine.sh" discover --provider codex
+  [ "$status" -eq 0 ]
+  [ ! -e "$DEV_TEAM_DATA_DIR/catalogue/codex.json" ]
+}

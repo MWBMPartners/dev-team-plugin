@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dev-team simulator scenario",
+  "description": "A scripted test of discovery using pretend providers and a pretend clock.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "providers",
+    "steps",
+    "expect"
+  ],
+  "properties": {
+    "name": {
+      "description": "What the scenario shows.",
+      "type": [
+        "string"
+      ]
+    },
+    "providers": {
+      "description": "The pretend providers and their models.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "models"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The pretend runtime name.",
+            "type": [
+              "string"
+            ]
+          },
+          "models": {
+            "description": "Its models.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "description": "Model name.",
+                  "type": [
+                    "string"
+                  ]
+                },
+                "tier": {
+                  "description": "Strength 1 to 4.",
+                  "type": [
+                    "integer"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "steps": {
+      "description": "What happens, in order: discover, remove, add, fail, recover, advance.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "do"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "do": {
+            "description": "The step.",
+            "type": "string",
+            "enum": [
+              "discover",
+              "remove",
+              "add",
+              "fail",
+              "recover",
+              "advance"
+            ]
+          },
+          "provider": {
+            "description": "Which pretend provider.",
+            "type": [
+              "string"
+            ]
+          },
+          "model": {
+            "description": "Which model.",
+            "type": [
+              "string"
+            ]
+          },
+          "tier": {
+            "description": "Strength for an added model.",
+            "type": [
+              "integer"
+            ]
+          },
+          "hours": {
+            "description": "Hours to advance the clock.",
+            "type": [
+              "number"
+            ]
+          },
+          "refresh": {
+            "description": "Ignore the cache lifetime.",
+            "type": [
+              "boolean"
+            ]
+          }
+        }
+      }
+    },
+    "expect": {
+      "description": "What must be true at the end.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "What this checks.",
+            "type": [
+              "string"
+            ]
+          },
+          "provider": {
+            "description": "The pretend runtime.",
+            "type": [
+              "string"
+            ]
+          },
+          "model": {
+            "description": "The model.",
+            "type": [
+              "string"
+            ]
+          },
+          "lifecycle": {
+            "description": "The expected lifecycle status.",
+            "type": [
+              "string"
+            ]
+          },
+          "stale": {
+            "description": "Whether the provider's list is expected to be stale.",
+            "type": [
+              "boolean"
+            ]
+          },
+          "problem": {
+            "description": "A problem code that must have been reported.",
+            "type": [
+              "string"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

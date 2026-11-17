@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Claude Code marketplace manifest (.claude-plugin/marketplace.json)",
+  "description": "The parts of the marketplace manifest this project relies on.",
+  "type": "object",
+  "required": [
+    "name",
+    "owner",
+    "plugins"
+  ],
+  "properties": {
+    "name": {
+      "description": "Marketplace name.",
+      "type": [
+        "string"
+      ]
+    },
+    "owner": {
+      "description": "Who owns it.",
+      "type": [
+        "object"
+      ]
+    },
+    "plugins": {
+      "description": "The plugins offered.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "source"
+        ],
+        "properties": {
+          "name": {
+            "description": "Plugin name.",
+            "type": [
+              "string"
+            ]
+          },
+          "source": {
+            "description": "Where the plugin is.",
+            "type": [
+              "string"
+            ]
+          },
+          "description": {
+            "description": "One-line description.",
+            "type": [
+              "string"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

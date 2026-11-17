@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Claude Code plugin manifest (.claude-plugin/plugin.json)",
+  "description": "The parts of the plugin's own manifest that this project relies on. Claude Code owns the full format; this schema only guards against a typo in the fields we use.",
+  "type": "object",
+  "required": [
+    "name",
+    "version",
+    "description"
+  ],
+  "properties": {
+    "name": {
+      "description": "The plugin's name.",
+      "type": [
+        "string"
+      ]
+    },
+    "version": {
+      "description": "The plugin's version, as three numbers.",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[A-Za-z0-9.]+)?$"
+    },
+    "description": {
+      "description": "One-line description.",
+      "type": [
+        "string"
+      ]
+    },
+    "author": {
+      "description": "Who made it.",
+      "type": [
+        "object"
+      ]
+    },
+    "keywords": {
+      "description": "Search words.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

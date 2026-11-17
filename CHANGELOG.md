@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Orchestrator engine, increment 0b**: adapters for Claude Code and Codex (verified) and Gemini CLI, Kimi
+  and Grok Build (unverified, no models found), complete model profiles with UNKNOWN and provenance, a
+  per-runtime saved list that survives failures and marks vanished models RETIRED? then RETIRED, a local
+  event log, a simulator with pretend providers and a clock, canonical JSON, a TOML reader, and new
+  schemas, including `schemas/autopilot.schema.json` (issue #43, with a comment-free sample file) and
+  schemas for the plugin's own manifests and hooks. Docs in `docs/orchestrator/`.
+
 - **Orchestrator engine, first part of increment 1**: `route` (picks a model for one job and says why),
   `discover` (finds local Ollama models), `config show` / `config device-set`, the starting model
   catalogue and its schema. Implements local-first (the default) and cloud-first order, the ask-first

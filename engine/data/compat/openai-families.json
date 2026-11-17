@@ -1,0 +1,9 @@
+{
+  "dev-team": "ledger=compat-families schema=1.0",
+  "description": "Rough strength hints for OpenAI model families, by the start of the model's name. These are guesses (provenance HEURISTIC) used only until real results exist, and can be overridden. A family not listed stays UNKNOWN.",
+  "families": [
+    { "prefix": "gpt-6", "tierHint": 3, "note": "Newest family seen; treated as architect-strength until proven." },
+    { "prefix": "gpt-5.6", "tierHint": 3, "note": "Seen in a Codex model list." },
+    { "prefix": "gpt-5.5", "tierHint": 2, "note": "Engineer-strength." }
+  ]
+}

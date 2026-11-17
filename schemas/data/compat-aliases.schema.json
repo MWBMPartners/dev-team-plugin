@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dev-team Claude alias facts",
+  "description": "Maintained facts about the Claude model aliases.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "dev-team",
+    "description",
+    "aliases"
+  ],
+  "properties": {
+    "dev-team": {
+      "description": "Ownership marker.",
+      "type": [
+        "string"
+      ]
+    },
+    "description": {
+      "description": "What the file is.",
+      "type": [
+        "string"
+      ]
+    },
+    "aliases": {
+      "description": "One entry per alias.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "alias",
+          "tier",
+          "trust",
+          "contextWindow",
+          "effortLevels",
+          "relativeCostClass"
+        ],
+        "properties": {
+          "alias": {
+            "description": "The alias.",
+            "type": [
+              "string"
+            ]
+          },
+          "tier": {
+            "description": "Strength 1 to 4.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "trust": {
+            "description": "maintained when the owner keeps the fact up to date.",
+            "type": [
+              "string"
+            ]
+          },
+          "contextWindow": {
+            "description": "Tokens, or null when not recorded.",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "effortLevels": {
+            "description": "Effort levels that can be set.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "relativeCostClass": {
+            "description": "1 cheap to 9 dear.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9
+          }
+        }
+      }
+    }
+  }
+}

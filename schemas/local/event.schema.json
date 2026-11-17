@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dev-team local event",
+  "description": "One line of the engine's local event log. Secrets are removed before it is written.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "at",
+    "event",
+    "data"
+  ],
+  "properties": {
+    "at": {
+      "description": "When it happened (UTC).",
+      "type": [
+        "string"
+      ]
+    },
+    "event": {
+      "description": "The event name, from the engine's fixed list.",
+      "type": "string",
+      "enum": [
+        "DISCOVERY_COMPLETED",
+        "DISCOVERY_FAILED",
+        "MODEL_RETIRED_CANDIDATE",
+        "MODEL_RETIRED",
+        "ROUTING_DECIDED",
+        "APPROVAL_NEEDED",
+        "PIN_STOPPED",
+        "SETTINGS_INVALID",
+        "SIM_RUN"
+      ]
+    },
+    "data": {
+      "description": "Facts about the event.",
+      "type": [
+        "object"
+      ]
+    }
+  }
+}

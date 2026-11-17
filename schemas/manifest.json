@@ -13,17 +13,61 @@
     {
       "schema": "schemas/engine/catalogue.schema.json",
       "fixture": "engine/data/catalogue.seed.json"
+    },
+    {
+      "schema": "schemas/local/model-capability-profile.schema.json",
+      "fixture": "tests/fixtures/model-capability-profile.sample.json"
+    },
+    {
+      "schema": "schemas/local/catalogue-cache.schema.json",
+      "fixture": "tests/fixtures/catalogue-cache.sample.json"
+    },
+    {
+      "schema": "schemas/local/event.schema.json",
+      "fixture": "tests/fixtures/event.sample.json"
+    },
+    {
+      "schema": "schemas/engine/discover.output.schema.json",
+      "fixture": "tests/fixtures/discover.output.sample.json"
+    },
+    {
+      "schema": "schemas/sim/scenario.schema.json",
+      "fixture": "engine/sim/scenarios/smoke.json"
+    },
+    {
+      "schema": "schemas/data/compat-aliases.schema.json",
+      "fixture": "engine/data/compat/claude-aliases.json"
+    },
+    {
+      "schema": "schemas/data/compat-families.schema.json",
+      "fixture": "engine/data/compat/openai-families.json"
+    },
+    {
+      "schema": "schemas/data/runtime-doc.schema.json",
+      "fixture": "engine/data/runtimes/gemini-cli.json"
+    },
+    {
+      "schema": "schemas/data/codex-debug-models.schema.json",
+      "fixture": "tests/fixtures/codex-debug-models.sample.json"
+    },
+    {
+      "schema": "schemas/autopilot.schema.json",
+      "fixture": "tests/fixtures/autopilot.sample.json"
+    },
+    {
+      "schema": "schemas/plugin-manifest.schema.json",
+      "fixture": ".claude-plugin/plugin.json"
+    },
+    {
+      "schema": "schemas/marketplace-manifest.schema.json",
+      "fixture": ".claude-plugin/marketplace.json"
+    },
+    {
+      "schema": "schemas/hooks.schema.json",
+      "fixture": "hooks/hooks.json"
     }
   ],
   "exceptions": [
-    {
-      "path": ".claude-plugin/plugin.json",
-      "reason": "Claude Code's own manifest; its shape is owned by Claude Code and checked by scripts/audit-model-ids.sh."
-    },
-    {
-      "path": ".claude-plugin/marketplace.json",
-      "reason": "Claude Code's own manifest; checked by scripts/audit-model-ids.sh."
-    },
     {
       "path": "schemas/verdict.schema.json",
       "reason": "Checked against its own fixtures in tests/scripts.bats (older mechanism, kept as it is)."
