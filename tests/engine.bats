@@ -93,3 +93,9 @@ teardown() { rm -rf "$SCRATCH"; }
   [ "$status" -eq 2 ]
   [[ "$output" == *"projectDir must be text"* ]]
 }
+
+@test "engine.sh: a blank projectDir is refused instead of quietly skipping the project's settings" {
+  printf '{"role":"architect","projectDir":""}' > "$SCRATCH/req.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" route --request-file "$SCRATCH/req.json"
+  [ "$status" -eq 2 ]
+}

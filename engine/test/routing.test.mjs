@@ -150,3 +150,16 @@ test('local models are found when the provider is written in capitals', async ()
   const found = await discoverOllama(async () => ({ stdout: 'NAME ID SIZE MODIFIED\nqwen2.5-coder:32b a 1GB now\n' }));
   assert.equal(found.length, 1);
 });
+
+// ---- Fixes after the fourth independent review ----
+test('two pins for one model that differ only in capitals and in version stop the job', () => {
+  const proj = mkdtempSync(join(tmpdir(), 'dt-pin2-')); mkdirSync(join(proj, '.dev-team'));
+  writeFileSync(join(proj, '.dev-team', 'config.yml'), 'routing:\n  pin: {opus: 4.1, OPUS: 4.2}\n');
+  const c = loadRouting({ home: proj, projectDir: proj });
+  assert.ok(c.badPins.length > 0); assert.equal(route({ role: 'architect', providers: ['claude'] }, seed, c).code, 'PIN_INVALID');
+});
+test('Ollama cloud-hosted models are not treated as free local models', () => {
+  const [e] = ollamaEntries(['gpt-oss:120b-cloud']);
+  assert.equal(e.local, false); assert.equal(e.priced, false);
+  assert.equal(route({ role: 'builder', providers: ['ollama'] }, [e], cfg()).code, 'NEEDS_APPROVAL');
+});

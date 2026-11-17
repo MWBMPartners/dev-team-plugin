@@ -19,9 +19,11 @@ export function guessLocalTier(name) {
 
 /** Turn local model names into catalogue entries. Local models are free, so they are always priced. */
 export function ollamaEntries(names) {
+  // Ollama can also list models it runs on its own paid servers (names ending -cloud or :cloud). Those are
+  // not on this machine and are not free, so they are treated as unpriced cloud models, never as local ones.
   return names.map((n) => ({
     provider: 'ollama', id: n, alias: n, tier: guessLocalTier(n), tierSource: 'guess-from-name',
-    local: true, costBand: 0, priced: true, roles: ['scout', 'builder', 'mechanical', 'documentarian'], classes: [], verified: false, source: 'discovered',
+    local: !/(^|[:-])cloud$/i.test(n), costBand: /(^|[:-])cloud$/i.test(n) ? 5 : 0, priced: !/(^|[:-])cloud$/i.test(n), roles: ['scout', 'builder', 'mechanical', 'documentarian'], classes: [], verified: false, source: 'discovered',
   }));
 }
 

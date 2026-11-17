@@ -81,7 +81,12 @@ export function loadRouting(opts = {}) {
   const pin = {}, badPins = [];
   if (rawPin !== undefined && rawPin !== null && (typeof rawPin !== 'object' || Array.isArray(rawPin))) badPins.push('pin (it must be a list of name: version pairs)');
   else for (const [k, v] of Object.entries(rawPin ?? {})) {
-    if ((typeof v === 'string' && v.trim() !== '' && !/[\[\]{}]/.test(v)) || typeof v === 'number') pin[k] = String(v); else badPins.push(k);
+    if ((typeof v === 'string' && v.trim() !== '' && !/[\[\]{}]/.test(v)) || typeof v === 'number') {
+      const key = k.toLowerCase();
+      // Two pins for one model (names differing only in capitals) with different versions: never pick one.
+      if (Object.hasOwn(pin, key) && pin[key] !== String(v)) badPins.push(`${k} (pinned twice with different versions)`);
+      pin[key] = String(v);
+    } else badPins.push(k);
   }
   return { order, orderDecidedBy, askedBefore, askFirst, pin, badPins, profile: project.profile ?? null };
 }
