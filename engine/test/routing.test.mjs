@@ -186,3 +186,15 @@ test('a # inside quotes is kept; an unsafe key name is reported; a profile named
 test('a very long line of spaces is read quickly', () => {
   const t0 = Date.now(); parseYaml('a: b' + ' '.repeat(200000) + '\n'); assert.ok(Date.now() - t0 < 1000);
 });
+
+// ---- Fixes after the seventh independent review ----
+test('a one-line pin map: a repeated name is reported, and a comma inside quotes does not split the version', () => {
+  assert.equal(route({ role: 'architect', providers: ['claude'] }, seed, loadYaml('routing:\n  pin: {opus: 4.1, opus: 4.2}\n')).code, 'PIN_INVALID');
+  assert.deepEqual(loadYaml('routing:\n  pin: {opus: "4.1, beta"}\n').pin, { opus: '4.1, beta' });
+  assert.ok(loadYaml('routing:\n  pin: {opus: "4.1, beta}\n').badPins.length > 0);
+});
+test('an unrelated key that merely starts with routing never blocks routing', () => {
+  const c = loadYaml('routing-notes:\n  a: 1\nrouting-notes:\n  a: 2\n');
+  assert.equal(c.badSettings.length, 0);
+  assert.equal(route({ role: 'architect', providers: ['claude'] }, seed, c).ok, true);
+});

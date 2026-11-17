@@ -7,18 +7,46 @@ import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 
-function scalar(s) {
+/** Split on commas that are outside quotes and brackets, so "4.1, beta" stays whole. */
+function splitTop(s) {
+  const parts = []; let cur = '', quote = '', depth = 0;
+  for (const ch of s) {
+    if (quote) { cur += ch; if (ch === quote) quote = ''; continue; }
+    if (ch === '"' || ch === "'") { quote = ch; cur += ch; continue; }
+    if (ch === '[' || ch === '{') depth++;
+    if (ch === ']' || ch === '}') depth--;
+    if (ch === ',' && depth === 0) { parts.push(cur); cur = ''; } else cur += ch;
+  }
+  parts.push(cur);
+  return { parts, balanced: quote === '' && depth === 0 };
+}
+
+/** `report(message)` is called for anything ambiguous inside a one-line list or map. */
+function scalar(s, report = () => {}) {
   const v = s.trim();
   if (v === '' ) return null;
   if (v === 'true' || v === 'on' || v === 'yes') return true;
   if (v === 'false' || v === 'off' || v === 'no') return false;
   if (v === 'null' || v === '~') return null;
   if (/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
-  if (v.startsWith('[') && v.endsWith(']')) return v.slice(1, -1).split(',').map((x) => x.trim()).filter(Boolean).map(scalar);
+  if (v.startsWith('[') && v.endsWith(']')) {
+    const sp = splitTop(v.slice(1, -1));
+    if (!sp.balanced) report('unbalanced quotes or brackets');
+    return sp.parts.map((x) => x.trim()).filter(Boolean).map((x) => scalar(x, report));
+  }
   if (v.startsWith('{') && v.endsWith('}')) {
     // Values in a one-line map are kept exactly as written (text), so a version such as 4.10 or 007 is never changed.
     const o = {};
-    for (const part of v.slice(1, -1).split(',')) { const i = part.indexOf(':'); if (i > 0) o[part.slice(0, i).trim()] = part.slice(i + 1).trim().replace(/^["']|["']$/g, ''); }
+    const sp = splitTop(v.slice(1, -1));
+    if (!sp.balanced) report('unbalanced quotes or brackets');
+    for (const part of sp.parts) {
+      const k = part.indexOf(':');
+      if (k <= 0) { if (part.trim()) report(`"${part.trim().slice(0, 20)}" is not a name: value pair`); continue; }
+      const key = part.slice(0, k).trim();
+      if (FORBIDDEN_KEYS.has(key)) { report(`the key name "${key}" is not allowed`); continue; }
+      if (Object.hasOwn(o, key)) report(`"${key}" is written more than once`);
+      o[key] = part.slice(k + 1).trim().replace(/^["']|["']$/g, '');
+    }
     return o;
   }
   return v.replace(/^["']|["']$/g, '');
@@ -55,7 +83,7 @@ export function parseYamlChecked(text) {
       // A list written one item per line turns the key above it into a list.
       const top = stack[stack.length - 1];
       if (top.parent && !Array.isArray(top.obj) && Object.keys(top.obj).length === 0) { top.obj = []; top.parent[top.key] = top.obj; }
-      if (Array.isArray(top.obj)) top.obj.push(scalar(line.trim().slice(2)));
+      if (Array.isArray(top.obj)) top.obj.push(scalar(line.trim().slice(2), (msg) => problems.push({ path: top.path, message: msg })));
       continue;
     }
     const m = /^([A-Za-z0-9_.-]+):\s*(.*)$/.exec(line.trim());
@@ -68,7 +96,7 @@ export function parseYamlChecked(text) {
     if (Array.isArray(parent)) continue;
     if (Object.hasOwn(parent, m[1])) problems.push({ path, message: `"${m[1]}" is written more than once` });
     if (m[2] === '') { parent[m[1]] = {}; stack.push({ indent, obj: parent[m[1]], parent, key: m[1], path }); }
-    else parent[m[1]] = parentFrame.key === 'pin' ? m[2].trim().replace(/^["']|["']$/g, '') : scalar(m[2]); // pin versions stay exact text
+    else parent[m[1]] = parentFrame.key === 'pin' ? m[2].trim().replace(/^["']|["']$/g, '') : scalar(m[2], (msg) => problems.push({ path, message: msg })); // pin versions stay exact text
   }
   return { value: root, problems };
 }
@@ -120,7 +148,7 @@ export function loadRouting(opts = {}) {
     } else badPins.push(k);
   }
   // Anything ambiguous under routing: (a setting written twice, an unsafe key name) is reported, never resolved by guessing.
-  for (const pr of checked.problems) { if (/^routing\.pin\./.test(pr.path) || pr.path === 'routing.pin') badPins.push(`${pr.path} (${pr.message})`); else if (pr.path.startsWith('routing')) badSettings.push(`${pr.path} (${pr.message})`); }
+  for (const pr of checked.problems) { if (/^routing\.pin\./.test(pr.path) || pr.path === 'routing.pin') badPins.push(`${pr.path} (${pr.message})`); else if (pr.path === 'routing' || pr.path.startsWith('routing.')) badSettings.push(`${pr.path} (${pr.message})`); }
   return { order, orderDecidedBy, askedBefore, askFirst, pin, badPins, badSettings, profile: project.profile ?? null };
 }
 
