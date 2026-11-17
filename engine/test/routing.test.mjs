@@ -295,3 +295,66 @@ test('alternatives carry their pinned versions', () => {
   const all = [r.decision, ...r.alternatives.map((a) => ({ model: a.model, exactId: a.exactId }))];
   for (const a of all) if (a.model === 'opus') assert.equal(a.exactId, 'o-1');
 });
+
+// ---- Increment 1: floors, effort, decisions, dry-run ----
+import { floorFor } from '../lib/tiers.mjs';
+import { wantedEffort, applyEffort } from '../lib/effort.mjs';
+import { TASK_TYPES } from '../lib/taxonomy.mjs';
+import { recordDecision, getDecision, explain, inputsHash } from '../lib/decisions.mjs';
+import { dryRun } from '../lib/dryrun.mjs';
+
+test('floors: every task type has all four risks; compound jobs take the larger value; a policy can only raise', () => {
+  assert.equal(TASK_TYPES.length, 31);
+  for (const t of TASK_TYPES) for (const r of ['LOW', 'NORMAL', 'HIGH', 'CRITICAL']) assert.ok(floorFor([t], r).minimumTier >= 0);
+  const f = floorFor(['CODE_REVIEW', 'SECURITY_REVIEW'], 'CRITICAL'); assert.equal(f.preferredTier, 4); assert.equal(f.minimumTier, 3);
+  assert.equal(floorFor(['DOCUMENTATION'], 'LOW', { raise: { DOCUMENTATION: 2 } }).minimumTier, 2);
+  assert.equal(floorFor(['SECURITY_REVIEW'], 'NORMAL', { raise: { SECURITY_REVIEW: 1 } }).minimumTier, 3);
+  assert.throws(() => floorFor(['MADE_UP'], 'LOW')); assert.throws(() => floorFor(['CODE_REVIEW'], 'EXTREME'));
+});
+test('every review type is at least tier 3 at normal risk or above (the checking floor)', () => {
+  // The plan's table lists ACCESSIBILITY_REVIEW at NORMAL with a minimum of 2, which contradicts the plan's own
+  // statement; the routing step enforces 3 for the reviewer role regardless (departure DEP-I).
+  for (const t of TASK_TYPES.filter((x) => /REVIEW|AUDIT/.test(x))) for (const r of ['NORMAL', 'HIGH', 'CRITICAL']) assert.ok(route({ role: 'reviewer', taskTypes: [t], risk: r, providers: ['claude'], approved: [] }, seed, cfg()).decision.tier >= 3, `${t} ${r}`);
+});
+test('effort: the lower level at low risk, the upper at high; MAXIMUM only when critical; nearest level the tool offers', () => {
+  assert.equal(wantedEffort(['MECHANICAL_IMPLEMENTATION'], 'LOW'), 'LOW'); assert.equal(wantedEffort(['MECHANICAL_IMPLEMENTATION'], 'HIGH'), 'MEDIUM');
+  assert.equal(wantedEffort(['DEEP_PLANNING'], 'LOW', { escalate: true }), 'VERY_HIGH');
+  assert.equal(wantedEffort(['DEEP_PLANNING'], 'CRITICAL', { escalate: true }), 'MAXIMUM');
+  assert.equal(applyEffort('HIGH', ['low', 'medium', 'high']).exact, true);
+  assert.equal(applyEffort('MAXIMUM', ['low', 'high']).level, 'high'); assert.equal(applyEffort('LOW', 'UNKNOWN').level, null);
+});
+test('routing by task type: a mechanical job at low risk goes to the cheapest model; a test run needs no model; tier 4 is not the default', () => {
+  const r = route({ role: 'mechanical', taskTypes: ['MECHANICAL_IMPLEMENTATION'], risk: 'LOW', providers: ['claude'] }, seed, cfg());
+  assert.equal(r.decision.model, 'haiku'); assert.ok(r.decision.effort.wanted);
+  const t = route({ role: 'mechanical', taskTypes: ['TEST_EXECUTION'], providers: ['claude'] }, seed, cfg());
+  assert.equal(t.decision.deterministic, true); assert.equal(t.decision.model, null);
+  const deep = route({ role: 'architect', taskTypes: ['DEEP_PLANNING'], risk: 'CRITICAL', providers: ['claude'] }, seed, cfg());
+  assert.equal(deep.decision.model, 'opus'); assert.ok(deep.heldBack.some((h) => h.model === 'fable'));
+});
+test('a reviewer at normal risk is never below tier 3, even if the task types say less', () => {
+  const r = route({ role: 'reviewer', taskTypes: ['DOCUMENTATION'], risk: 'NORMAL', providers: ['claude'] }, seed, cfg());
+  assert.ok(r.decision.tier >= 3);
+});
+test('bad task types or risks are refused', () => {
+  assert.throws(() => route({ role: 'builder', taskTypes: ['NOPE'], providers: ['claude'] }, seed, cfg()), BadRequest);
+  assert.throws(() => route({ role: 'builder', taskTypes: 'CODE_REVIEW' }, seed, cfg()), BadRequest);
+  assert.throws(() => route({ role: 'builder', taskTypes: ['CODE_REVIEW'], risk: 'EXTREME' }, seed, cfg()), BadRequest);
+});
+test('decisions: same inputs give the same fingerprint, changed inputs a different one; records round-trip and ids cannot be paths', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'dt-dec-')); const c = cfg(); const req = { role: 'builder', providers: ['claude'] };
+  const out = route(req, seed, c);
+  const a = recordDecision(dir, req, c, 'stamp1', out), b = recordDecision(dir, req, c, 'stamp1', out), d = recordDecision(dir, req, c, 'stamp2', out);
+  assert.equal(a.inputsHash, b.inputsHash); assert.notEqual(a.id, b.id); assert.notEqual(a.inputsHash, d.inputsHash);
+  assert.equal(inputsHash(req, c, 'stamp1'), a.inputsHash);
+  assert.equal(getDecision(dir, a.id).inputsHash, a.inputsHash); assert.equal(getDecision(dir, 'd-000000000000'), null);
+  assert.throws(() => getDecision(dir, '../../etc/passwd'));
+  assert.equal(explain(getDecision(dir, a.id)).length, 3);
+});
+test('dry-run: one row per phase, the route-order question once with its reason, and the lead\'s own uncertain inputs', () => {
+  const c = cfg({ askedBefore: false });
+  const r = dryRun([{ name: 'scout', role: 'scout', taskTypes: ['REPOSITORY_DISCOVERY'], risk: 'LOW' }, { name: 'plan', role: 'architect', taskTypes: ['DEEP_PLANNING'], risk: 'HIGH', uncertain: [{ input: 'target database', why: 'decides the approach' }] }],
+    (q) => route({ providers: ['claude'], ...q }, seed, c));
+  assert.equal(r.rows.length, 2); assert.equal(r.questions.filter((q) => q.id === 'route-order').length, 1);
+  assert.ok(r.questions.every((q) => q.why)); assert.ok(r.questions.some((q) => q.id === 'uncertain-input'));
+  assert.equal(r.rows[1].cost, 'available after increment 7');
+});

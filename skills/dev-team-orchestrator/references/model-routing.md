@@ -155,7 +155,7 @@ Exit 1 means a "no" that is itself the answer: `NEEDS_APPROVAL` (ask the user, t
 user which one and ask them to correct it; never guess), or `NO_SUITABLE_AGENT_AVAILABLE`. To reach a
 tier-4 model the user has approved, add `"minTier": 4` to the request. When the answer's `exactId` is not
 null, pass it when starting the worker, or stop and say the tool cannot.
-`engine.sh config show` prints the effective settings and which source decided each. If the engine
+Add `"taskTypes": ["CODE_REVIEW"]` and `"risk"` (LOW, NORMAL, HIGH, CRITICAL) and the engine also sets how hard the model should think. The answer carries a `decisionId`; `engine.sh explain --decision <id>` (or `/dev-team-explain`) says why in three sentences, and `engine.sh dry-run --phases-file <json>` previews a whole plan. `engine.sh config show` prints the effective settings and which source decided each. If the engine
 exits 3, follow the tables above as before. The engine only decides and records; the lead starts the
 worker. Details: `docs/orchestrator/engine-commands.md`.
 

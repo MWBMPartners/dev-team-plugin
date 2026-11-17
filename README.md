@@ -364,6 +364,7 @@ All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`)
 | [`/dev-team-report`][cmd-report] | `[branch=<base>]` | Read-only, on-demand run report — phases/cycles, commits, agents by tier, a rough (not-a-bill) cost estimate — regardless of the `features.telemetry` toggle (see [Run reports & cost](#run-reports--cost)). |
 | [`/dev-team-move-ledgers`][cmd-move-ledgers] | `[--apply]` | Move dev-team ledgers written before v1.5.0 from the legacy root location into `.dev-team/`. Read-only preview by default; `--apply` moves only files carrying the dev-team marker without asking, asks about look-alikes, never touches a project's own file or a mixed one, and makes one commit (never pushes). |
 | [`/dev-team-doctor`][cmd-doctor] | `[--format text]` | Check which tools the [orchestrator engine](docs/orchestrator/README.md) can use here and what the plugin does without the missing ones. Read-only. |
+| [`/dev-team-explain`][cmd-explain] | `<decision-id>` | Say in three plain sentences why the engine chose a model for a job. Read-only. |
 | [`/dev-team-polish`][cmd-polish] | `[audit\|fix\|guard] [notes]` | Run a [polish pass](#dev-team-polish) on this web app; `fix` is the default. |
 
 **Detail worth knowing:**
@@ -812,4 +813,5 @@ why it's a person's call, not the plugin's.
 [cmd-report]: commands/dev-team-report.md
 [cmd-move-ledgers]: commands/dev-team-move-ledgers.md
 [cmd-doctor]: commands/dev-team-doctor.md
+[cmd-explain]: commands/dev-team-explain.md
 [cmd-polish]: commands/dev-team-polish.md

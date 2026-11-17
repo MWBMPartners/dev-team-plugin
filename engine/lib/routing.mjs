@@ -2,6 +2,9 @@
 // File:    engine/lib/routing.mjs
 // Purpose: Chooses a model for one job, the same way every time, and writes down why. It never starts
 //          a worker; it returns an instruction the lead carries out.
+import { floorFor } from './tiers.mjs';
+import { wantedEffort, applyEffort } from './effort.mjs';
+
 // Rules it follows (from the locked plan):
 //   - Strength is judged by tier, never by a model's name (tier 1 utility .. tier 4 principal).
 //   - Checking work never uses a model below tier 3 (verification floor, invariant I1).
@@ -13,7 +16,7 @@
 //     the strength a job needs.
 
 const ROLE_FLOOR = { mechanical: 1, scout: 1, documentarian: 2, builder: 2, architect: 3, reviewer: 3 };
-const RISKS = ['LOW', 'NORMAL', 'HIGH'];
+const RISKS = ['LOW', 'NORMAL', 'HIGH', 'CRITICAL'];
 
 /** A request the engine cannot make sense of. The command layer reports it as bad input (exit 2). */
 export class BadRequest extends Error {}
@@ -32,7 +35,7 @@ export function requiredTier(role, risk = 'NORMAL', complex = false) {
   const rk = String(risk).toUpperCase();
   if (!RISKS.includes(rk)) throw new BadRequest(`risk must be one of ${RISKS.join(', ')}`);
   let t = ROLE_FLOOR[role];
-  if (role === 'builder' && (rk === 'HIGH' || complex)) t = 3;
+  if (role === 'builder' && (rk === 'HIGH' || rk === 'CRITICAL' || complex)) t = 3;
   return t;
 }
 
@@ -45,11 +48,30 @@ const isAskFirst = (m, list) => (m.pinnedId && list.includes(lc(m.pinnedId))) ||
  */
 export function route(req, models, cfg) {
   let need = requiredTier(req.role, req.risk, req.complex);
+  // With task types, the floors table decides how strong a model is needed and which tier is preferred; the
+  // role then only decides which models may do the job. Checking work is still never below tier 3 at NORMAL
+  // risk or above (invariant I1), whatever the table says.
+  let preferred = need;
+  let floorReasons = [];
+  if (req.taskTypes !== undefined) {
+    if (!Array.isArray(req.taskTypes) || req.taskTypes.some((x) => typeof x !== 'string')) throw new BadRequest('taskTypes must be a list of text values');
+    let f;
+    try { f = floorFor(req.taskTypes, String(req.risk ?? 'NORMAL').toUpperCase()); } catch (e) { throw new BadRequest(e instanceof Error ? e.message : 'bad taskTypes'); }
+    need = Math.max(f.minimumTier, 1); preferred = Math.max(f.preferredTier, 1); floorReasons = f.reasons;
+    const zero = f.preferredTier === 0;
+    if (req.role === 'reviewer' && String(req.risk ?? 'NORMAL').toUpperCase() !== 'LOW') need = Math.max(need, 3);
+    preferred = Math.max(preferred, need);
+    // Tier 0 ('a tool does it') is only for work a script really can do. Anything else at tier 0 still needs the weakest model.
+    const scriptOnly = req.taskTypes.every((x) => x === 'TEST_EXECUTION' || x === 'STATIC_ANALYSIS' || x === 'BUILD_VALIDATION');
+    if (zero && scriptOnly) {
+      return { ok: true, code: 'OK', decision: { deterministic: true, provider: null, model: null, exactId: null, tier: 0, local: true, costBand: 0, independence: null, spawn: null, effort: null }, reasons: [...floorReasons, 'No AI model is needed for this: a script or tool does it.'], dropped: [], heldBack: [], alternatives: [], warnings: [], questions: [] };
+    }
+  }
   // minTier lets the lead ask for a stronger model than the role's floor (for example, to escalate to
   // tier 4 after the user approved it). It can only raise the need, never lower it.
   if (req.minTier !== undefined) {
     if (!Number.isInteger(req.minTier) || req.minTier < 1 || req.minTier > 4) throw new BadRequest('minTier must be a whole number from 1 to 4');
-    need = Math.max(need, req.minTier);
+    need = Math.max(need, req.minTier); preferred = Math.max(preferred, need);
   }
   if (cfg.badSettings && cfg.badSettings.length) return negative('SETTINGS_INVALID', `A routing setting in .dev-team/config.yml is ambiguous (${cfg.badSettings.join('; ')}). I will not guess which one you meant; please correct it.`, [`The ${req.role} job needs tier ${need} or stronger.`], [], []);
   if (cfg.badPins && cfg.badPins.length) return negative('PIN_INVALID', `A pin in .dev-team/config.yml is not usable (${cfg.badPins.join(', ')}). I will not guess which version you meant; please correct it.`, [`The ${req.role} job needs tier ${need} or stronger.`], [], []);
@@ -57,7 +79,7 @@ export function route(req, models, cfg) {
   const approved = strList(req.approved, 'approved'), exhausted = strList(req.exhausted, 'exhausted');
   const providers = strList(req.providers ?? ['claude'], 'providers');
   const askFirst = cfg.askFirst.map(lc);
-  const reasons = [`The ${req.role} job needs tier ${need} or stronger${req.role === 'reviewer' ? ' (checking work never goes below tier 3)' : ''}.`];
+  const reasons = [...floorReasons, `The ${req.role} job needs tier ${need} or stronger${req.role === 'reviewer' ? ' (checking work never goes below tier 3 at normal risk or above)' : ''}.`];
   const questions = [];
   if (!cfg.askedBefore) questions.push({ id: 'route-order', ask: 'Should work start on free local models and move to paid cloud models for harder work, or start on cloud models and fall back to local ones? This is asked once per project and remembered in .dev-team/config.yml as routing.order.', suggested: 'local-first' });
 
@@ -95,8 +117,9 @@ export function route(req, models, cfg) {
   const group = (m) => (cfg.order === 'local-first' ? (m.local ? 0 : 1) : (m.local ? 1 : 0));
   const other = (m) => (req.role === 'reviewer' && req.builtBy && lc(m.provider) === lc(req.builtBy) ? 1 : 0);
   // Tier 4 is never the default: any usable model below it wins first. Only then the provider preference, the order, and cost.
-  const top = (m) => (m.tier >= 4 && need < 4 ? 1 : 0);
-  usable.sort((a, b) => top(a) - top(b) || other(a) - other(b) || group(a) - group(b) || a.costBand - b.costBand || a.tier - b.tier || a.id.localeCompare(b.id));
+  const top = (m) => (m.tier >= 4 && preferred < 4 ? 1 : 0);
+  const closeness = (m) => Math.abs(m.tier - preferred);
+  usable.sort((a, b) => top(a) - top(b) || other(a) - other(b) || group(a) - group(b) || closeness(a) - closeness(b) || a.costBand - b.costBand || a.tier - b.tier || a.id.localeCompare(b.id));
 
   if (!usable.length) {
     if (heldBack.length) {
@@ -120,9 +143,17 @@ export function route(req, models, cfg) {
   if (!pick.verified) warnings.push(`${pick.provider} has not been tried against a real account (unverified).`);
   return {
     ok: true, code: 'OK',
-    decision: { provider: pick.provider, model: pick.alias, exactId: pick.pinnedId ?? null, tier: pick.tier, local: pick.local, costBand: pick.costBand, independence, spawn: { provider: pick.provider, model: pick.alias, exactId: pick.pinnedId ?? null } },
+    decision: { effort: effortFor(req, pick), provider: pick.provider, model: pick.alias, exactId: pick.pinnedId ?? null, tier: pick.tier, local: pick.local, costBand: pick.costBand, independence, spawn: { provider: pick.provider, model: pick.alias, exactId: pick.pinnedId ?? null } },
     reasons, dropped, heldBack: heldBack.map(brief), alternatives: usable.slice(1, 4).map((m) => ({ model: m.alias, provider: m.provider, exactId: m.pinnedId ?? null })), warnings, questions,
   };
 }
 const brief = (h) => ({ model: h.model.alias, provider: h.model.provider, why: h.why });
 function negative(code, message, reasons, dropped, questions) { return { ok: false, code, decision: null, reasons: [...reasons, message], dropped, heldBack: [], questions }; }
+
+/** The effort wanted for this job and the nearest level the chosen model accepts. Null when no task types were given. */
+function effortFor(req, pick) {
+  if (!Array.isArray(req.taskTypes)) return null;
+  const risk = String(req.risk ?? 'NORMAL').toUpperCase();
+  const wanted = wantedEffort(req.taskTypes, risk, { escalate: req.escalateEffort === true });
+  return { wanted, ...applyEffort(wanted, pick.effortLevels ?? 'UNKNOWN') };
+}

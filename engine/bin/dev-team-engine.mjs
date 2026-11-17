@@ -20,6 +20,9 @@ import { listAdapters } from '../adapters/index.mjs';
 import { dataDir } from '../lib/paths.mjs';
 import { homedir } from 'node:os';
 import { route, BadRequest } from '../lib/routing.mjs';
+import { recordDecision, getDecision, explain } from '../lib/decisions.mjs';
+import { dryRun } from '../lib/dryrun.mjs';
+import { canonicalJson, sha256Hex } from '../lib/canonical.mjs';
 const execFile = promisify(execFileCb);
 const seedPath = () => resolve(pluginRoot(), 'engine', 'data', 'catalogue.seed.json');
 const loadSeed = () => JSON.parse(readFileSync(seedPath(), 'utf8')).models;
@@ -57,7 +60,25 @@ export const commands = {
     let models = loadSeed();
     if (Array.isArray(req.providers) && req.providers.some((p) => String(p).toLowerCase() === 'ollama')) models = [...models, ...(await discoverOllama(execFile))];
     const out = route(req, models, cfg);
-    return { code: out.ok ? ExitCodes.OK : ExitCodes.NEGATIVE, result: out, problems: out.ok ? [] : [{ code: out.code, message: out.reasons[out.reasons.length - 1] }] };
+    const stamp = sha256Hex(canonicalJson(models.map((m) => [m.provider, m.id, m.tier, m.costBand, m.priced])));
+    const rec = recordDecision(join(dataDir(), 'decisions'), req, cfg, stamp, out);
+    return { code: out.ok ? ExitCodes.OK : ExitCodes.NEGATIVE, result: { ...out, decisionId: rec.saved ? rec.id : null, inputsHash: rec.inputsHash }, problems: out.ok ? [] : [{ code: out.code, message: out.reasons[out.reasons.length - 1] }] };
+  },
+  async explain(a) {
+    if (typeof a.flags.decision !== 'string') throw new BadInput('usage: explain --decision <id>');
+    const rec = getDecision(join(dataDir(), 'decisions'), a.flags.decision);
+    if (!rec) return { code: ExitCodes.CONFLICT, result: null, problems: [{ code: 'NOT_FOUND', message: 'no such decision' }] };
+    return { code: ExitCodes.OK, result: { id: rec.id, recordedAt: rec.recordedAt, sentences: explain(rec) } };
+  },
+  async 'dry-run'(a) {
+    if (typeof a.flags['phases-file'] !== 'string') throw new BadInput('usage: dry-run --phases-file <json>');
+    let doc;
+    try { doc = JSON.parse(readFileSync(resolve(a.flags['phases-file']), 'utf8')); } catch { throw new BadInput('the phases file is missing or is not valid JSON'); }
+    const phases = Array.isArray(doc) ? doc : doc?.phases;
+    if (!Array.isArray(phases) || phases.some((p) => !p || typeof p !== 'object' || typeof p.name !== 'string' || typeof p.role !== 'string')) throw new BadInput('the phases file must be a list of {name, role, taskTypes?, risk?}');
+    const cfg = loadRouting({ projectDir: typeof doc.projectDir === 'string' ? doc.projectDir : process.cwd() });
+    const models = loadSeed();
+    return { code: ExitCodes.OK, result: dryRun(phases, (r) => route({ providers: doc.providers ?? ['claude'], ...r }, models, cfg)) };
   },
   async sim(a) {
     if (a.sub !== 'run') throw new BadInput('usage: sim run --scenario <name> | --all');
@@ -91,7 +112,7 @@ export async function main(argv) {
     const out = await fn(a);
     code = out.code; env = envelope(a.command, code === 0, out.result, out.problems ?? []);
   } catch (e) {
-    const bad = e instanceof BadInput || e instanceof BadRequest || e instanceof SyntaxError;
+    const bad = e instanceof BadInput || e instanceof BadRequest || e instanceof SyntaxError || e instanceof RangeError;
     code = ExitCodes.BAD_INPUT;
     env = envelope(a.command, false, null, [{ code: bad ? 'BAD_INPUT' : 'INTERNAL_ERROR', message: e instanceof Error ? e.message : String(e) }]);
   }

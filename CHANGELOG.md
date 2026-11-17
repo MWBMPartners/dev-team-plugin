@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Orchestrator engine, rest of increment 1**: floors for 31 kinds of task at four risk levels (from the
+  locked plan), six reasoning-effort levels with nearest-level mapping per tool, saved decision records
+  with a repeatable inputs fingerprint, `explain` and `/dev-team-explain`, `dry-run`, tier 0 for work a
+  script can do. Docs: `docs/orchestrator/{routing,tiers-and-floors,reasoning-effort}.md`.
+
 - **Orchestrator engine, increment 0b**: adapters for Claude Code and Codex (verified) and Gemini CLI, Kimi
   and Grok Build (unverified, no models found), complete model profiles with UNKNOWN and provenance, a
   per-runtime saved list that survives failures and marks vanished models RETIRED? then RETIRED, a local

@@ -4,32 +4,109 @@
   "title": "dev-team model catalogue",
   "description": "The list of models the engine can route to. The shipped starting list is engine/data/catalogue.seed.json; discovery adds models found on this machine.",
   "type": "object",
-  "required": ["dev-team", "description", "models"],
+  "required": [
+    "dev-team",
+    "description",
+    "models"
+  ],
   "additionalProperties": false,
   "properties": {
-    "dev-team": { "description": "Ownership marker; proves the engine's own file.", "type": "string", "pattern": "^ledger=catalogue schema=1\\.0$" },
-    "description": { "description": "What this file is and where its facts come from.", "type": "string" },
+    "dev-team": {
+      "description": "Ownership marker; proves the engine's own file.",
+      "type": "string",
+      "pattern": "^ledger=catalogue schema=1\\.0$"
+    },
+    "description": {
+      "description": "What this file is and where its facts come from.",
+      "type": "string"
+    },
     "models": {
       "description": "One entry per model (or per role-level placeholder for a provider not yet tried).",
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["provider", "id", "alias", "tier", "tierSource", "local", "costBand", "priced", "roles", "classes", "verified", "source"],
+        "required": [
+          "provider",
+          "id",
+          "alias",
+          "tier",
+          "tierSource",
+          "local",
+          "costBand",
+          "priced",
+          "roles",
+          "classes",
+          "verified",
+          "source"
+        ],
         "additionalProperties": false,
         "properties": {
-          "provider": { "description": "The AI system: claude, codex, gemini, copilot, deepseek, kimi, grok, ollama.", "type": "string" },
-          "id": { "description": "The name used to refer to this entry. Exact dated model ids are never stored in the seed.", "type": "string" },
-          "alias": { "description": "The short name a tool accepts when starting a worker, and the name settings (ask-first, pin) use.", "type": "string" },
-          "tier": { "description": "Strength: 1 utility, 2 engineer, 3 architect, 4 principal. Tier 4 is never the default.", "type": "integer", "minimum": 1, "maximum": 4 },
-          "tierSource": { "description": "Where the tier came from: the routing reference, the owner, a placeholder, or a guess from the model's name.", "type": "string" },
-          "local": { "description": "True for a model running on this machine. Local models are free and never need approval.", "type": "boolean" },
-          "costBand": { "description": "A rough relative price from 0 (free) to 10. Not a bill.", "type": "number", "minimum": 0, "maximum": 10 },
-          "priced": { "description": "False when no price is known. An unpriced model counts as ask-first while 'unpriced' is on that list.", "type": "boolean" },
-          "roles": { "description": "Jobs this model may do: scout, builder, architect, reviewer, mechanical, documentarian.", "type": "array", "items": { "type": "string" } },
-          "classes": { "description": "Named groups the ask-first list can refer to, such as fable or openai-top.", "type": "array", "items": { "type": "string" } },
-          "verified": { "description": "True only when this provider has been tried against a real account.", "type": "boolean" },
-          "source": { "description": "seed (shipped) or discovered (found on this machine).", "type": "string" }
+          "provider": {
+            "description": "The AI system: claude, codex, gemini, copilot, deepseek, kimi, grok, ollama.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The name used to refer to this entry. Exact dated model ids are never stored in the seed.",
+            "type": "string"
+          },
+          "alias": {
+            "description": "The short name a tool accepts when starting a worker, and the name settings (ask-first, pin) use.",
+            "type": "string"
+          },
+          "tier": {
+            "description": "Strength: 1 utility, 2 engineer, 3 architect, 4 principal. Tier 4 is never the default.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "tierSource": {
+            "description": "Where the tier came from: the routing reference, the owner, a placeholder, or a guess from the model's name.",
+            "type": "string"
+          },
+          "local": {
+            "description": "True for a model running on this machine. Local models are free and never need approval.",
+            "type": "boolean"
+          },
+          "costBand": {
+            "description": "A rough relative price from 0 (free) to 10. Not a bill.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "priced": {
+            "description": "False when no price is known. An unpriced model counts as ask-first while 'unpriced' is on that list.",
+            "type": "boolean"
+          },
+          "roles": {
+            "description": "Jobs this model may do: scout, builder, architect, reviewer, mechanical, documentarian.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "classes": {
+            "description": "Named groups the ask-first list can refer to, such as fable or openai-top.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "verified": {
+            "description": "True only when this provider has been tried against a real account.",
+            "type": "boolean"
+          },
+          "source": {
+            "description": "seed (shipped) or discovered (found on this machine).",
+            "type": "string"
+          },
+          "effortLevels": {
+            "description": "The effort levels this model accepts, when known.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         }
       }
     }

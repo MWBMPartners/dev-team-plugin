@@ -112,3 +112,19 @@ teardown() { rm -rf "$SCRATCH"; }
   [ "$status" -eq 0 ]
   [ ! -e "$DEV_TEAM_DATA_DIR/catalogue/codex.json" ]
 }
+
+@test "engine.sh: route saves a decision and explain reads it back in three sentences; dry-run prints one row per phase" {
+  printf '{"role":"reviewer","taskTypes":["CODE_REVIEW"],"risk":"NORMAL","providers":["claude"],"projectDir":"%s"}' "$SCRATCH" > "$SCRATCH/req.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" route --request-file "$SCRATCH/req.json"
+  [ "$status" -eq 0 ]
+  id="$(printf '%s' "$output" | jq -r .result.decisionId)"
+  run bash "$REPO_ROOT/scripts/engine.sh" explain --decision "$id"
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq '.result.sentences | length')" -eq 3 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" explain --decision "../x"
+  [ "$status" -eq 2 ]
+  printf '{"phases":[{"name":"a","role":"scout","taskTypes":["REPOSITORY_DISCOVERY"]},{"name":"b","role":"builder","taskTypes":["ROUTINE_IMPLEMENTATION"]}],"projectDir":"%s"}' "$SCRATCH" > "$SCRATCH/p.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" dry-run --phases-file "$SCRATCH/p.json"
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq '.result.rows | length')" -eq 2 ]
+}
