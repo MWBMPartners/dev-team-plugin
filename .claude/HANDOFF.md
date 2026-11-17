@@ -78,6 +78,20 @@ Checks run at `158f4bc`: both audits, smoke test, shellcheck, bats 211 of 211. T
 - **Next:** increment 0b, then the rest of increment 1 (`explain`, `dry-run`, effort mapping), then 2,
   3, 4 in order (`plan.md` section 4). Hand tests HT-0 to HT-3 need the owner's real Claude Code session.
 
+### Engine progress, second half of 17 November (autonomous run)
+
+| Item | State |
+| --- | --- |
+| Increment 0b (adapters, discovery with cache, simulator, event log, schemas incl. `autopilot.json` for #43) | **Built and reviewed** (2 rounds; all findings fixed). Commits `5038f81`, `e89606f`, `b4751c2` |
+| Increment 1 rest (floors for 31 task types, effort, decision records, `explain`, `dry-run`, tier 0) | **Built.** First review round: 6 findings fixed (commit `a9edba5`); second round **pending** (a background reviewer was running when this was written; if its report is not in the next session, rerun the review of `git diff d57891e..HEAD -- engine`) |
+| 1a: Ollama, Copilot, DeepSeek adapters | Built (unverified); not yet committed when written, see `git status` |
+| 11a/12a: `docs check`, `docs check --api` | Built; not yet committed when written |
+| Increments 2 to 10, 11 (owner practice bundle), 12 (completion gate, 2.0.0) | **Not built.** Next in order: 2 (role-named agents), 3 (job state, plan lock, drift, evidence, checkpoints), 4 (leases, quota, snapshots), 5 (review independence) |
+| Still blocked on the owner | Codex review; editor hand tests; hand tests HT-0 to HT-3 (need a real Claude Code session) |
+
+Tests at this point: 98 engine unit tests, 16 launcher tests, 211 older tests, both audits, smoke, shellcheck.
+Departures so far are listed in `docs/orchestrator/departures.md` (DEP-A to DEP-J).
+
 ### Added later on 17 November — owner's new requirements (work branch `claude/busy-knuth-bc35ok`)
 
 - The owner asked for: model-per-job delegation, many AI systems (adding Copilot, DeepSeek, Ollama),

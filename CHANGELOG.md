@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Orchestrator engine, queued items from the owner's requirements**: adapters for Ollama (local models,
+  found by asking what is installed), Copilot and DeepSeek (unverified); `docs check` (do the goals,
+  requirements and plan sections exist) and `docs check --api` (an OpenAPI file needs a Swagger UI page).
+
 - **Orchestrator engine, rest of increment 1**: floors for 31 kinds of task at four risk levels (from the
   locked plan), six reasoning-effort levels with nearest-level mapping per tool, saved decision records
   with a repeatable inputs fingerprint, `explain` and `/dev-team-explain`, `dry-run`, tier 0 for work a

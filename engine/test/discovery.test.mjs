@@ -86,8 +86,9 @@ test('claude code discovery: aliases with a logged-in flag only when the status 
   assert.ok(r.profiles.every((p) => p.availability === 'UNKNOWN'));
 });
 test('the registry lists five adapters, two verified, and every unverified capability is UNKNOWN', () => {
-  const a = listAdapters(); assert.equal(a.length, 5); assert.equal(a.filter((x) => x.verified).length, 2);
-  for (const u of a.filter((x) => !x.verified)) assert.ok(Object.values(u.supports).every((v) => v === 'UNKNOWN'));
+  const a = listAdapters(); assert.equal(a.length, 8); assert.equal(a.filter((x) => x.verified).length, 2);
+  for (const u of a.filter((x) => !x.verified && x.id !== 'ollama')) assert.ok(Object.values(u.supports).every((v) => v === 'UNKNOWN'));
+  assert.deepEqual(a.map((x) => x.id).sort(), ['claude-code', 'codex', 'copilot-cli', 'deepseek', 'gemini-cli', 'grok-build', 'kimi-cli', 'ollama']);
 });
 test('the simulator scenarios run and every expectation holds', async () => {
   for (const f of ['smoke.json', 'discovery-changes.json']) { const r = await runScenario(join(root, 'engine/sim/scenarios', f)); assert.ok(r.assertions.length >= 2); for (const x of r.assertions) assert.ok(x.ok, `${f}: ${x.detail}`); }
@@ -146,4 +147,24 @@ test('a profile that fails its schema is reported and not saved', async () => {
   const bad = { id: 'bad', provider: 'p', verified: false, supports: {}, async discoverModels() { return { models: [{ id: 'x', facts: {} }] }; }, normaliseProfile() { return { provider: 'p' }; }, classifyError() { return null; } };
   const r = await discover({ adapters: [bad], dataDir: tmp(), run: async () => ({}), home: tmp() });
   assert.ok(r.problems.some((p) => p.code === 'PROFILE_INVALID')); assert.equal(r.profiles.length, 0);
+});
+
+test('ollama adapter: lists local models as free, guesses their tier, treats -cloud models as unpriced; absent is a clean failure', async () => {
+  const { ollama } = await import('../adapters/ollama.mjs');
+  const run = async () => ({ stdout: 'NAME ID SIZE MODIFIED\nqwen2.5-coder:32b a 19GB now\ngpt-oss:120b-cloud b - now\n' });
+  const r = await discover({ adapters: [ollama], dataDir: tmp(), run, home: tmp() });
+  const q = r.profiles.find((p) => p.providerModelId === 'qwen2.5-coder:32b'), c = r.profiles.find((p) => p.providerModelId.endsWith('-cloud'));
+  assert.equal(q.monetaryCost, 0); assert.equal(q.capabilityTier, 2); assert.equal(c.monetaryCost, 'UNKNOWN');
+  const none = await discover({ adapters: [ollama], dataDir: tmp(), run: async () => { throw new Error('x'); }, home: tmp() });
+  assert.ok(none.problems.some((p) => p.code === 'DISCOVERY_FAILED'));
+});
+
+import { checkProjectDocs, checkApiDocs } from '../lib/projectdocs.mjs';
+test('project documents check: finds missing sections; api check wants a Swagger UI beside an OpenAPI file', () => {
+  const p = tmp(); assert.equal(checkProjectDocs(p).findings[0].code, 'NO_PROJECT_DOC');
+  mkdirSync(join(p, '.dev-team')); writeFileSync(join(p, '.dev-team', 'PROJECT.md'), '# X\n## Goal\nx\n## Stage plan\n1\n## Current status  ← keep\nok\n');
+  const miss = checkProjectDocs(p).findings.map((f) => f.message).join(' '); assert.ok(miss.includes('Definition of done') && miss.includes('Requirements and prerequisites') && !miss.includes('"Goal"'));
+  const a = tmp(); assert.equal(checkApiDocs(a).hasOpenApi, false); assert.deepEqual(checkApiDocs(a).findings, []);
+  writeFileSync(join(a, 'openapi.yaml'), 'openapi: 3.0.0\n'); assert.equal(checkApiDocs(a).findings[0].code, 'NO_SWAGGER_UI');
+  mkdirSync(join(a, 'swagger-ui')); writeFileSync(join(a, 'swagger-ui', 'index.html'), '<html>'); assert.deepEqual(checkApiDocs(a).findings, []);
 });

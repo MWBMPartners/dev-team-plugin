@@ -22,6 +22,7 @@ import { homedir } from 'node:os';
 import { route, BadRequest } from '../lib/routing.mjs';
 import { recordDecision, getDecision, explain, DecisionUnreadable } from '../lib/decisions.mjs';
 import { dryRun } from '../lib/dryrun.mjs';
+import { checkProjectDocs, checkApiDocs } from '../lib/projectdocs.mjs';
 import { canonicalJson, sha256Hex } from '../lib/canonical.mjs';
 const execFile = promisify(execFileCb);
 const seedPath = () => resolve(pluginRoot(), 'engine', 'data', 'catalogue.seed.json');
@@ -90,6 +91,12 @@ export const commands = {
     for (const n of names) { if (!existsSync(join(dir, n))) throw new BadInput(`no scenario named ${n}`); results.push(await runScenario(join(dir, n))); }
     const failed = results.flatMap((r) => r.assertions.filter((x) => !x.ok).map((x) => ({ code: 'SIM_FAILED', message: `${r.name}: ${x.detail}` })));
     return { code: failed.length ? ExitCodes.NEGATIVE : ExitCodes.OK, result: { scenarios: results.map((r) => ({ name: r.name, assertions: r.assertions.length, failed: r.assertions.filter((x) => !x.ok).length })) }, problems: failed };
+  },
+  async docs(a) {
+    if (a.sub !== 'check') throw new BadInput('usage: docs check [--project <dir>] | docs check --api [--project <dir>]');
+    const dir = typeof a.flags.project === 'string' ? resolve(a.flags.project) : process.cwd();
+    const r = a.flags.api ? checkApiDocs(dir) : checkProjectDocs(dir);
+    return { code: ExitCodes.OK, result: r, problems: r.findings };
   },
   async doctor() { return { code: ExitCodes.OK, result: await runDoctor() }; },
   async schema(a) {
