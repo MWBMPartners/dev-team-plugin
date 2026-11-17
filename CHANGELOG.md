@@ -26,6 +26,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `## Requirements and prerequisites` section to `PROJECT.md`. A short "Not only software" section in
   `conventions.md` says how to read the suite's wording for work that is not code.
 
+- **Profiles and presets** (reserved until the engine lands): `profiles-and-presets.md` defines
+  `profile: standard` (the owner's working practices), `local-first` and `cloud-first`, the built-in
+  default of local first, the ask-once-per-project rule and a per-device default in
+  `~/.dev-team/device.yml`.
+
 ### Changed
 
 - **`deep-architect` now defaults to Opus, not Fable** (owner's decision, 17 November 2026). Fable is an

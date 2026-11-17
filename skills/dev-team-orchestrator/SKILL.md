@@ -197,5 +197,6 @@ Optional run arguments (defaults in brackets):
 - `references/checker-protocol.md` — brief and triage format for the checker agent (what to escalate vs. handle). Read before your first check.
 - `references/debate-protocol.md` — prompts and judging rubric for debate mode. Read before your first debate.
 - `references/documentarian-protocol.md` — `PROJECT.md` structure and the `sonnet-scribe` documentarian's brief. Read when you first set up the project.
+- `references/profiles-and-presets.md` — named bundles of settings (`standard`, `local-first`, `cloud-first`) and where work starts (reserved until the engine lands).
 - `references/orchestration-profiles.md` — optional taste-first profile: top-taste orchestrator (Fable/Opus) + cheap grunt work, with optional GPT-5.5/Codex offload. Read if you want more taste per token than the default roster.
 - `references/run-report.md` — the run-report spec: what a run summary contains, the rough cost-estimate method and its caveat, and the `features.telemetry` toggle. Read before the final "Verify and report" step.

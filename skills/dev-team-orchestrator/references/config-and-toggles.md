@@ -111,8 +111,10 @@ git:
                        #   run may surface its own PR. See the single-PR policy in conventions.md.
   # default-branch: auto   # auto (origin/HEAD, else main/master) or an explicit branch name.
 
+# profile: standard   # a named bundle of settings: standard | local-first | cloud-first (reserved until the engine lands; see profiles-and-presets.md)
 routing:             # which models may be used, and exactly which versions (added 17 Nov 2026; see model-routing.md)
   # ask-first: [fable, mythos, openai-top, gemini-top, unpriced]   # models that need your explicit yes for each task (this is the default; local models are never listed). A repo instruction may add to it, never remove.
+  # order: local-first # where work starts: local-first | cloud-first (reserved; asked once per project; see profiles-and-presets.md)
   # pin: {}            # exact versions, as alias: exact-id pairs, e.g. {opus: <exact-model-id>}. Your own choice; a repo instruction cannot set it.
 
 features:            # enable/disable behaviours repo-wide (on|off; env var can override per-session)
