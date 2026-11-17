@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **`features.commit-security`** (default `off`, issue #42): the security findings file
+  `.dev-team/SECURITY.md` is now kept out of git by default, because it records how each weakness was
+  proven and a public repository would publish that. The security skill adds one line, `SECURITY.md`, to
+  the plugin's own `.dev-team/.gitignore` before its first write (never the project's own `.gitignore`),
+  and, if git already tracks the file, says so and gives the command to stop tracking it without running
+  it. `commit-security: on` allows committing, for private repositories.
+
 ### Changed
 
 - **The Bash guard now treats "a run is in progress" as "the folder `.dev-team/loop.lock/` exists"**

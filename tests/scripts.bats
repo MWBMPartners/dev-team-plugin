@@ -1009,6 +1009,19 @@ $line" ;;
   [ "$status" -eq 0 ]
 }
 
+# Issue #42: the security findings file stays out of git unless commit-security is on. The behaviour is
+# carried by instructions, so these tests check that every place that has to say it, does.
+@test "commit-security: documented in the config reference, the conventions, the security skill and the README (issue #42)" {
+  run grep -F 'commit-security' "$REPO_ROOT/skills/dev-team-orchestrator/references/config-and-toggles.md"
+  [ "$status" -eq 0 ]
+  run grep -F 'Findings stay out of git by default' "$REPO_ROOT/skills/dev-team-orchestrator/references/conventions.md"
+  [ "$status" -eq 0 ]
+  run grep -F -- '--cached .dev-team/SECURITY.md' "$REPO_ROOT/skills/dev-team-security/SKILL.md"
+  [ "$status" -eq 0 ]
+  run grep -F '`commit-security`' "$REPO_ROOT/README.md"
+  [ "$status" -eq 0 ]
+}
+
 @test "guard: no config file at all allows push to main with no active run (fail-open)" {
   unset DEV_TEAM_GUARD
   run run_guard "$SCRATCH" '{"tool_input":{"command":"git push origin main"}}'
