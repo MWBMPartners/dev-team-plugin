@@ -49,3 +49,5 @@ work it does is then reviewed by Claude Code when Claude Code is back.
 > 17 Nov 2026 (later): built on `claude/busy-knuth-bc35ok`: #44 and #48 (commit `ae2b909`) and #42
 > (`158f4bc`). Codex is not installed in the cloud session that built them, so they are **not yet
 > reviewed by Codex**. Review them with `git diff 87c0f70..HEAD` against `alpha`'s history.
+
+> 17 Nov 2026 (end of session): groups A-D built on `claude/busy-knuth-bc35ok`; none yet reviewed by Codex. See `.claude/HANDOFF.md`.

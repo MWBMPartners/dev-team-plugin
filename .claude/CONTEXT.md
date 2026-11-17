@@ -60,3 +60,5 @@ not on pushes to the working branch — so run them yourself.
 | [#45](https://github.com/MWBMPartners/dev-team-plugin/issues/45) | The owner's standard working practices as features. | All choices answered on 17 Nov; the `profile: standard` preset is not yet built. |
 | #44, #48, #42 | Guard keyed on `loop.lock/`; guard wording; security findings out of git by default. | **Built on `claude/busy-knuth-bc35ok`** on 17 Nov (commits `ae2b909`, `158f4bc`); not yet reviewed by Codex. |
 | #43 | Schema for `autopilot.json`. | Waits for #46. |
+
+> 17 Nov 2026 (end of session): groups A, B, C, D done on `claude/busy-knuth-bc35ok` (latest commit: see `git log`); E planned only. Details in `.claude/HANDOFF.md`.

@@ -32,7 +32,11 @@ session gave the owner; see below).
 | A | #42 security findings out of git by default (`features.commit-security`, default off) | **Done**, commit `158f4bc` |
 | F | Comments on #41, #47, #42, #44, #48 | **Done** |
 | F | Clean Codex review of all of `main` | **Blocked: Codex is not installed in this cloud session.** Rule 5 says say so plainly; all work since 9 Nov is **not fully reviewed**. Redo by hand: see `codex-review-prompt-5.md` |
-| B, C, D, E | Model settings, project documents, preset and editor research, the engine | Not started |
+| B | `deep-architect` to Opus (Q4); `routing.ask-first` (default list chosen by the owner) and `routing.pin`; other AI systems listed | **Done**, commits `9bb5b62`, `d0f5a1d` |
+| C | Shared project document set; "not only software" wording | **Done**, commit `c50b924`. Only a shared rule was added; each skill's own wording was not rewritten |
+| D | `profile: standard`, `local-first`, `cloud-first` (reserved until the engine lands); editor research (first pass, unverified) | **Done as documents**, see `profiles-and-presets.md` and `editor-research-2026-11-17.md`. The editor hand tests are not done |
+| E | Orchestrator engine (#46) | **Planned, not started.** New increments are in `plan.md` section 11. Next: owner approves locking the plan, then increment 0a |
+| Q8 | Ask-first list | **Answered:** Fable, Mythos, OpenAI's top flagship, Google's top Gemini, and any unpriced model |
 
 Checks run at `158f4bc`: both audits, smoke test, shellcheck, bats 211 of 211. To run bats here:
 `npm install -g bats` and `pip install shellcheck-py`, then `TMPDIR=<writable folder> bats tests/scripts.bats`.
