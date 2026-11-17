@@ -1,6 +1,6 @@
 ---
 name: reviewer-xhigh
-description: Reviewer, very high effort. The same role as reviewer with a larger thinking budget, for risky or critical work. Read-only. The engine picks the model and keeps checking at tier 3 or above.
+description: "Reviewer, very high effort. The same role as reviewer with a larger thinking budget, for risky or critical work. Read-only by instruction: it has no edit tools, but Bash could still write files, so it is told never to. The engine picks the model and keeps checking at tier 3 or above."
 model: opus
 effort: xhigh
 tools: Read, Bash, Grep, Glob

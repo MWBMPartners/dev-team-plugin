@@ -57,8 +57,9 @@ export function applyEffort(wanted, supported) {
 // and the move is recorded.
 const ORDER = ['MINIMAL', 'LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH', 'MAXIMUM'];
 const AGENT_FILES = {
-  scout: { LOW: 'scout', MEDIUM: 'engineer', HIGH: 'engineer-high' },
-  mechanical: { LOW: 'scout', MEDIUM: 'engineer', HIGH: 'engineer-high' },
+  // A scout only reads, so every effort uses the read-only scout file. Mechanical edits need a file that can edit.
+  scout: { LOW: 'scout' },
+  mechanical: { MEDIUM: 'engineer', HIGH: 'engineer-high' },
   documentarian: { LOW: 'scribe' },
   builder: { MEDIUM: 'engineer', HIGH: 'engineer-high' },
   architect: { HIGH: 'architect-high', VERY_HIGH: 'architect', MAXIMUM: 'architect-max' },

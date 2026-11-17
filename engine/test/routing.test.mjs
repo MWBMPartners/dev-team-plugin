@@ -411,6 +411,8 @@ test('every agent file the engine can name exists, and the role pairs follow the
   assert.equal(claudeAgentFile('architect', 'VERY_HIGH', 3).file, 'architect'); assert.equal(claudeAgentFile('architect', 'MAXIMUM', 3).file, 'architect-max');
   assert.equal(claudeAgentFile('architect', 'MAXIMUM', 4).file, 'principal'); assert.equal(claudeAgentFile('reviewer', 'HIGH', 3).file, 'reviewer');
   assert.equal(claudeAgentFile('reviewer', 'MAXIMUM', 3).exact, false); assert.equal(claudeAgentFile('scout', 'LOW', 1).file, 'scout');
+  for (const e of ['MINIMAL', 'LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH', 'MAXIMUM']) assert.equal(claudeAgentFile('scout', e, 1).file, 'scout', `a scout stays read-only at ${e}`);
+  for (const e of ['MINIMAL', 'LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH', 'MAXIMUM']) assert.ok(['engineer', 'engineer-high'].includes(claudeAgentFile('mechanical', e, 1).file), `mechanical edits need an agent that can edit (${e})`);
   assert.equal(claudeAgentFile('builder', 'MEDIUM', 2).file, 'engineer'); assert.equal(claudeAgentFile('builder', 'HIGH', 2).file, 'engineer-high');
 });
 test('route names the agent file for Claude workers and leaves it out for other providers', () => {
@@ -424,6 +426,22 @@ test('agent files: each has name, description, model, effort and tools; old name
   const fm = (n) => Object.fromEntries(readFileSync(join(dir, `${n}.md`), 'utf8').split('---')[1].trim().split('\n').map((l) => [l.slice(0, l.indexOf(':')), l.slice(l.indexOf(':') + 1).trim()]));
   const plan = { scout: ['low', 'haiku'], scribe: ['low', 'sonnet'], engineer: ['medium', 'sonnet'], 'engineer-high': ['high', 'sonnet'], architect: ['xhigh', 'opus'], 'architect-high': ['high', 'opus'], 'architect-max': ['max', 'opus'], principal: ['max', 'fable'], 'principal-xhigh': ['xhigh', 'fable'], reviewer: ['high', 'opus'], 'reviewer-xhigh': ['xhigh', 'opus'] };
   for (const [n, [eff, model]] of Object.entries(plan)) { const f = fm(n); assert.equal(f.name, n); assert.equal(f.effort, eff); assert.equal(f.model, model); assert.ok(f.description && f.tools); }
-  for (const n of ['opus-builder', 'sonnet-builder', 'sonnet-scribe', 'quick-edits', 'deep-architect']) assert.match(fm(n).description, /^Deprecated alias for .+; removed in 2\.1\.0\./);
+  for (const n of ['opus-builder', 'sonnet-builder', 'sonnet-scribe', 'quick-edits', 'deep-architect']) assert.match(fm(n).description.replace(/^"/, ''), /^Deprecated alias for .+; removed in 2\.1\.0\./);
   for (const n of ['reviewer', 'reviewer-xhigh', 'scout']) assert.ok(!/Edit|Write/.test(fm(n).tools), `${n} must be read-only`);
+});
+
+test('every agent file has frontmatter that is valid YAML on one line each: descriptions quoted, no stray colon problems', () => {
+  const dir = join(pluginRoot(), 'agents');
+  for (const f of readdirSync(dir)) {
+    const head = readFileSync(join(dir, f), 'utf8').split('---')[1].trim().split('\n');
+    for (const l of head) {
+      const k = l.slice(0, l.indexOf(':')), v = l.slice(l.indexOf(':') + 1).trim();
+      assert.match(k, /^[a-z]+$/, `${f}: key`);
+      if (k === 'description') { assert.ok(/^"([^"\\]|\\.)*"$/.test(v), `${f}: the description must be one double-quoted string`); }
+      else assert.ok(!/: /.test(v) && !/ #/.test(v), `${f}: ${k} would not parse as YAML`);
+    }
+  }
+});
+test('read-only agents say honestly that the limit is an instruction, not a lock', () => {
+  for (const n of ['scout', 'reviewer', 'reviewer-xhigh']) assert.match(readFileSync(join(pluginRoot(), 'agents', `${n}.md`), 'utf8'), /Read-only by instruction/);
 });

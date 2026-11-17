@@ -1,6 +1,6 @@
 ---
 name: opus-builder
-description: Deprecated alias for architect-high for opus-strength building or reviewer for verification; removed in 2.1.0. Build/Verify tier (Opus) — the frontier workhorse and DEFAULT dev-team worker. Use for building features, scouting/investigating a codebase, and ALL verification roles (checker, red-team, validator, reviewer). Your specific role is set by the brief. Route genuinely hard reasoning to deep-architect and mechanical edits to quick-edits; never route verification cheaper than this tier.
+description: "Deprecated alias for architect-high for opus-strength building or reviewer for verification; removed in 2.1.0. Build/Verify tier (Opus) — the frontier workhorse and DEFAULT dev-team worker. Use for building features, scouting/investigating a codebase, and ALL verification roles (checker, red-team, validator, reviewer). Your specific role is set by the brief. Route genuinely hard reasoning to deep-architect and mechanical edits to quick-edits; never route verification cheaper than this tier."
 model: opus
 tools: Read, Edit, Write, Bash, Grep, Glob
 ---

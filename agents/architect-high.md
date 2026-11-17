@@ -1,6 +1,6 @@
 ---
 name: architect-high
-description: Architect, high effort. The same role as architect with a lower thinking budget, for analysis and planning that is hard but not extreme. The engine picks the model at spawn time.
+description: "Architect, high effort. The same role as architect with a lower thinking budget, for analysis and planning that is hard but not extreme. The engine picks the model at spawn time."
 model: opus
 effort: high
 tools: Read, Edit, Bash, Grep, Glob

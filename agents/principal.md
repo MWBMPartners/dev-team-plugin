@@ -1,6 +1,6 @@
 ---
 name: principal
-description: Principal, maximum effort. The strongest and costliest tier, for critical decisions only. Needs the owner's explicit approval before use (the ask-first list). The engine picks the model at spawn time; fable is only the default.
+description: "Principal, maximum effort. The strongest and costliest tier, for critical decisions only. Needs the owner's explicit approval before use (the ask-first list). The engine picks the model at spawn time; fable is only the default."
 model: fable
 effort: max
 tools: Read, Edit, Bash, Grep, Glob

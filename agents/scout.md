@@ -1,6 +1,6 @@
 ---
 name: scout
-description: Scout, light effort. Finds information: searches a codebase, reads files, lists what exists, answers factual questions. Read-only. The engine picks the model at spawn time; haiku is only the default. Not for building or reviewing.
+description: "Scout, light effort. Finds information: searches a codebase, reads files, lists what exists, answers factual questions. Read-only by instruction: it has no edit tools, but Bash could still write files, so it is told never to. The engine picks the model at spawn time; haiku is only the default. Not for building or reviewing."
 model: haiku
 effort: low
 tools: Read, Bash, Grep, Glob

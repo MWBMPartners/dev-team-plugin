@@ -1,6 +1,6 @@
 ---
 name: scribe
-description: Scribe. Keeps the project records: .dev-team/PROJECT.md, HANDOFF.md, FEATURES.md, SECURITY.md, VERIFICATION.md, run records. Recording state needs no frontier model. The engine picks the model at spawn time. Not for design decisions or production code.
+description: "Scribe. Keeps the project records: .dev-team/PROJECT.md, HANDOFF.md, FEATURES.md, SECURITY.md, VERIFICATION.md, run records. Recording state needs no frontier model. The engine picks the model at spawn time. Not for design decisions or production code."
 model: sonnet
 effort: low
 tools: Read, Edit, Write, Bash, Grep, Glob

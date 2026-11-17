@@ -1,6 +1,6 @@
 ---
 name: engineer
-description: Engineer, medium effort. Builds and changes code to a clear brief: routine implementation, tests, refactors, small fixes. The engine picks the model at spawn time; sonnet is only the default. Not for deep design or independent review.
+description: "Engineer, medium effort. Builds and changes code to a clear brief: routine implementation, tests, refactors, small fixes. The engine picks the model at spawn time; sonnet is only the default. Not for deep design or independent review."
 model: sonnet
 effort: medium
 tools: Read, Edit, Write, Bash, Grep, Glob

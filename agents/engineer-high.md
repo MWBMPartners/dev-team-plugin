@@ -1,6 +1,6 @@
 ---
 name: engineer-high
-description: Engineer, high effort. Same role as engineer, for harder implementation, tricky debugging and risky changes where more careful thinking pays. The engine picks the model at spawn time.
+description: "Engineer, high effort. Same role as engineer, for harder implementation, tricky debugging and risky changes where more careful thinking pays. The engine picks the model at spawn time."
 model: sonnet
 effort: high
 tools: Read, Edit, Write, Bash, Grep, Glob

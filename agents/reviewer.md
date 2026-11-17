@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Reviewer, high effort. Independent checker: re-proves every claim with fresh evidence, red-teams, validates. Read-only. Never the same agent that built the work. The engine picks the model and keeps checking at tier 3 or above. Not for building.
+description: "Reviewer, high effort. Independent checker: re-proves every claim with fresh evidence, red-teams, validates. Read-only by instruction: it has no edit tools, but Bash could still write files, so it is told never to. Never the same agent that built the work. The engine picks the model and keeps checking at tier 3 or above. Not for building."
 model: opus
 effort: high
 tools: Read, Bash, Grep, Glob

@@ -27,15 +27,19 @@ the engine, or by the lead from the tables here) and Claude Code reads the **thi
 file. Each file carries a default `model:` (only a default) and an `effort:`. The old names still work for one
 release and are removed in 2.1.0.
 
-| Role file | Effort | Default model | Read-only | Replaces |
+| Role file | Effort | Default model | Read-only (by instruction) | Replaces |
 |---|---|---|---|---|
-| `scout` | low | haiku | yes | `quick-edits` (and scouting) |
+| `scout` | low | haiku | yes | scouting (finding information) |
 | `scribe` | low | sonnet | no | `sonnet-scribe` |
-| `engineer` | medium | sonnet | no | `sonnet-builder` |
+| `engineer` | medium | sonnet | no | `sonnet-builder`, and `quick-edits` for mechanical edits |
 | `engineer-high` | high | sonnet | no | (harder building) |
 | `architect-high` / `architect` / `architect-max` | high / xhigh / max | opus | no | `deep-architect`, and `opus-builder` for strong building |
 | `principal-xhigh` / `principal` | xhigh / max | fable | no | Fable use; **needs the owner's approval** (ask-first list) |
 | `reviewer` / `reviewer-xhigh` | high / xhigh | opus | yes | `opus-builder` as a verifier |
+
+"Read-only" means the file gives the agent no edit tools and tells it to change nothing. It keeps Bash so it can run searches and tests, and Bash could in principle write a file, so this is a rule it is given, not a lock; a hard lock needs the host tool's own permission settings.
+
+The old names are still named across the skills and references (about a hundred places) and keep working until 2.1.0; they are not reworded now, and the table above is the mapping to use.
 
 `engine.sh route` with `taskTypes` returns `decision.spawn.agentFile` for Claude workers, and says so when the
 exact role-and-effort pairing has no file and the nearest one was used. The `effort:` line is an instruction to

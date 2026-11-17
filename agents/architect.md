@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Architect, very high effort. Deep analysis and planning: architecture decisions, subtle multi-file bugs, algorithm and data-model trade-offs, large refactors, and debate advocates. The engine picks the model at spawn time; opus is only the default. Overkill for routine building.
+description: "Architect, very high effort. Deep analysis and planning: architecture decisions, subtle multi-file bugs, algorithm and data-model trade-offs, large refactors, and debate advocates. The engine picks the model at spawn time; opus is only the default. Overkill for routine building."
 model: opus
 effort: xhigh
 tools: Read, Edit, Bash, Grep, Glob

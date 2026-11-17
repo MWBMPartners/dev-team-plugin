@@ -1,6 +1,6 @@
 ---
 name: principal-xhigh
-description: Principal, very high effort. The same role as principal with a lower thinking budget. Needs the owner's explicit approval before use (the ask-first list). The engine picks the model at spawn time.
+description: "Principal, very high effort. The same role as principal with a lower thinking budget. Needs the owner's explicit approval before use (the ask-first list). The engine picks the model at spawn time."
 model: fable
 effort: xhigh
 tools: Read, Edit, Bash, Grep, Glob

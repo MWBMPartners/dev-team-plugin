@@ -1,6 +1,6 @@
 ---
 name: architect-max
-description: Architect, maximum effort. Only for critical work: the hardest design and root-cause problems, used sparingly because it costs the most thinking. The engine picks the model at spawn time.
+description: "Architect, maximum effort. Only for critical work: the hardest design and root-cause problems, used sparingly because it costs the most thinking. The engine picks the model at spawn time."
 model: opus
 effort: max
 tools: Read, Edit, Bash, Grep, Glob
