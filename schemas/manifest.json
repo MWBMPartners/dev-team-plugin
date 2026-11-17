@@ -73,6 +73,10 @@
     {
       "schema": "schemas/plan-contract.schema.json",
       "fixture": ".claude/plans/orchestrator-v2/plan-contract.orchestrator-v2.v1.json"
+    },
+    {
+      "schema": "schemas/data/failure-recovery.schema.json",
+      "fixture": "engine/data/failure-recovery.json"
     }
   ],
   "exceptions": [

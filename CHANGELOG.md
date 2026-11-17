@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Orchestrator engine, increment 4**: quota-message reading with times that are never invented (and tested
+  across the London clock change), leases that tell a paused phase from a crashed one, work snapshots that save
+  new files too and refuse secrets, pause and resume by the same agent, fallback and takeover ladders, failure
+  recovery table. **Autopilot's recovery rule** (`loop-runtime.md`) now snapshots before any reset when the engine
+  is present, and never resets a paused run; without the engine the old rule stays.
+
 - **Orchestrator engine, increment 2: role-named agents.** Eleven new agent files named after the job (`scout`,
   `scribe`, `engineer`, `engineer-high`, `architect-high`, `architect`, `architect-max`, `principal-xhigh`,
   `principal`, `reviewer`, `reviewer-xhigh`), each with a default model and an `effort:` line; reviewers and the

@@ -28,6 +28,7 @@ import { classifyDrift } from '../lib/drift.mjs';
 import { checkEvidence } from '../lib/evidence.mjs';
 import { newTask, recordAttempt, recordEscalation, validateTask } from '../lib/attempts.mjs';
 import { writeJsonAtomic } from '../lib/store.mjs';
+import { continuityCommands } from '../lib/continuity-commands.mjs';
 import { initJob, loadJob, recordPhase, createCheckpoint, verifyCheckpoints, progressRows, JobProblem } from '../lib/job.mjs';
 import { canonicalJson, sha256Hex } from '../lib/canonical.mjs';
 const execFile = promisify(execFileCb);
@@ -44,6 +45,7 @@ import { resolve } from 'node:path';
 
 /** @type {Record<string, (a: ReturnType<typeof parseArgs>) => Promise<{code: number, result: unknown, problems?: {code: string, message: string}[]}>>} */
 export const commands = {
+  ...continuityCommands,
   async discover(a) {
     // `discover --local` lists models a local Ollama install has. Plain `discover` asks the adapters
     // (Claude Code, Codex and the unverified ones) and keeps a cache per runtime in the data folder.

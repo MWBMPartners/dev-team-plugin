@@ -176,3 +176,47 @@ teardown() { rm -rf "$SCRATCH"; }
   run bash "$REPO_ROOT/scripts/engine.sh" job status --job "../x" --project "$SCRATCH"
   [ "$status" -eq 2 ]
 }
+
+@test "engine.sh: the reclaim scenario - a stale lease and a dirty tree with an untracked file: reclaim snapshots first, the work survives a reset" {
+  git -C "$SCRATCH" init -q && printf 'a' > "$SCRATCH/f" && git -C "$SCRATCH" add f && git -C "$SCRATCH" -c user.email=t@t -c user.name=t commit -q -m one
+  e() { bash "$REPO_ROOT/scripts/engine.sh" "$@" --project "$SCRATCH"; }
+  run e lease acquire --job j-aaaaaaaaaaaa --phase build --provider claude --model opus --runtime claude-code --role builder
+  [ "$status" -eq 0 ]
+  printf 'precious' > "$SCRATCH/untracked.txt"
+  # make the heartbeat old by editing the holder file the engine wrote
+  holder="$(find "$DEV_TEAM_DATA_DIR" -name holder.json | head -1)"
+  sed -i.bak 's/"heartbeatAt": "[^"]*"/"heartbeatAt": "2020-01-01T00:00:00.000Z"/' "$holder"
+  run e lease acquire --job j-aaaaaaaaaaaa --phase build --provider claude --model opus --runtime claude-code --role builder
+  [ "$status" -eq 4 ]
+  [[ "$output" == *"STALE_LOCK"* ]]
+  run e lease reclaim --job j-aaaaaaaaaaaa --phase build --provider claude --model sonnet --runtime claude-code --role builder
+  [ "$status" -eq 0 ]
+  ref="$(printf '%s' "$output" | jq -r .result.snapshot.snapshotRef)"
+  [ "$ref" != "null" ]
+  git -C "$SCRATCH" ls-tree -r --name-only "$ref" | grep -q untracked.txt
+  rm -f "$SCRATCH/untracked.txt"
+  run e snapshot restore --ref "$ref"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$SCRATCH/untracked.txt")" = "precious" ]
+}
+
+@test "engine.sh: quota observe reads a limit message, decides pause or block, and never invents a reset" {
+  git -C "$SCRATCH" init -q
+  printf 'You have hit your usage limit. Try again in 2 hours.' > "$SCRATCH/m.txt"
+  run bash "$REPO_ROOT/scripts/engine.sh" quota observe --provider claude --file "$SCRATCH/m.txt" --project "$SCRATCH"
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r .result.decision.action)" = "PAUSE" ]
+  printf 'You have hit your usage limit.' > "$SCRATCH/m2.txt"
+  run bash "$REPO_ROOT/scripts/engine.sh" quota observe --provider claude --file "$SCRATCH/m2.txt" --project "$SCRATCH"
+  [ "$(printf '%s' "$output" | jq -r .result.decision.action)" = "BLOCK" ]
+  run bash "$REPO_ROOT/scripts/engine.sh" quota status --project "$SCRATCH"
+  [ "$status" -eq 0 ]
+}
+
+@test "engine.sh: snapshot create refuses a planted secret with exit 5 and writes no reference" {
+  git -C "$SCRATCH" init -q && printf 'a' > "$SCRATCH/f" && git -C "$SCRATCH" add f && git -C "$SCRATCH" -c user.email=t@t -c user.name=t commit -q -m one
+  printf 'k=sk_live_abcdefgh12345678' > "$SCRATCH/s.txt"
+  run bash "$REPO_ROOT/scripts/engine.sh" snapshot create --job j-aaaaaaaaaaaa --phase build --project "$SCRATCH"
+  [ "$status" -eq 5 ]
+  [ -z "$(git -C "$SCRATCH" for-each-ref refs/dev-team)" ]
+}
