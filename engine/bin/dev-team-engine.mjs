@@ -8,7 +8,7 @@ import { redact } from '../lib/redact.mjs';
 import { runDoctor } from '../lib/doctor.mjs';
 import { validate, loadSchema, validateManifest } from '../lib/schema.mjs';
 import { pluginRoot, BadInput } from '../lib/paths.mjs';
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { runScenario } from '../sim/run.mjs';
 import { execFile as execFileCb } from 'node:child_process';
@@ -31,6 +31,13 @@ import { writeJsonAtomic } from '../lib/store.mjs';
 import { initJob, loadJob, recordPhase, createCheckpoint, verifyCheckpoints, progressRows, JobProblem } from '../lib/job.mjs';
 import { canonicalJson, sha256Hex } from '../lib/canonical.mjs';
 const execFile = promisify(execFileCb);
+/** The project folder from --project (or the current folder); it must exist and be a folder. */
+function projectDirOf(a) {
+  const dir = typeof a.flags.project === 'string' ? resolve(a.flags.project) : process.cwd();
+  let ok = false; try { ok = statSync(dir).isDirectory(); } catch { ok = false; }
+  if (!ok) throw new BadInput('--project must be an existing folder');
+  return dir;
+}
 const seedPath = () => resolve(pluginRoot(), 'engine', 'data', 'catalogue.seed.json');
 const loadSeed = () => JSON.parse(readFileSync(seedPath(), 'utf8')).models;
 import { resolve } from 'node:path';
@@ -157,7 +164,7 @@ export const commands = {
     } catch (e) { if (e instanceof RangeError) throw e; return { code: ExitCodes.NEGATIVE, result: null, problems: [{ code: 'ATTEMPT_CAP_REACHED', message: e instanceof Error ? e.message : 'no more attempts' }] }; }
   },
   async job(a) {
-    const dir = typeof a.flags.project === 'string' ? resolve(a.flags.project) : process.cwd();
+    const dir = projectDirOf(a);
     const problem = (e) => ({ code: ExitCodes.CONFLICT, result: null, problems: [{ code: 'JOB_PROBLEM', message: e.message }] });
     try {
       if (a.sub === 'init') {
@@ -171,7 +178,7 @@ export const commands = {
     throw new BadInput('usage: job init --template T --request TEXT [--issue N] | job status --job ID | job record --job ID --phase P --status S [--note TEXT]');
   },
   async checkpoint(a) {
-    const dir = typeof a.flags.project === 'string' ? resolve(a.flags.project) : process.cwd();
+    const dir = projectDirOf(a);
     try {
       if (a.sub === 'create') return { code: ExitCodes.OK, result: createCheckpoint(dir, String(a.flags.job ?? ''), String(a.flags.phase ?? ''), String(a.flags.kind ?? '')) };
       if (a.sub === 'verify') { const v = verifyCheckpoints(dir, String(a.flags.job ?? '')); return { code: v.ok ? ExitCodes.OK : ExitCodes.VERIFY_FAILED, result: v, problems: v.ok ? [] : v.results.filter((r) => !r.ok).map((r) => ({ code: 'CHECKPOINT_MISSING', message: `checkpoint ${r.id} points at a commit that no longer exists` })) }; }
@@ -180,7 +187,7 @@ export const commands = {
   },
   async report(a) {
     if (!a.flags.progress || typeof a.flags.job !== 'string') throw new BadInput('usage: report --job ID --progress [--project DIR]');
-    const dir = typeof a.flags.project === 'string' ? resolve(a.flags.project) : process.cwd();
+    const dir = projectDirOf(a);
     try { return { code: ExitCodes.OK, result: { jobId: a.flags.job, rows: progressRows(loadJob(dir, a.flags.job)) } }; }
     catch (e) { if (e instanceof JobProblem) return { code: ExitCodes.CONFLICT, result: null, problems: [{ code: 'JOB_PROBLEM', message: e.message }] }; throw e; }
   },

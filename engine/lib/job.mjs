@@ -9,6 +9,7 @@ import { randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { pluginRoot } from './paths.mjs';
 import { readMarked, writeMarked } from './store.mjs';
+import { looksLikeCredential } from './redact.mjs';
 
 const JOB_ID = /^j-[0-9a-f]{12}$/;
 const PHASE_STATUS = ['PENDING', 'IN_PROGRESS', 'DONE', 'BLOCKED'];
@@ -26,6 +27,8 @@ export function initJob(projectDir, { template, request, issue = null }, now = n
   const t = templates();
   if (typeof template !== 'string' || !Object.hasOwn(t, template)) throw new RangeError(`template must be one of ${Object.keys(t).join(', ')}`);
   if (typeof request !== 'string' || request.trim() === '' || request.length > 2000) throw new RangeError('request must be plain text of at most 2000 characters');
+  // The job file is committed with the project, so a pasted key must never reach it.
+  if (looksLikeCredential(request)) throw new RangeError('the request looks like it contains a secret (a key or password); describe the work without pasting the secret');
   if (issue !== null && (!Number.isInteger(issue) || issue < 1)) throw new RangeError('issue must be a whole number');
   const id = `j-${randomBytes(6).toString('hex')}`;
   const job = { jobId: id, createdAt: now.toISOString(), template, request: request.trim(), issue, phases: t[template].map((p) => ({ ...p, status: 'PENDING', note: '' })), checkpoints: [] };
@@ -39,7 +42,9 @@ export function loadJob(projectDir, id) {
   if (r.status === 'absent') throw new JobProblem(`no job ${id} in this project`);
   if (r.status !== 'ours') throw new JobProblem(`the job file for ${id} is not a readable dev-team job`);
   const j = r.value;
-  if (!j || !Array.isArray(j.phases) || !Array.isArray(j.checkpoints) || j.jobId !== id) throw new JobProblem(`the job file for ${id} is damaged`);
+  const okPhase = (p) => p && typeof p === 'object' && typeof p.id === 'string' && p.id !== '' && PHASE_STATUS.includes(p.status) && typeof p.name === 'string' && typeof p.role === 'string' && typeof p.note === 'string';
+  const okCp = (c) => c && typeof c === 'object' && typeof c.id === 'string' && typeof c.phase === 'string' && typeof c.commit === 'string' && /^[0-9a-f]{40}([0-9a-f]{24})?$/.test(c.commit) && typeof c.uncommittedChanges === 'boolean';
+  if (!j || !Array.isArray(j.phases) || !Array.isArray(j.checkpoints) || j.jobId !== id || !j.phases.every(okPhase) || !j.checkpoints.every(okCp) || new Set(j.phases.map((p) => p.id)).size !== j.phases.length) throw new JobProblem(`the job file for ${id} is damaged`);
   return j;
 }
 
@@ -47,6 +52,7 @@ export function loadJob(projectDir, id) {
 export function recordPhase(projectDir, id, phaseId, status, note = '') {
   if (!PHASE_STATUS.includes(status)) throw new RangeError(`status must be one of ${PHASE_STATUS.join(', ')}`);
   if (typeof note !== 'string' || note.length > 500 || /[\x00-\x08\x0b-\x1f\x7f]/.test(note)) throw new RangeError('note must be plain text of at most 500 characters');
+  if (looksLikeCredential(note)) throw new RangeError('the note looks like it contains a secret; leave it out');
   const job = loadJob(projectDir, id);
   const ph = job.phases.find((p) => p.id === phaseId);
   if (!ph) throw new JobProblem(`job ${id} has no phase "${String(phaseId).slice(0, 30)}"`);
@@ -56,7 +62,7 @@ export function recordPhase(projectDir, id, phaseId, status, note = '') {
   return job;
 }
 
-const git = (dir, args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+const git = (dir, args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).trim();
 
 /** Tie a checkpoint to the commit the project is at now. Needs a git repository with at least one commit. */
 export function createCheckpoint(projectDir, id, phaseId, kind, now = new Date()) {
@@ -64,7 +70,9 @@ export function createCheckpoint(projectDir, id, phaseId, kind, now = new Date()
   const job = loadJob(projectDir, id);
   if (!job.phases.some((p) => p.id === phaseId)) throw new JobProblem(`job ${id} has no phase "${String(phaseId).slice(0, 30)}"`);
   let commit, dirty;
-  try { commit = git(projectDir, ['rev-parse', 'HEAD']); dirty = git(projectDir, ['status', '--porcelain']) !== ''; } catch { throw new JobProblem('a checkpoint needs a git repository with at least one commit'); }
+  try { commit = git(projectDir, ['rev-parse', 'HEAD']); } catch { throw new JobProblem('a checkpoint needs a git repository with at least one commit'); }
+  // Whether anything is uncommitted: tracked changes via diff, and untracked files via ls-files (stops at the first), neither of which can overflow a buffer.
+  try { dirty = git(projectDir, ['status', '--porcelain', '--untracked-files=no']) !== '' || git(projectDir, ['ls-files', '--others', '--exclude-standard', '--directory', '--no-empty-directory']).length > 0; } catch { dirty = true; }
   const cp = { id: `c-${randomBytes(4).toString('hex')}`, phase: phaseId, kind, commit, uncommittedChanges: dirty, at: now.toISOString() };
   job.checkpoints.push(cp);
   writeMarked(jobPath(projectDir, id), 'job', job);

@@ -44,3 +44,20 @@ test('checkpoints are tied to commits: verify passes, then fails when the commit
   const empty = mkdtempSync(join(tmpdir(), 'dt-nogit-')); const j2 = initJob(empty, { template: 'small-task', request: 'x' });
   assert.throws(() => createCheckpoint(empty, j2.jobId, 'build', 'build'), JobProblem);
 });
+
+// ---- Fixes after the independent review of jobs ----
+test('secrets in a request or note are refused as bad input; damaged job files are reported, not crashed on', () => {
+  const d = repo();
+  assert.throws(() => initJob(d, { template: 'normal', request: 'key sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAA' }), RangeError);
+  const j = initJob(d, { template: 'normal', request: 'x' });
+  assert.throws(() => recordPhase(d, j.jobId, 'discover', 'IN_PROGRESS', 'ghp_' + 'a'.repeat(30)), RangeError);
+  const p = join(d, '.dev-team', 'jobs', j.jobId, 'job.json'); const good = JSON.parse(readFileSync(p, 'utf8'));
+  for (const bad of [{ phases: [null] }, { phases: [1, 2] }, { checkpoints: [null] }, { checkpoints: [{ id: 'c', phase: 'plan', commit: 'HEAD', uncommittedChanges: false }] }, { phases: [good.phases[0], good.phases[0]] }]) {
+    writeFileSync(p, JSON.stringify({ ...good, ...bad })); assert.throws(() => loadJob(d, j.jobId), JobProblem);
+  }
+});
+test('a repository with many untracked files still gets a checkpoint, and uncommitted work is noticed', () => {
+  const d = repo(); const j = initJob(d, { template: 'normal', request: 'x' });
+  mkdirSync(join(d, 'junk')); for (let i = 0; i < 50; i++) writeFileSync(join(d, 'junk', `f${i}`), 'x');
+  assert.equal(createCheckpoint(d, j.jobId, 'plan', 'planning').uncommittedChanges, true);
+});
