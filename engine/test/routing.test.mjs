@@ -190,7 +190,8 @@ test('a very long line of spaces is read quickly', () => {
 // ---- Fixes after the seventh independent review ----
 test('a one-line pin map: a repeated name is reported, and a comma inside quotes does not split the version', () => {
   assert.equal(route({ role: 'architect', providers: ['claude'] }, seed, loadYaml('routing:\n  pin: {opus: 4.1, opus: 4.2}\n')).code, 'PIN_INVALID');
-  assert.deepEqual(loadYaml('routing:\n  pin: {opus: "4.1, beta"}\n').pin, { opus: '4.1, beta' });
+  // A comma inside quotes does not split the value; the whole text is then judged, and "4.1, beta" is not a plain version, so it is reported.
+  const q = loadYaml('routing:\n  pin: {opus: "4.1, beta"}\n'); assert.deepEqual(q.pin, {}); assert.equal(q.badPins.length, 1);
   assert.ok(loadYaml('routing:\n  pin: {opus: "4.1, beta}\n').badPins.length > 0);
 });
 test('an unrelated key that merely starts with routing never blocks routing', () => {
@@ -255,4 +256,14 @@ test('an ask-first entry that is not a bare model name (for example "fable: ask"
   for (const y of ['routing:\n  ask-first:\n    - mythos: true\n    - fable: ask\n', 'routing:\n  ask-first: [mythos: yes, fable: yes]\n', 'routing:\n  ask-first: [""]\n', 'routing:\n  ask-first: ["two words"]\n'])
     assert.ok(loadYaml(y).badSettings.length > 0, y);
   assert.equal(loadYaml('routing:\n  ask-first: [fable, qwen2.5:32b, mythos]\n').badSettings.length, 0);
+});
+
+// ---- Fixes after the thirteenth independent review ----
+test('a pin whose name or version is not plain text stops routing', () => {
+  for (const y of ['routing:\n  pin: {"opus ": 4.1}\n', 'routing:\n  pin:\n    opus: 4.1: ask\n', 'routing:\n  pin:\n    opus: true\n', 'routing:\n  pin: {opus: "two words"}\n'])
+    assert.ok(loadYaml(y).badPins.length > 0, y);
+  assert.deepEqual(loadYaml('routing:\n  pin: {opus: claude-opus-4-8, llama: "llama3:8b"}\n').pin, { opus: 'claude-opus-4-8', llama: 'llama3:8b' });
+});
+test('builtBy must be text', () => {
+  for (const b of [{}, ['claude', 'x'], 5]) assert.throws(() => route({ role: 'reviewer', providers: ['claude'], builtBy: b }, seed, cfg()), BadRequest);
 });
