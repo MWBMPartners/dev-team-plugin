@@ -191,9 +191,7 @@
   the snapshot outside the project stops git operations — a checkout, a commit, a pull request's
   changes — from changing it; it does not stop a command the run executes, the project's own scripts
   included, because those run with the user's own file access. The SHA-256 check catches accidental
-  damage only. None of this is an enforcement boundary. The only enforcement the plugin itself
-  provides is its two guard hooks, and both fail open: `guard-dev-team.sh` acts only when
-  `.dev-team/autopilot.json` exists, `guard: on` is set or `DEV_TEAM_GUARD` is set, and it reads the
+  damage only. None of this is an enforcement boundary. The only enforcement the plugin itself provides is its two guard hooks. `guard-ledgers.sh` fails open: when it cannot tell, it allows. `guard-dev-team.sh` fails open too, with one exception: it refuses a command it cannot finish checking (one with more than 10 `git push` commands, or one whose checking, reading its input and asking `jq` included, runs past its time limit). It acts only while a cycle is running (the folder `.dev-team/loop.lock/` exists), `guard: on` is set or `DEV_TEAM_GUARD` is set, and it reads the
   text of a Bash command before it runs, with the shell's quotes and backslashes taken away — it
   refuses a `git push` that names `main` or `master`, a `git push` that names no branch when the
   repository's own git settings show it would push to `main` or `master`, and a live Stripe key; it
@@ -403,9 +401,7 @@
   reach, the run folder included. Keeping the snapshot outside the project stops git operations (a
   checkout, a commit, a pull request's changes) from changing it, but not a command the run executes
   — the project's own scripts included — and the checksum catches accidental damage only; none of
-  this is an enforcement boundary. The only enforcement the plugin itself provides is its two guard
-  hooks, and both fail open: the Bash guard acts only during an autopilot run, with `guard: on`, or
-  with `DEV_TEAM_GUARD` set; it reads a Bash command's text with the shell's quotes and backslashes
+  this is an enforcement boundary. The only enforcement the plugin itself provides is its two guard hooks. The ledger guard fails open (when it cannot tell, it allows); the Bash guard fails open too, except that it refuses a command it cannot finish checking (more than 10 pushes, or past its time limit). The Bash guard acts only while a cycle is running (the folder `.dev-team/loop.lock/` exists), with `guard: on`, or with `DEV_TEAM_GUARD` set; it reads a Bash command's text with the shell's quotes and backslashes
   taken away, and refuses a push that names `main`/`master`, a push that names no branch when git's
   own settings show it would go to `main`/`master`, and a live Stripe key — a branch held in a
   variable, a push run from a script, and a push that names no branch whose destination it cannot

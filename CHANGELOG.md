@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **The Bash guard now treats "a run is in progress" as "the folder `.dev-team/loop.lock/` exists"**
+  (issue #44). It used to check for `.dev-team/autopilot.json`, but several projects keep that file in
+  git, so the guard was on permanently there. The lock folder exists only while one cycle runs and is
+  never committed. The ledger guard's second rule already used it. `DEV_TEAM_GUARD` and `guard: on` still
+  force the guard on; `guard: off` still turns it off.
+- **Wording fix (issue #48):** the text that said both guard hooks "fail open" was out of date. The ledger
+  guard fails open; the Bash guard fails open too, except that it refuses a command it cannot finish
+  checking (more than 10 pushes, or past its time limit). Fixed in `conventions.md`, the README and the
+  pinned copy the tests compare against.
+
 ## [1.7.0] - <unreleased>
 
 Adds the `dev-team-polish` skill. It was built on its own branch against 1.4.0, where it was numbered 1.5.0;

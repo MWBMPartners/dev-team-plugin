@@ -983,6 +983,32 @@ $line" ;;
   [ "$status" -eq 0 ]
 }
 
+# Issue #44: "a run is in progress" means the folder .dev-team/loop.lock/ exists. A committed
+# .dev-team/autopilot.json (several real projects keep one) must not switch the guard on.
+@test "guard: a committed autopilot.json alone does not switch the guard on (issue #44)" {
+  mkdir -p "$SCRATCH/.dev-team"
+  : > "$SCRATCH/.dev-team/autopilot.json"
+  unset DEV_TEAM_GUARD
+  run run_guard "$SCRATCH" '{"tool_input":{"command":"git push origin main"}}'
+  [ "$status" -eq 0 ]
+}
+
+@test "guard: the folder .dev-team/loop.lock/ switches the guard on (issue #44)" {
+  mkdir -p "$SCRATCH/.dev-team/loop.lock"
+  unset DEV_TEAM_GUARD
+  run run_guard "$SCRATCH" '{"tool_input":{"command":"git push origin main"}}'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"loop.lock"* ]]
+}
+
+@test "guard: loop.lock with guard: off in the config still allows (issue #44)" {
+  mkdir -p "$SCRATCH/.dev-team/loop.lock"
+  printf 'features:\n  guard: off\n' > "$SCRATCH/.dev-team/config.yml"
+  unset DEV_TEAM_GUARD
+  run run_guard "$SCRATCH" '{"tool_input":{"command":"git push origin main"}}'
+  [ "$status" -eq 0 ]
+}
+
 @test "guard: no config file at all allows push to main with no active run (fail-open)" {
   unset DEV_TEAM_GUARD
   run run_guard "$SCRATCH" '{"tool_input":{"command":"git push origin main"}}'

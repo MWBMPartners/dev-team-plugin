@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # dev-team guardrail (PreToolUse/Bash). Blocks only the truly unrecoverable actions,
-# and ONLY while a dev-team run is active (unless DEV_TEAM_GUARD is set). Fail-open by
+# and ONLY while a dev-team run is active (the folder .dev-team/loop.lock/ exists — made for one
+# cycle and never committed; a committed .dev-team/autopilot.json does NOT count) unless DEV_TEAM_GUARD is set. Fail-open by
 # design: any error, or no active run => allow (exit 0) — with two exceptions that fail CLOSED
 # on purpose, listed under "How long it takes" below. One defense layer, best-effort
 # string matching — NEVER the safety guarantee.
@@ -99,7 +100,7 @@ guard_mode=""
 case "$guard_mode" in
   off) cat >/dev/null 2>&1; exit 0 ;;              # disabled repo-wide
   on)  : ;;                                        # forced on — skip the active-run scope gate
-  *)   if [ -z "${DEV_TEAM_GUARD:-}" ]; then [ -f ".dev-team/autopilot.json" ] || { cat >/dev/null 2>&1; exit 0; }; fi ;;
+  *)   if [ -z "${DEV_TEAM_GUARD:-}" ]; then [ -d ".dev-team/loop.lock" ] || { cat >/dev/null 2>&1; exit 0; }; fi ;;
 esac
 
 # The command text and the folder it will run in (set by read_input, inside the time limit), and
@@ -110,7 +111,7 @@ have_jq=0
 norm=""
 
 deny() {
-  echo "dev-team guard: $1 Blocked as unrecoverable during an active run. Do it yourself, or disable the guard (remove .dev-team/autopilot.json or unset DEV_TEAM_GUARD)." >&2
+  echo "dev-team guard: $1 Blocked as unrecoverable during an active run. Do it yourself, or disable the guard (it is on only while the folder .dev-team/loop.lock exists; or unset DEV_TEAM_GUARD, or set guard: off in .dev-team/config.yml)." >&2
   exit 2
 }
 # The two refusals that are not about what the command does, but about the guard not being able to

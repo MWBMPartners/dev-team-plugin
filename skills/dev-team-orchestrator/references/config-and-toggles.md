@@ -112,7 +112,7 @@ git:
 features:            # enable/disable behaviours repo-wide (on|off; env var can override per-session)
   # update-notifier: on    # SessionStart update check      (per-session override: DEV_TEAM_NO_UPDATE_CHECK)
   # branch-notifier: on    # SessionStart gone-branch notice (per-session override: DEV_TEAM_NO_BRANCH_CHECK)
-  # guard: auto            # on | off | auto. auto: the Bash guard is active only during a run (.dev-team/autopilot.json present);
+  # guard: auto            # on | off | auto. auto: the Bash guard is active only during a run (.dev-team/loop.lock/ exists);
                            #   the ledger guard's Rule 1 is ALWAYS active, and its Rule 2 only while .dev-team/loop.lock/ exists.
                            #   DEV_TEAM_GUARD forces both hooks on; off turns both off. Details: the guard section below.
   # notifications: on      # autopilot gate/blocker/done notifications (v1.2.0)
@@ -203,7 +203,7 @@ now governs two separate hooks that each judge "is a run active" a different way
 - **`hooks/guard-dev-team.sh`** (the Bash safety net): `off` disables it repo-wide (even if
   `DEV_TEAM_GUARD` is set); `on` forces it active regardless of whether a run is in progress; `auto`
   (the default) preserves today's behavior — active only while a run is in progress
-  (`.dev-team/autopilot.json` present), unless `DEV_TEAM_GUARD` forces it on for the session.
+  (the folder `.dev-team/loop.lock/` exists; a committed `autopilot.json` does not count), unless `DEV_TEAM_GUARD` forces it on for the session.
 - **`hooks/guard-ledgers.sh`** (the ledger guard): `off` turns off BOTH of its rules. Rule 1 — a
   Write whose new content carries the dev-team marker in its first three lines, whose file name
   (ignoring capitals) is one of the seven ledger names plus `README.md`, and whose path, once any
@@ -228,10 +228,7 @@ now governs two separate hooks that each judge "is a run active" a different way
   `.dev-team/<name>` relative to the folder the session starts in, so that subfolder can be the old
   top-level place a stale instruction means, and guarding both locations is safe whichever one is
   meant. Rule 2 **never** activates merely because
-  `.dev-team/autopilot.json` exists, unlike `guard-dev-team.sh`'s own `auto` test above: some real
-  projects keep `autopilot.json` committed in git, which would make that test permanently true and
-  would have stopped the project owner ever editing their own top-level `HANDOFF.md` or
-  `FEATURES.md` again. `.dev-team/loop.lock/` exists only for the length of one autopilot cycle and
+  `.dev-team/autopilot.json` exists. `guard-dev-team.sh`'s own `auto` test uses the same lock folder, for the same reason: some real projects keep `autopilot.json` committed in git, which would make a test on that file permanently true. `.dev-team/loop.lock/` exists only for the length of one autopilot cycle and
   is never committed, so it is a genuine "a run is happening right now" signal where
   `autopilot.json`'s mere presence is not. See `conventions.md`, "Where the plugin writes, and the
   ownership rule" (point 9), for the full reasoning and what this hook cannot do.
