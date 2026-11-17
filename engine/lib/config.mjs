@@ -93,8 +93,9 @@ export function parseYamlChecked(text) {
       if (Array.isArray(top.obj)) top.obj.push(scalar(line.trim().slice(2), (msg) => problems.push({ path: top.path, message: msg })));
       continue;
     }
+    if (/^(---|\.\.\.)\s*$/.test(line.trim())) continue;
     const m0 = /^(?:"([^"]+)"|'([^']+)'|([A-Za-z0-9_.-]+)):\s*(.*)$/.exec(line.trim());
-    if (!m0) { const f = stack[stack.length - 1]; problems.push({ path: f.path || 'routing', message: `a line could not be understood: "${line.trim().slice(0, 30)}"` }); continue; }
+    if (!m0) { const f = stack[stack.length - 1]; problems.push({ path: f.path || (/routing/i.test(line) ? 'routing' : '(top level)'), message: `a line could not be understood: "${line.trim().slice(0, 30)}"` }); continue; }
     const m = [m0[0], m0[1] ?? m0[2] ?? m0[3], m0[4]];
     while (stack.length > 1 && indent <= stack[stack.length - 1].indent) stack.pop();
     const parentFrame = stack[stack.length - 1];
@@ -145,11 +146,21 @@ export function loadRouting(opts = {}) {
   // ask-first: an explicit list in the user's own .dev-team/config.yml replaces the built-in list (it is the
   // user's own setting). A repository INSTRUCTION file may only add to it; that rule is applied by the lead,
   // which passes the combined list on, because this reader never looks at instruction files.
-  const askFirst = Array.isArray(project.routing?.['ask-first']) ? project.routing['ask-first'].map(String) : DEFAULT_ASK_FIRST;
+  const badSettings = [];
+  const rawAsk = project.routing?.['ask-first'];
+  let askFirst = DEFAULT_ASK_FIRST;
+  if (rawAsk !== undefined) {
+    // A present ask-first must be a list of plain names. Anything else is reported, never swapped for the default.
+    if (!Array.isArray(rawAsk) || rawAsk.some((x) => typeof x !== 'string' && typeof x !== 'number')) badSettings.push('routing.ask-first (it must be a list of model names)');
+    else askFirst = rawAsk.map(String);
+  }
+  const rawOrder = project.routing?.order;
+  if (rawOrder !== undefined && !valid(rawOrder)) badSettings.push('routing.order (it must be local-first or cloud-first)');
+  if (project.profile !== undefined && !['standard', 'local-first', 'cloud-first'].includes(project.profile)) badSettings.push('profile (it must be standard, local-first or cloud-first)');
   // A pin must be a map of name to a non-empty piece of text. Anything else is kept out of `pin` and
   // listed in `badPins`, and routing stops and asks rather than guess what version was meant.
   const rawPin = project.routing?.pin;
-  const pin = {}, badPins = [], badSettings = [];
+  const pin = {}, badPins = [];
   if (rawPin !== undefined && rawPin !== null && (typeof rawPin !== 'object' || Array.isArray(rawPin))) badPins.push('pin (it must be a list of name: version pairs)');
   else for (const [k, v] of Object.entries(rawPin ?? {})) {
     if ((typeof v === 'string' && v.trim() !== '' && !/[\[\]{}]/.test(v)) || typeof v === 'number') {

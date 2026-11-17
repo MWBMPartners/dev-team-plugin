@@ -214,3 +214,20 @@ test('an apostrophe in plain text is just text and blocks nothing', () => {
   const c = loadYaml("note: {a: it's}\nrouting:\n  order: cloud-first   # it's fine\n");
   assert.equal(c.badSettings.length, 0); assert.equal(c.order, 'cloud-first');
 });
+
+// ---- Fixes after the ninth independent review ----
+test('a malformed ask-first, order or profile stops routing instead of falling back to a default', () => {
+  for (const y of ['routing:\n  ask-first: fable, mythos\n', 'routing:\n  ask-first: custom-x\n', 'routing:\n  ask-first:\n    custom: yes\n', 'routing:\n  ask-first:\n    - {name: custom}\n', 'routing:\n  order: cloud-firts\n', 'routing:\n  order: [cloud-first]\n', 'profile: standrad\n']) {
+    const c = loadYaml(y); assert.ok(c.badSettings.length > 0, y);
+    assert.equal(route({ role: 'architect', providers: ['claude'] }, seed, c).code, 'SETTINGS_INVALID', y);
+  }
+});
+test('ordinary files with a document start or an unrelated block scalar are not blocked', () => {
+  const c = loadYaml('---\nnote: |\n  free text: here\n  more text\nrouting:\n  order: cloud-first\n...\n');
+  assert.equal(c.badSettings.length, 0); assert.equal(c.order, 'cloud-first');
+});
+test('the real starter schema in config-and-toggles.md is read without any problem', () => {
+  const md = readFileSync(join(pluginRoot(), 'skills/dev-team-orchestrator/references/config-and-toggles.md'), 'utf8');
+  const block = md.slice(md.indexOf('## The schema (verbatim)')).split('```')[1];
+  const c = loadYaml(block); assert.equal(c.badSettings.length, 0); assert.equal(c.badPins.length, 0);
+});
