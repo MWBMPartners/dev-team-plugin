@@ -23,11 +23,12 @@ export function draftPlan({ planId, planVersion = 1, contract, supersedes = null
 
 /** Lock a draft with the owner's approval. A plan that is already locked cannot be locked again at the same version. */
 export function lockPlan(doc, { approver, now = new Date() }) {
+  if (!doc || typeof doc !== 'object' || Array.isArray(doc) || !doc.contract) throw new RangeError('not a plan contract');
   if (doc.status === 'LOCKED') throw new Conflict(`plan ${doc.planId} version ${doc.planVersion} is already locked; a change is a new version`);
   if (doc.status !== 'DRAFT') throw new RangeError('only a plan whose status is exactly DRAFT can be locked');
   // Lock only what was drafted: if the contract changed since its fingerprint was made, refuse.
   if (planHash(doc.contract) !== doc.planHash) throw new StaleDraft('the contract was changed after the draft was made; draft it again so the fingerprint matches what the owner reads');
-  if (typeof approver !== 'string' || approver.trim() === '') throw new RangeError('an approver is needed to lock a plan');
+  if (typeof approver !== 'string' || approver.trim() === '' || /[\x00-\x1f\x7f]/.test(approver) || approver.length > 80) throw new RangeError('an approver is needed to lock a plan: plain text, no control characters, at most 80 characters');
   return { ...doc, status: 'LOCKED', approvedAt: now.toISOString().slice(0, 10), approvedBy: approver.trim() };
 }
 
@@ -35,9 +36,9 @@ export function lockPlan(doc, { approver, now = new Date() }) {
 export function verifyPlan(doc) {
   if (!doc || typeof doc !== 'object' || typeof doc.planHash !== 'string' || !doc.contract) return { ok: false, status: 'INVALID', reason: 'not a plan contract' };
   if (doc.status !== 'DRAFT' && doc.status !== 'LOCKED') return { ok: false, status: 'INVALID', reason: 'status must be exactly DRAFT or LOCKED' };
-  const filled = (x) => typeof x === 'string' && x.trim() !== '';
+  const filled = (x) => typeof x === 'string' && x.trim() !== '' && !/[\x00-\x1f\x7f]/.test(x);
   // A locked plan must say who approved it and when; a draft must not (so a locked plan cannot be quietly turned back into a draft).
-  if (doc.status === 'LOCKED' && !(filled(doc.approvedBy) && filled(doc.approvedAt))) return { ok: false, status: 'INVALID', reason: 'a locked plan must record who approved it and when' };
+  if (doc.status === 'LOCKED' && !(filled(doc.approvedBy) && typeof doc.approvedAt === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(doc.approvedAt))) return { ok: false, status: 'INVALID', reason: 'a locked plan must record who approved it and when' };
   if (doc.status === 'DRAFT' && (doc.approvedBy != null || doc.approvedAt != null)) return { ok: false, status: 'INVALID', reason: 'a draft cannot carry an approval; this looks like a locked plan turned back into a draft' };
   const actual = planHash(doc.contract);
   const matches = actual === doc.planHash;

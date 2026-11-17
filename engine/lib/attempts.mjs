@@ -20,9 +20,10 @@ export function validateTask(t) {
   if (!Array.isArray(t.attempts) || t.attempts.length > 100 || t.attempts.some((x) => !x || !['SUCCESS', 'FAIL'].includes(x.outcome) || typeof x.progressMade !== 'boolean')) bad('attempts must be a list of {outcome, progressMade}');
   if (typeof t.closed !== 'boolean') bad('closed must be true or false');
   if (t.closed !== t.attempts.some((x) => x.outcome === 'SUCCESS')) bad('closed must match whether an attempt succeeded');
+  if (t.attempts.some((x, i) => x.outcome === 'SUCCESS' && i !== t.attempts.length - 1)) bad('a success must be the last attempt');
   if (!int(t.escalations, 0, 100)) bad('escalations must be a whole number');
   if (!int(t.since, 0, t.attempts.length)) bad('since must be a whole number no larger than the number of attempts');
-  if (!int(t.allowance, t.maxAttempts, 200)) bad('allowance must be a whole number of at least maxAttempts');
+  if (!int(t.allowance, 1, 200)) bad('allowance must be a whole number from 1 to 200');
   return t;
 }
 
@@ -58,5 +59,5 @@ export function recordEscalation(task) {
   validateTask(task);
   if (task.closed) throw new Error('the task is already complete, so there is nothing to escalate');
   if (!stopped(task).stop) throw new Error('the task is not stopped, so it cannot be escalated yet');
-  return { ...task, escalations: task.escalations + 1, since: task.attempts.length, allowance: Math.max(task.allowance, task.attempts.length + 1) };
+  return { ...task, escalations: task.escalations + 1, since: task.attempts.length, allowance: task.attempts.length + 1 };
 }

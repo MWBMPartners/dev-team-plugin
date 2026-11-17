@@ -55,7 +55,8 @@ test('evidence: a failed or missing required result, an open blocking finding, a
   assert.equal(checkEvidence({ ...ok, findings: [{ id: 'F2', severity: 'BLOCKING', status: 'OPEN' }] }).failing[0].gate, 'BLOCKING_FINDING_OPEN');
   assert.equal(checkEvidence({ ...ok, criteria: [{ id: 'AC2' }] }).failing[0].gate, 'CRITERION_UNPROVEN');
   assert.equal(checkEvidence({ ...ok, planVersion: 2 }).failing[0].gate, 'PLAN_CHANGED');
-  assert.equal(checkEvidence({ requiredKinds: [], results: [{ name: 'lint', kind: 'lint', required: false }] }).complete, true);
+  assert.equal(checkEvidence({ requiredKinds: [], results: [{ name: 'lint', kind: 'lint', required: false }] }).complete, false); // an optional result alone proves nothing
+  assert.equal(checkEvidence({ requiredKinds: [], results: [{ name: 'lint', kind: 'lint', status: 'PASS' }] }).complete, true);
 });
 test('attempts: three failures stop it; two no-progress failures stop it; a fourth needs an escalation; success closes the task', () => {
   let t = newTask(); let r;
@@ -102,4 +103,22 @@ test('evidence: nothing given, lower-case or unknown severities, blank refs, and
   assert.equal(checkEvidence({ ...base, planHash: 'a', lockedPlanHash: 'b' }).complete, false);
   assert.equal(checkEvidence({ results: [{ name: 'b', kind: 'build', status: 'PASS' }] }).complete, false); // a test result is required by default
   assert.equal(checkEvidence(base).complete, true);
+});
+
+// ---- Fixes after the second independent review of increment 3 ----
+test('attempts: a no-progress stop with a large maxAttempts still gives exactly one more try; a success must be last', () => {
+  let n = newTask(5); for (let i = 0; i < 2; i++) n = recordAttempt(n, { outcome: 'FAIL', progressMade: false }).task;
+  n = recordEscalation(n); n = recordAttempt(n, { outcome: 'FAIL', progressMade: false }).task; assert.equal(canAttempt(n).ok, false);
+  assert.throws(() => validateTask({ ...newTask(), closed: true, attempts: [{ outcome: 'SUCCESS', progressMade: true }, { outcome: 'FAIL', progressMade: true }] }), RangeError);
+});
+test('evidence: at least one required result must pass even with requiredKinds empty; odd inputs are bad input, not crashes', () => {
+  assert.equal(checkEvidence({ requiredKinds: [], results: [{ kind: 'lint', required: false, status: 'FAIL' }] }).complete, false);
+  assert.equal(checkEvidence({ requiredKinds: [], results: [0] }).complete, false);
+  assert.throws(() => checkEvidence({ requiredKinds: 'build', results: [] }), RangeError); assert.throws(() => checkEvidence(null), RangeError);
+});
+test('plan: an approver with control characters is refused; a garbage approval date is invalid; locking a non-plan is bad input', () => {
+  const d = draftPlan({ planId: 'p', contract: c1 });
+  assert.throws(() => lockPlan(d, { approver: 'Bob\u001b[31m' }), RangeError); assert.throws(() => lockPlan(d, { approver: 'a'.repeat(81) }), RangeError);
+  const l = lockPlan(d, { approver: 'owner' }); assert.equal(verifyPlan({ ...l, approvedAt: 'garbage' }).ok, false);
+  assert.throws(() => lockPlan(null, { approver: 'o' }), RangeError);
 });

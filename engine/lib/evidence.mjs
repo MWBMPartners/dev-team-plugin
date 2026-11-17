@@ -9,12 +9,15 @@
  * @param {{results?: {name: string, kind: string, required?: boolean, status?: string}[], findings?: {id: string, severity: string, status: string}[], criteria?: {id: string, ref?: string|null}[], planVersion?: number, lockedPlanVersion?: number, selfReported?: string}} e
  */
 export function checkEvidence(e) {
+  if (!e || typeof e !== 'object' || Array.isArray(e)) throw new RangeError('the evidence must be a JSON object');
+  if (e.requiredKinds !== undefined && (!Array.isArray(e.requiredKinds) || e.requiredKinds.some((k) => typeof k !== 'string'))) throw new RangeError('requiredKinds must be a list of text values');
   const failing = [];
   const results = Array.isArray(e.results) ? e.results : [];
   // Nothing proven is not the same as nothing wrong: at least one required check must have passed, and every
   // kind named in requiredKinds (default: test) must have a passing, non-skipped result.
-  const requiredKinds = Array.isArray(e.requiredKinds) ? e.requiredKinds : ['test'];
+  const requiredKinds = e.requiredKinds ?? ['test'];
   if (!results.length) failing.push({ gate: 'NO_RESULTS', detail: 'No check results were given, so nothing shows the work is complete.' });
+  else if (!results.some((r) => r && typeof r === 'object' && r.status === 'PASS' && r.required !== false)) failing.push({ gate: 'NO_PASSING_RESULT', detail: 'No required check passed, so nothing shows the work is complete.' });
   for (const k of requiredKinds) if (!results.some((r) => r && r.kind === k && r.status === 'PASS' && r.required !== false)) failing.push({ gate: 'RESULT_MISSING', detail: `No passing ${k} result was given.` });
   for (const r of results) {
     if (!r || r.required === false) continue;
