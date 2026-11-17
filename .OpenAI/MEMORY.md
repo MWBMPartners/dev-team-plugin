@@ -54,3 +54,5 @@
 - Three checks on `main` failing after about two seconds, with no steps run and logs gone, was not a
   code fault: the same checkout pin passed on the next run. Look at the run's job list for a missing
   machine (`runner_id` 0) before suspecting the workflow files.
+
+- 17 Nov 2026: standing rules 12-15 added (many AI systems, shared project documents, tracker as source of truth, Swagger UI for projects with APIs). Requirements: .claude/plans/orchestrator-v2/owner-brief-addendum-2026-11-17.md.

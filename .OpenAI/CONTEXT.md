@@ -43,3 +43,5 @@ work it does is then reviewed by Claude Code when Claude Code is back.
 
 - Inside the read-only sandbox, Codex could not run the `bats` tests. Say so in the review rather
   than guessing at test results; Claude Code runs them.
+
+> 17 Nov 2026: new standing rules 12-15 and a requirements addendum for #46 exist; see .claude/HANDOFF.md.

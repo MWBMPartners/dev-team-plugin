@@ -20,6 +20,25 @@ older sections are **deleted** (see below). Start the next piece of work from `a
 
 ## Current state — 17 November 2026
 
+### Added later on 17 November — owner's new requirements (work branch `claude/busy-knuth-bc35ok`)
+
+- The owner asked for: model-per-job delegation, many AI systems (adding Copilot, DeepSeek, Ollama),
+  local-first or cloud-first with a smooth switch, editor support, per-session and per-repository
+  settings, models that need explicit approval, exact version pinning, new models found without a
+  plugin update, one shared set of project documents, tracker as source of truth, and Swagger UI for
+  web projects with an API.
+- **Done in this session:** standing rules 12–15 added to `.claude/CLAUDE.md` and `.OpenAI/AGENTS.md`
+  (same text in both; rule 11 reworded so it covers this repository only). The new requirements and
+  what the existing #46 plan already covers are in
+  `.claude/plans/orchestrator-v2/owner-brief-addendum-2026-11-17.md`, with four new questions
+  (Q6–Q9) that are **open**, each with a suggested answer.
+- **Not done:** no plugin code changed. The addendum is not yet folded into `plan.md`.
+- **Branch note:** this session's working branch is `claude/busy-knuth-bc35ok`, set by the cloud
+  session. It is the single working branch for now (rule 6). The orchestrator work was to go on a
+  fresh branch from `alpha` (Q2); this branch has the same starting point, so use it unless told otherwise.
+- **Next:** see the task list the session gave the owner; the first group is #44 + #48 + the
+  `deep-architect` change.
+
 ### What happened on 9 November
 
 | Step | Result |
