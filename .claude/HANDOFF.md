@@ -6,6 +6,54 @@
             Rewritten as work happens, not tidied at the end. See .claude/CLAUDE.md section 2.
 -->
 
+## START HERE — fresh session (written 17 November 2026, end of day)
+
+**Working branch:** `claude/busy-knuth-bc35ok` (all work is committed and pushed there). Open **one**
+pull request to `alpha`, only when the owner says (rule 6). No pull request exists yet.
+**Version:** left at 1.7.0 on purpose; do not call it 2.0.0 until the owner decides.
+**Read order:** this section, then "Engine progress, 17 November 2026" below, then
+`.claude/CONTEXT.md`, `.claude/MEMORY.md`, `docs/orchestrator/README.md`.
+**Check everything:** `bash scripts/completion-gate.sh` (prints PASS/FAIL). To run the tests by hand:
+`node --test engine/test/*.test.mjs` (use the glob, not the folder) and
+`TMPDIR=<writable folder> bats tests/engine.bats` (install with `npm i -g bats`, `pip install shellcheck-py`).
+**Review status:** nothing built since commit `87c0f70` has had a Codex review (Codex is not in the cloud
+session). Fresh Claude reviewers stood in, so all of it is "not fully reviewed".
+
+### The queue (each item has a tracking issue, linked under #46)
+
+| # | Task | Issue | Needs the owner's machine? |
+| --- | --- | --- | --- |
+| 1 | Codex review of `git diff 87c0f70..HEAD`, fix every finding, repeat until clean | [#50](https://github.com/MWBMPartners/dev-team-plugin/issues/50) | Yes (Codex) |
+| 2 | Hand tests HT-0 to HT-4 in a real Claude Code session | [#51](https://github.com/MWBMPartners/dev-team-plugin/issues/51) | Yes |
+| 3 | Editor hand tests: VS Code/Cursor, Visual Studio, Xcode, JetBrains | [#52](https://github.com/MWBMPartners/dev-team-plugin/issues/52) | Yes |
+| 4 | Wire the engine into skills and commands (route, explain, ask-first, push check, learning) | [#53](https://github.com/MWBMPartners/dev-team-plugin/issues/53) | No |
+| 5 | Increment 10: decomposition, parallelism, integration engineer, provenance (needs HT-4 first) | [#54](https://github.com/MWBMPartners/dev-team-plugin/issues/54) | No, but blocked on #2 |
+| 6 | Increment 8 rest: probes, reliability counters, shadow evaluation, history; use learning in `route`; rate limit | [#55](https://github.com/MWBMPartners/dev-team-plugin/issues/55) | No |
+| 7 | Increment 12 rest: docs topics, README section, CHANGELOG, 2.0.0 decision. Also increment 11 rest (`init --rules`, narrow `HANDOFF.md` opt-in) | [#56](https://github.com/MWBMPartners/dev-team-plugin/issues/56) | No (the version call is the owner's) |
+| 8 | Reword old agent names in skills (DEP-K); remove aliases in 2.1.0 | [#57](https://github.com/MWBMPartners/dev-team-plugin/issues/57) | No |
+| 9 | Check the unverified facts (quota wording, tool outputs, prices, other providers) | [#58](https://github.com/MWBMPartners/dev-team-plugin/issues/58) | Yes |
+| 10 | Signed catalogue service and real public key (other repository) | [#59](https://github.com/MWBMPartners/dev-team-plugin/issues/59) | No |
+| 11 | Owner-side: device-wide rules file (Q5), housekeeping comments, close #41 and #47 only after a clean Codex review | #41, #47 | Yes |
+| 12 | Older open issues still to track: #37 (actionlint CI, from a bot), #42, #44, #48 (built on the branch, not merged), #43 (last step: the pinned `//` example), #45 | — | No |
+
+**Best next step for a session with no owner machine:** item 4, then 6, 7, 8 (in that order).
+**Best next step with the owner's machine:** items 1 to 3 and 9, since they unblock the rest.
+
+### Tracker, wiki and milestones (done and not done)
+
+- **Done:** issues #50 to #59 created and linked as sub-issues of #46.
+- **Not done, because the GitHub tools in the cloud session cannot do it:** creating milestones, the
+  Projects board, and wiki pages. Everything needed is written out in
+  `.claude/plans/tracker-setup.md` and `docs/wiki-drafts/` (four ready pages). The owner, or a session
+  with fuller access, sets them up by following that file. Then record here that it is done.
+
+### Things to know
+
+- A one-session-only item: none are left running. Nothing is scheduled.
+- Departures from the plan: `docs/orchestrator/departures.md` (DEP-A to DEP-L).
+- Do not extend the hand-written YAML reader (`engine/lib/config.mjs`); use a real parser if more is needed.
+- The engine data folder must not sit inside a test repository (it makes the tree look dirty).
+
 **Last updated:** 17 November 2026 — the three open lines of work (#41, #47 and the polish skill) were
 merged into `main` on 9 November. The section straight below ("Current state") is the one to trust; the
 sections after it (the #47 notes, "START HERE", "Detailed history") are the older record and say, in

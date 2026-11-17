@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Draft wiki pages (`docs/wiki-drafts/`) and a milestone and project-board setup guide (`.claude/plans/tracker-setup.md`), because the milestones, board and wiki could not be created with the tools available. Ten tracking issues (#50 to #59) were opened under #46.
+
+
+### Added
 
 - **Orchestrator engine, increment 8 (core)**: local-only learning records that cannot hold code, prompts or paths
   (`learn record|query|purge`, off with `DEV_TEAM_NO_LEARNING=1`), competency scores that need enough results,
