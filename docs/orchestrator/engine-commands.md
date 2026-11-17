@@ -17,6 +17,12 @@ Each prints one JSON answer (add `--format text` for a short reading):
 |---|---|---|
 | `doctor` | Which tools are present, where the engine keeps its files, and what the plugin does without the missing ones. Read-only. | yes |
 | `schema validate [--all \| --file F --schema S]` | Checks JSON files against their schemas; `--all` checks every pair in `schemas/manifest.json`. | yes |
+| `discover` | Asks a local Ollama install which models it has (new models need no plugin update). Their strength is a guess from the name's size, marked as a guess. | yes |
+| `config show [--project D] [--order O]` | The effective routing settings, and which source decided where work starts. | yes |
+| `config device-set --order local-first\|cloud-first` | Saves this computer's own default, in `~/.dev-team/device.yml` (outside every project). | yes |
+| `route --request-file F` | Picks a model for one job and says why. Needs `role`; optional `risk`, `complex`, `providers`, `approved`, `exhausted`, `builtBy`, `order`. Exit 1 with `NEEDS_APPROVAL`, `PIN_UNAVAILABLE` or `NO_SUITABLE_AGENT_AVAILABLE`. | yes |
+
+How `route` decides: strength is a tier (1 utility to 4 principal), never a model name; checking work is never below tier 3; the cheapest qualifying model wins and tier 4 is never the default; models on the ask-first list are held back until approved (local models never are); a pin is carried through exactly or the job stops and asks; local-first or cloud-first only changes the order tried, never the strength needed. The starting catalogue is `engine/data/catalogue.seed.json`; every provider except Claude and Codex review is unverified.
 
 More commands (`route`, `explain`, `discover`, jobs, leases, snapshots and the rest) are listed in the
 plan, section 2.3, and are added as each increment is built.

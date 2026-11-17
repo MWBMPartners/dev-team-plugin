@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Orchestrator engine, first part of increment 1**: `route` (picks a model for one job and says why),
+  `discover` (finds local Ollama models), `config show` / `config device-set`, the starting model
+  catalogue and its schema. Implements local-first (the default) and cloud-first order, the ask-first
+  list, exact-version pins, the checking floor and cross-provider review preference. 33 unit tests.
+
 - **Orchestrator engine, increment 0a** (plan `orchestrator-v2`, hand-locked 17 November 2026): the
   launcher `scripts/engine.sh` (exit 3 means "carry on the 1.x way"), the engine's command layer, a
   small JSON-schema checker, safe file writing with an ownership marker, secret redaction, the `doctor`

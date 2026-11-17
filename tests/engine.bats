@@ -54,3 +54,17 @@ teardown() { rm -rf "$SCRATCH"; }
   run bash "$REPO_ROOT/scripts/engine.sh" schema validate --all
   [ "$status" -eq 0 ]
 }
+
+@test "engine.sh: route picks a model and says why; an architect never gets Fable unasked" {
+  printf '{"role":"architect","providers":["claude"]}' > "$SCRATCH/req.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" route --request-file "$SCRATCH/req.json"
+  [ "$status" -eq 0 ]
+  printf '%s' "$output" | jq -e '.result.decision.model == "opus" and (.result.heldBack | map(.model) | index("fable"))' >/dev/null
+}
+
+@test "engine.sh: route exits 1 with NEEDS_APPROVAL when only an ask-first model qualifies" {
+  printf '{"role":"architect","providers":["gemini"]}' > "$SCRATCH/req.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" route --request-file "$SCRATCH/req.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"NEEDS_APPROVAL"* ]]
+}

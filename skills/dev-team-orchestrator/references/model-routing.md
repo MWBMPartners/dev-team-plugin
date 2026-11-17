@@ -142,6 +142,19 @@ Local models are free to run, so they never go on the ask-first list. The route 
 cloud first) and its profiles are described in the addendum under `.claude/plans/orchestrator-v2/` and
 are built with the engine.
 
+## Asking the engine instead of the table (added 17 November 2026)
+
+If `bash ${CLAUDE_PLUGIN_ROOT}/scripts/engine.sh doctor` exits 0, the lead may ask the engine which
+model to use rather than reading the tables above by eye: write a small request file
+(`{"role": "builder", "risk": "NORMAL", "providers": ["claude", "ollama"]}`) and run
+`engine.sh route --request-file <file>`. The answer says which model, why, what was held back for
+approval, and any question for the user (for example where work should start, asked once per project).
+Exit 1 means a "no" that is itself the answer: `NEEDS_APPROVAL` (ask the user, then ask again with
+`"approved": ["<model>"]`), `PIN_UNAVAILABLE` (stop and ask), or `NO_SUITABLE_AGENT_AVAILABLE`.
+`engine.sh config show` prints the effective settings and which source decided each. If the engine
+exits 3, follow the tables above as before. The engine only decides and records; the lead starts the
+worker. Details: `docs/orchestrator/engine-commands.md`.
+
 ## Session-model caveat
 An agent left on `model: inherit` (or the lead itself) follows the user's `/model` session
 choice, which sits ABOVE the plugin. If the session runs on a cheap model, un-pinned work
