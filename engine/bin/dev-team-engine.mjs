@@ -28,6 +28,7 @@ import { classifyDrift } from '../lib/drift.mjs';
 import { checkEvidence } from '../lib/evidence.mjs';
 import { newTask, recordAttempt, recordEscalation, validateTask } from '../lib/attempts.mjs';
 import { writeJsonAtomic } from '../lib/store.mjs';
+import { loadPacks, rollbackRequired } from '../lib/packs.mjs';
 import { continuityCommands } from '../lib/continuity-commands.mjs';
 import { reviewCommands } from '../lib/review-commands.mjs';
 import { policyCommands } from '../lib/policy-commands.mjs';
@@ -126,8 +127,8 @@ export const commands = {
       return { code: v.ok ? ExitCodes.OK : ExitCodes.VERIFY_FAILED, result: v, problems: v.ok ? [] : [{ code: v.status, message: v.reason }] };
     }
     if (a.sub === 'lock') {
-      if (!file || typeof a.flags.approver !== 'string') throw new BadInput('usage: plan lock --file <plan.json> --approver <name>');
-      try { const locked = lockPlan(read(file), { approver: a.flags.approver }); writeJsonAtomic(file, locked); return { code: ExitCodes.OK, result: { planId: locked.planId, planVersion: locked.planVersion, planHash: locked.planHash, status: locked.status } }; }
+      if (!file || typeof a.flags.approver !== 'string') throw new BadInput('usage: plan lock --file <plan.json> --approver <name> [--risk LOW|NORMAL|HIGH|CRITICAL] [--pack id,id]');
+      try { const packs = typeof a.flags.pack === 'string' && a.flags.pack !== '' ? loadPacks(a.flags.pack.split(',')) : []; const locked = lockPlan(read(file), { approver: a.flags.approver, risk: typeof a.flags.risk === 'string' ? a.flags.risk : null, rollbackRequired: rollbackRequired(packs) }); writeJsonAtomic(file, locked); return { code: ExitCodes.OK, result: { planId: locked.planId, planVersion: locked.planVersion, planHash: locked.planHash, status: locked.status } }; }
       catch (e) { if (e instanceof Conflict) return { code: ExitCodes.CONFLICT, result: null, problems: [{ code: 'ALREADY_LOCKED', message: e.message }] }; if (e instanceof StaleDraft) return { code: ExitCodes.VERIFY_FAILED, result: null, problems: [{ code: 'STALE_DRAFT', message: e.message }] }; throw e; }
     }
     if (a.sub === 'draft') {

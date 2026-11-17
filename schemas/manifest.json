@@ -121,6 +121,10 @@
     {
       "schema": "schemas/policy-pack.schema.json",
       "fixture": "policy-packs/mwbm-standard.json"
+    },
+    {
+      "schema": "schemas/data/cost-bands.schema.json",
+      "fixture": "engine/data/cost-bands.json"
     }
   ],
   "exceptions": [

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gateCheck, levelFor } from '../lib/gates.mjs';
@@ -48,4 +48,26 @@ test('plan: HIGH or CRITICAL risk plans cannot be locked without rollback requir
   const d = (c) => draftPlan({ planId: 'p', contract: c });
   assert.throws(() => lockPlan(d({ risk: 'HIGH' }), { approver: 'o' }), /rollbackRequirements/); assert.throws(() => lockPlan(d({ risk: 'critical', rollbackRequirements: [] }), { approver: 'o' }), /rollbackRequirements/);
   assert.equal(lockPlan(d({ risk: 'HIGH', rollbackRequirements: ['revert the commit'] }), { approver: 'o' }).status, 'LOCKED'); assert.equal(lockPlan(d({ risk: 'LOW' }), { approver: 'o' }).status, 'LOCKED');
+});
+
+// ---- Fixes after the independent review of increment 6 ----
+import { writeFileSync as wf } from 'node:fs';
+test('gates: an action name cannot slip past by spelling; packs of the wrong shape are invalid; null packs and evidence do not crash', () => {
+  for (const n of ['force_push', ' FORCE_PUSH ', 'Force-Push', 'push_default_branch']) { const r = gateCheck(n, { humanApproved: true, confident: true, deterministicPass: true, reviewVerified: true }); assert.equal(r.level, 'PROHIBITED', n); assert.equal(r.allowed, false); }
+  assert.equal(levelFor('deploy', [{ gates: { Deploy: 'AUTO' } }]).level, 'REQUIRE_HUMAN_APPROVAL'); assert.equal(levelFor('run_tests', [{ gates: { 'run-tests': 'REQUIRE_REVIEW' } }]).level, 'REQUIRE_REVIEW');
+  assert.ok(validatePack({ id: 'x', invariants: [1] }).length); assert.ok(validatePack({ id: 'x', gates: ['a'] }).length); assert.ok(validatePack({ id: 'x', rollbackRequired: 'yes' }).length);
+  assert.doesNotThrow(() => gateCheck('RUN_TESTS', null, null)); assert.doesNotThrow(() => levelFor('RUN_TESTS', null));
+});
+test('plan: the rollback rule trims and reads the risk wherever it is given, needs a real item, and honours --risk and packs', () => {
+  const d = (c) => draftPlan({ planId: 'p', contract: c });
+  for (const c of [{ risk: 'HIGH ' }, { risk: 'HIGH', rollbackRequirements: [''] }, { risk: 'HIGH', rollbackRequirements: [null] }, { risk: { level: 'HIGH' } }, { riskLevel: 'critical' }]) assert.throws(() => lockPlan(d(c), { approver: 'o' }), /rollbackRequirements/, JSON.stringify(c));
+  assert.throws(() => lockPlan(d({ goal: 'x' }), { approver: 'o', risk: 'HIGH' }), /rollbackRequirements/); assert.throws(() => lockPlan(d({ goal: 'x' }), { approver: 'o', rollbackRequired: true }), /rollbackRequirements/);
+  assert.equal(lockPlan(d({ goal: 'x', rollbackRequirements: ['revert'] }), { approver: 'o', risk: 'HIGH', rollbackRequired: true }).status, 'LOCKED');
+});
+test('invariants: CRLF files, mismatched fences and symbolic links', () => {
+  const d = mkdtempSync(join(tmpdir(), 'dt-inv2-'));
+  wf(join(d, 'CLAUDE.md'), '- You must never push to main.\r\n```\r\n~~~\r\n- You must not collect this example rule\r\n```\r\n- Always run the tests.\r\n');
+  const t = collectInvariants(d, []).map((x) => x.text).join('\n'); assert.ok(t.includes('never push to main') && t.includes('Always run the tests')); assert.ok(!t.includes('example rule'));
+  const e = mkdtempSync(join(tmpdir(), 'dt-inv3-')); wf(join(e, 'real.md'), '- You must never read this through a link.\n'); symlinkSync(join(e, 'real.md'), join(e, 'GEMINI.md'));
+  assert.deepEqual(collectInvariants(e, []), []); // an instruction file that is a symbolic link is not followed
 });

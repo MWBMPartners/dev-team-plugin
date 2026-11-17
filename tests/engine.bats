@@ -266,3 +266,18 @@ teardown() { rm -rf "$SCRATCH"; }
   run bash "$REPO_ROOT/scripts/engine.sh" gate check --action DELETE_FILES --pack nope
   [ "$status" -eq 2 ]
 }
+
+@test "check-no-lang-ext-urls.sh: country domains and fences are not false alarms; capitals, spaces around = and a trailing slash are caught" {
+  mkdir -p "$SCRATCH/site2"
+  # shellcheck disable=SC2016
+  printf 'Shop: [x](https://allegro.pl) and https://example.pl today.\n\n~~~\n```\n[a](/in-fence.php)\n```\n~~~\n\nReal: [after](/after.php)\n' > "$SCRATCH/site2/a.md"
+  run bash "$REPO_ROOT/scripts/check-no-lang-ext-urls.sh" "$SCRATCH/site2"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"after.php"* ]]
+  [[ "$output" != *"allegro"* ]]
+  [[ "$output" != *"in-fence"* ]]
+  printf '<a href = "/LOGIN.PHP">x</a> <a href="https://x.com/index.php/users">y</a>\n' > "$SCRATCH/site2/b.html"
+  run bash "$REPO_ROOT/scripts/check-no-lang-ext-urls.sh" "$SCRATCH/site2"
+  [[ "$output" == *"LOGIN.PHP"* ]]
+  [[ "$output" == *"index.php"* ]]
+}

@@ -18,17 +18,29 @@ while IFS= read -r f; do
     *) fence=0 ;;
   esac
   awk -v file="$f" -v fence="$fence" '
-    fence && /^[[:space:]]*(```|~~~)/ { infence = !infence; next }
-    infence { next }
+    BEGIN { ext = "(php|asp|aspx|jsp|cfm|cgi|pl)" }
+    fence && /^[ ]?[ ]?[ ]?(```+|~~~+)/ {
+      m = $0; sub(/^[ ]*/, "", m); mk = substr(m, 1, 1)
+      if (open == "") { open = mk; next }
+      if (mk == open && m ~ /^(```+|~~~+)[ ]*$/) { open = ""; next }
+      next
+    }
+    fence && open != "" { next }
     {
-      line = $0
-      # an address (href, src, action, a full URL, or a root-relative path) ending in a language extension
-      while (match(line, /(href|src|action)=["'"'"'][^"'"'"' ]*\.(php|asp|aspx|jsp|cfm|cgi|pl)([?#"'"'"'])|https?:\/\/[^ "'"'"')<>]*\.(php|asp|aspx|jsp|cfm|cgi|pl)([?#" )<>]|$)|\]\(\/[^) ]*\.(php|asp|aspx|jsp|cfm|cgi|pl)[)?#]/)) {
-        printf "%s:%d: %s\n", file, NR, substr(line, RSTART, RLENGTH); found = 1
-        line = substr(line, RSTART + RLENGTH)
+      line = $0; low = tolower($0); base = 0
+      # an address ending in a language extension: an href/src/action value, a root-relative markdown link, or a full URL
+      # whose path (after a slash following the host) names a file with such an extension. A bare country domain such as
+      # example.pl has no path and is not reported.
+      pat = "(href|src|action)[ ]*=[ ]*[\"'"'"'][^\"'"'"' ]*\\." ext "([?#/\"'"'"']|$)|https?://[^/ \"'"'"')<>]+/[^ \"'"'"')<>]*\\." ext "([?#/ )<>\"'"'"']|$)|\\]\\(/[^) ]*\\." ext "([)?#/])"
+      while (match(low, pat)) {
+        printf "%s:%d: %s\n", file, NR, substr(line, base + RSTART, RLENGTH); found = 1
+        base += RSTART + RLENGTH - 1; low = substr(low, RSTART + RLENGTH)
       }
     }
     END { exit found ? 3 : 0 }
-  ' "$f" || { [ "$?" -eq 3 ] && found=1; }
+  ' "$f"
+  rc=$?
+  [ "$rc" -eq 3 ] && found=1
+  if [ "$rc" -ne 0 ] && [ "$rc" -ne 3 ]; then echo "check-no-lang-ext-urls: could not read $f" >&2; exit 2; fi
 done < <(find "$root" \( -name .git -o -name node_modules -o -name vendor -o -name dist -o -name build \) -prune -o -type f \( -name '*.html' -o -name '*.htm' -o -name '*.md' -o -name '*.markdown' -o -name '*.twig' -o -name '*.blade.php' -o -name '*.vue' -o -name '*.svelte' -o -name '*.tpl' \) -print 2>/dev/null)
 [ "$found" -eq 0 ]
