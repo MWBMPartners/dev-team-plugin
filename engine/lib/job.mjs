@@ -3,8 +3,8 @@
 // Purpose: A job is one piece of requested work with its phases, its state and its checkpoints, saved as a
 //          file in the project's .dev-team/jobs/<id>/ folder so any machine, assistant or model can resume it.
 //          Checkpoints are tied to git commits, so "where were we" is checkable, not remembered.
-import { readFileSync, existsSync, mkdirSync, rmdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, existsSync, mkdirSync, rmdirSync, rmSync, renameSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { pluginRoot } from './paths.mjs';
@@ -75,10 +75,17 @@ function withLock(projectDir, id, fn) {
   for (;;) {
     try { mkdirSync(lock); break; } catch (e) {
       if (/** @type {any} */ (e).code !== 'EEXIST') throw new JobProblem('the job folder cannot be locked');
-      try { if (Date.now() - statSync(lock).mtimeMs > 30000) { rmdirSync(lock); continue; } } catch { continue; }
-      if (Date.now() > deadline) throw new JobProblem('another command is changing this job; try again');
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
     }
+    if (Date.now() > deadline) throw new JobProblem('another command is changing this job (or a stale lock could not be removed); try again');
+    let old = false;
+    try { old = Date.now() - statSync(lock).mtimeMs > 30000; } catch { /* the lock vanished: try again straight away */ }
+    if (old) {
+      // Move the stale lock aside under a name nobody else uses, then delete it: only one waiter's rename can succeed,
+      // so two waiters can never both think they own a fresh lock.
+      const aside = `${lock}.stale-${process.pid}-${Math.random().toString(16).slice(2)}`;
+      try { renameSync(lock, aside); rmSync(aside, { recursive: true, force: true }); } catch { /* someone else got there first, or it cannot be removed: wait and re-check the deadline */ }
+    }
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
   }
   try { return fn(); } finally { try { rmdirSync(lock); } catch { /* already gone */ } }
 }
@@ -90,11 +97,14 @@ const git = (dir, args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8
  * is not counted, since it changes on every record), and, if there are submodules, work inside them.
  */
 function hasUncommittedWork(dir) {
-  const skip = ['--', '.', ':(exclude).dev-team/jobs'];
   try {
-    if (git(dir, ['status', '--porcelain', '--untracked-files=no', ...skip]) !== '') return true;
-    if (git(dir, ['ls-files', '--others', '--exclude-standard', ...skip]) !== '') return true;
-    if (existsSync(join(dir, '.gitmodules')) && git(dir, ['submodule', 'foreach', '--quiet', '--recursive', 'git status --porcelain']) !== '') return true;
+    // The checkpoint is for a commit of the WHOLE repository, so look at the whole repository, not just this folder.
+    const top = git(dir, ['rev-parse', '--show-toplevel']);
+    const jobs = relative(top, join(dir, '.dev-team', 'jobs')).split('\\').join('/');
+    const skip = ['--', ':/', `:(top,exclude)${jobs}`];
+    if (git(top, ['status', '--porcelain', '--untracked-files=no', ...skip]) !== '') return true;
+    if (git(top, ['ls-files', '--others', '--exclude-standard', ...skip]) !== '') return true;
+    if (existsSync(join(top, '.gitmodules')) && git(top, ['submodule', 'foreach', '--quiet', '--recursive', 'git status --porcelain']) !== '') return true;
     return false;
   } catch { return true; } // when unsure, say there may be uncommitted work
 }

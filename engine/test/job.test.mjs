@@ -83,3 +83,25 @@ test('uncommitted work inside a submodule is noticed', () => {
   assert.equal(createCheckpoint(d, j.jobId, 'plan', 'planning').uncommittedChanges, false);
   writeFileSync(join(d, 'sub', 'newfile'), 'x'); assert.equal(createCheckpoint(d, j.jobId, 'plan', 'planning').uncommittedChanges, true);
 });
+
+// ---- Fixes after the third review of jobs ----
+test('a stale lock that cannot be deleted never makes the command spin forever', async () => {
+  const { utimesSync } = await import('node:fs');
+  const d = repo(); const j = initJob(d, { template: 'normal', request: 'x' });
+  const lock = join(d, '.dev-team', 'jobs', j.jobId, '.lock'); mkdirSync(lock); writeFileSync(join(lock, 'keep'), 'x');
+  const old = new Date(Date.now() - 120000); utimesSync(lock, old, old);
+  const t0 = Date.now(); recordPhase(d, j.jobId, 'discover', 'IN_PROGRESS'); // a stale, non-empty lock is moved aside and removed
+  assert.ok(Date.now() - t0 < 5000); assert.equal(loadJob(d, j.jobId).phases[0].status, 'IN_PROGRESS');
+});
+test('a plain file named .lock that is fresh stops the command with a clear message after the wait, not a hang', () => {
+  const d = repo(); const j = initJob(d, { template: 'normal', request: 'x' });
+  writeFileSync(join(d, '.dev-team', 'jobs', j.jobId, '.lock'), 'x');
+  const t0 = Date.now(); assert.throws(() => recordPhase(d, j.jobId, 'discover', 'IN_PROGRESS'), JobProblem); assert.ok(Date.now() - t0 < 12000);
+});
+test('uncommitted work outside the project folder, in the same repository, is noticed', () => {
+  const d = repo(); mkdirSync(join(d, 'app')); writeFileSync(join(d, 'app', 'x'), '1'); g(d, 'add', '.'); g(d, 'commit', '-q', '-m', 'app');
+  const j = initJob(join(d, 'app'), { template: 'normal', request: 'x' });
+  writeFileSync(join(d, '.git', 'info', 'exclude'), '.dev-team/\n');
+  assert.equal(createCheckpoint(join(d, 'app'), j.jobId, 'plan', 'planning').uncommittedChanges, false);
+  writeFileSync(join(d, 'outside.txt'), 'x'); assert.equal(createCheckpoint(join(d, 'app'), j.jobId, 'plan', 'planning').uncommittedChanges, true);
+});
