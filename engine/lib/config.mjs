@@ -153,7 +153,7 @@ export function loadRouting(opts = {}) {
   let askFirst = DEFAULT_ASK_FIRST;
   if (rawAsk !== undefined) {
     // A present ask-first must be a list of plain names. Anything else is reported, never swapped for the default.
-    if (!Array.isArray(rawAsk) || rawAsk.some((x) => typeof x !== 'string' && typeof x !== 'number')) badSettings.push('routing.ask-first (it must be a list of model names)');
+    if (!Array.isArray(rawAsk) || rawAsk.some((x) => !/^[A-Za-z0-9._\/-]+(:[A-Za-z0-9._-]+)?$/.test(String(x)) || (typeof x !== 'string' && typeof x !== 'number'))) badSettings.push('routing.ask-first (it must be a list of model names)');
     else askFirst = rawAsk.map(String);
   }
   const rawOrder = project.routing?.order;

@@ -249,3 +249,10 @@ test('a name: value line inside a list stops routing instead of being dropped', 
   assert.ok(c.badSettings.length > 0);
   assert.equal(route({ role: 'architect', providers: ['claude'], minTier: 4, approved: ['fable'] }, seed, c).code, 'SETTINGS_INVALID');
 });
+
+// ---- Fix after the twelfth independent review ----
+test('an ask-first entry that is not a bare model name (for example "fable: ask") stops routing', () => {
+  for (const y of ['routing:\n  ask-first:\n    - mythos: true\n    - fable: ask\n', 'routing:\n  ask-first: [mythos: yes, fable: yes]\n', 'routing:\n  ask-first: [""]\n', 'routing:\n  ask-first: ["two words"]\n'])
+    assert.ok(loadYaml(y).badSettings.length > 0, y);
+  assert.equal(loadYaml('routing:\n  ask-first: [fable, qwen2.5:32b, mythos]\n').badSettings.length, 0);
+});
