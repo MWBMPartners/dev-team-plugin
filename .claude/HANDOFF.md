@@ -20,6 +20,32 @@ older sections are **deleted** (see below). Start the next piece of work from `a
 
 ## Current state — 17 November 2026
 
+### Progress later on 17 November (work branch `claude/busy-knuth-bc35ok`)
+
+Owner chose the order: Group A, Group F, then B, C, D, E (groups are named in the task list the
+session gave the owner; see below).
+
+| Group | Task | State |
+| --- | --- | --- |
+| A | #44 guard keys on `.dev-team/loop.lock/` | **Done**, commit `ae2b909` |
+| A | #48 "both guards fail open" wording | **Done**, commit `ae2b909` |
+| A | #42 security findings out of git by default (`features.commit-security`, default off) | **Done**, commit `158f4bc` |
+| F | Comments on #41, #47, #42, #44, #48 | **Done** |
+| F | Clean Codex review of all of `main` | **Blocked: Codex is not installed in this cloud session.** Rule 5 says say so plainly; all work since 9 Nov is **not fully reviewed**. Redo by hand: see `codex-review-prompt-5.md` |
+| B, C, D, E | Model settings, project documents, preset and editor research, the engine | Not started |
+
+Checks run at `158f4bc`: both audits, smoke test, shellcheck, bats 211 of 211. To run bats here:
+`npm install -g bats` and `pip install shellcheck-py`, then `TMPDIR=<writable folder> bats tests/scripts.bats`.
+
+**Owner's answers to Q6–Q9 (17 Nov, recorded; not yet built):**
+
+| Q | Answer | What it means |
+| --- | --- | --- |
+| Q6 editors | VS Code and Cursor, Visual Studio, Xcode, JetBrains — **all four, in that order** | The editor research covers all four; start with VS Code and Cursor |
+| Q7 route order | **Local first, cloud for hard work or when local is not available.** The plugin also asks once per project and remembers the answer; if never asked (already-running projects), ask the first time. Also create **two profiles**: cloud-first and local-first. A user can also set their **own default per dev device** (a device with local models can default to local first) | A built-in default of local first; a per-project remembered answer; two named profiles; a per-device user setting that sits between the user's general setting and the project's. The addendum's suggested "cloud first" was **not** taken |
+| Q8 ask-first models | **Not decided.** First research which high-quality, expensive models other platforms offer (ChatGPT/Codex, Kimi, Gemini, DeepSeek and the like) and let the owner choose from the list. Local models are never on it (free) | **To do (research):** build that list with current prices, then ask the owner. Until answered, no model is on the list by default |
+| Q9 Copilot | Reviewer first, worker later | As recommended |
+
 ### Added later on 17 November — owner's new requirements (work branch `claude/busy-knuth-bc35ok`)
 
 - The owner asked for: model-per-job delegation, many AI systems (adding Copilot, DeepSeek, Ollama),

@@ -48,3 +48,15 @@ The owner's words are summarised, not quoted. Standing rules 12–15 in `.claude
 | Q7 | Default route order: local first or cloud first? | The setting needs a built-in default | Cloud first, with local as the fall-back (matches the quality-first aim); the `standard` preset can choose local first |
 | Q8 | Which models start on the "ask first" list? | Fable and Mythos named as examples only | Fable and Mythos, plus anything the plugin cannot price |
 | Q9 | Is Copilot a worker, a reviewer, or both? | Copilot's allowance and tools differ from the others | Reviewer first, worker later |
+
+## Owner's answers, 17 November 2026
+
+| # | Answer |
+| --- | --- |
+| Q6 | All four editor families, in this order: VS Code and Cursor, Visual Studio, Xcode, JetBrains. |
+| Q7 | Built-in default is **local first**, using cloud for hard work or when local is unavailable. Ask once per project and remember it (ask on first use for projects already running). Ship two profiles, cloud-first and local-first. A user may also set their own default **per dev device**. |
+| Q8 | Not yet decided. Research expensive high-quality models on other platforms first; the owner then picks. Local models are never listed (they are free). |
+| Q9 | Copilot is a reviewer first, worker later. |
+
+Order of precedence for route order, highest first: this session's choice > the project's remembered
+answer > the device default > the user's general default > the built-in default (local first).
