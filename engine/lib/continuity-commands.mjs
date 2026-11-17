@@ -50,14 +50,19 @@ export const continuityCommands = {
       if (a.sub === 'release') return { code: ExitCodes.OK, result: lease.release(base, args) };
       if (a.sub === 'resume') return { code: ExitCodes.OK, result: lease.resume(base, args) };
       if (a.sub === 'reclaim') {
-        // The work snapshot is taken FIRST, and the lease is only reclaimed if it succeeds.
+        // Check the lease first (nothing is saved for a lease that cannot be reclaimed), then save the work, and only
+        // then take the lease over. The snapshot is always reported, even if the takeover is refused after it.
+        lease.assertReclaimable(base, args);
         const snap = createSnapshot(root, { job: args.job, phase: args.phase, reason: 'reclaim' });
-        return { code: ExitCodes.OK, result: { lease: lease.reclaim(base, { ...args, snapshotRef: snap.snapshotRef }), snapshot: snap } };
+        try { return { code: ExitCodes.OK, result: { lease: lease.reclaim(base, { ...args, snapshotRef: snap.snapshotRef }), snapshot: snap } }; }
+        catch (e) { if (e instanceof Conflict) return { code: ExitCodes.CONFLICT, result: { snapshot: snap }, problems: [{ code: 'LEASE_CONFLICT', message: `${e.message} (the work snapshot ${snap.snapshotRef ?? 'CLEAN_TREE'} was still taken and kept)` }] }; throw e; }
       }
       if (a.sub === 'pause') {
         const obs = typeof a.flags['observation-file'] === 'string' ? readJson(a.flags['observation-file'], 'the observation file') : { resetAt: typeof a.flags['resets-at'] === 'string' ? a.flags['resets-at'] : null };
+        const d = pauseOrBlock(obs, new Date()); if (d.action !== 'PAUSE') throw new Conflict(`cannot pause: ${d.reason}`); // before saving anything
         const snap = createSnapshot(root, { job: args.job, phase: args.phase, reason: 'pause' });
-        return { code: ExitCodes.OK, result: { lease: lease.pause(base, { ...args, observation: obs, snapshotRef: snap.snapshotRef }), snapshot: snap } };
+        try { return { code: ExitCodes.OK, result: { lease: lease.pause(base, { ...args, observation: obs, snapshotRef: snap.snapshotRef }), snapshot: snap } }; }
+        catch (e) { if (e instanceof Conflict) return { code: ExitCodes.CONFLICT, result: { snapshot: snap }, problems: [{ code: 'LEASE_CONFLICT', message: `${e.message} (the work snapshot ${snap.snapshotRef ?? 'CLEAN_TREE'} was still taken and kept)` }] }; throw e; }
       }
     } catch (e) {
       if (e instanceof Conflict) return conflict(/^STALE_LOCK/.test(e.message) ? 'STALE_LOCK' : 'LEASE_CONFLICT', e);

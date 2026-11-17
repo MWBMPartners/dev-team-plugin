@@ -23,6 +23,8 @@ function checkOwner(o) {
 }
 const sameOwner = (a, b) => OWNER_KEYS.every((k) => a[k] === b[k]) && (a.session ?? null) === (b.session ?? null);
 function readHolder(dir) { try { const h = JSON.parse(readFileSync(join(dir, 'holder.json'), 'utf8')); if (!h || typeof h !== 'object' || !h.owner || !['running', 'paused'].includes(h.state)) return null; return h; } catch { return null; } }
+/** Minutes since the last heartbeat. A time in the future (clock trouble, a damaged file) counts as ancient, never as fresh. */
+function ageMinutes(h, now) { const a = (now.getTime() - Date.parse(h.heartbeatAt)) / 60000; return Number.isFinite(a) && a >= -5 ? Math.max(0, a) : Infinity; }
 const write = (dir, h) => { const tmp = join(dir, `holder.json.tmp-${process.pid}`); writeFileSync(tmp, JSON.stringify(h, null, 2) + '\n'); renameSync(tmp, join(dir, 'holder.json')); };
 
 /** Take a phase. Fails (Conflict) if another live owner holds it, if it is paused, or if a stale lock needs a snapshot first. */
@@ -34,22 +36,37 @@ export function acquire(base, { job, phase, owner }, now = new Date()) {
     const h = readHolder(dir);
     if (!h) throw new Conflict('the lease folder exists but its holder file cannot be read; look at it by hand');
     if (h.state === 'paused') throw new Conflict('this phase is paused, not crashed: resume it with the same owner');
-    const ageMin = (now.getTime() - Date.parse(h.heartbeatAt)) / 60000;
-    if (Number.isFinite(ageMin) && ageMin < STALE_AFTER_MIN) throw new Conflict('this phase is held by a live owner');
+    if (ageMinutes(h, now) < STALE_AFTER_MIN) throw new Conflict('this phase is held by a live owner');
     throw new Conflict('STALE_LOCK: the holder stopped sending heartbeats; take a work snapshot (snapshot create --reason reclaim) before reclaiming');
   }
   const h = { owner, pid: process.pid, host: hostname(), acquiredAt: now.toISOString(), heartbeatAt: now.toISOString(), state: 'running' };
   write(dir, h); return h;
 }
 
+/** Can this lease be reclaimed right now? Throws a Conflict saying why not. Call it BEFORE taking a snapshot. */
+export function assertReclaimable(base, { job, phase }, now = new Date()) {
+  const dir = dirOf(base, job, phase); const h = readHolder(dir);
+  if (!h) throw new Conflict('there is no readable engine lease for this phase (if the run never took one, take a snapshot with `snapshot create --reason reclaim` and carry on)');
+  if (h.state === 'paused') throw new Conflict('a paused lease is never reclaimed as crashed');
+  if (ageMinutes(h, now) < STALE_AFTER_MIN) throw new Conflict('the lease is not stale');
+  return h;
+}
+
 /** Take over a stale lease. The caller must already have made the reclaim snapshot and passes its reference. */
 export function reclaim(base, { job, phase, owner, snapshotRef }, now = new Date()) {
   const dir = dirOf(base, job, phase); checkOwner(owner);
+  // Two reclaimers at once: only the one that makes this folder first goes on; it is removed afterwards.
+  const gate = `${dir}.reclaim`;
+  try { mkdirSync(gate); } catch { throw new Conflict('another process is reclaiming this lease right now'); }
+  try { return reclaimLocked(dir, owner, snapshotRef, now); } finally { rmSync(gate, { recursive: true, force: true }); }
+}
+
+function reclaimLocked(dir, owner, snapshotRef, now) {
   const h = readHolder(dir);
   if (!h) throw new Conflict('there is no readable lease to reclaim');
   if (h.state === 'paused') throw new Conflict('a paused lease is never reclaimed as crashed');
   if (snapshotRef !== null && (typeof snapshotRef !== 'string' || !snapshotRef.startsWith('refs/dev-team/snapshots/'))) throw new RangeError('snapshotRef must be a snapshot reference, or null for a clean tree');
-  if ((now.getTime() - Date.parse(h.heartbeatAt)) / 60000 < STALE_AFTER_MIN) throw new Conflict('the lease is not stale');
+  if (ageMinutes(h, now) < STALE_AFTER_MIN) throw new Conflict('the lease is not stale');
   const fresh = { owner, pid: process.pid, host: hostname(), acquiredAt: now.toISOString(), heartbeatAt: now.toISOString(), state: 'running', reclaimedFrom: h.owner, reclaimSnapshot: snapshotRef };
   write(dir, fresh); return fresh;
 }
@@ -90,6 +107,6 @@ export function release(base, { job, phase, owner }) {
 export function status(base, { job, phase }, now = new Date()) {
   const dir = dirOf(base, job, phase); if (!existsSync(dir)) return { held: false };
   const h = readHolder(dir); if (!h) return { held: true, readable: false };
-  const ageMin = (now.getTime() - Date.parse(h.heartbeatAt)) / 60000;
-  return { held: true, readable: true, state: h.state, owner: h.owner, heartbeatAgeMinutes: Number.isFinite(ageMin) ? Math.round(ageMin) : null, stale: h.state === 'running' && Number.isFinite(ageMin) && ageMin >= STALE_AFTER_MIN, paused: h.paused ?? null };
+  const age = ageMinutes(h, now);
+  return { held: true, readable: true, state: h.state, owner: h.owner, heartbeatAgeMinutes: Number.isFinite(age) ? Math.round(age) : null, stale: h.state === 'running' && age >= STALE_AFTER_MIN, paused: h.paused ?? null };
 }

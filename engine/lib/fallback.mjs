@@ -7,6 +7,7 @@
 
 /** @param {any[]} models profiles with {provider, id, tier, costBand} @param {{provider: string, id: string, tier: number}} failed @param {string[]} [excluded] */
 export function ladder(models, failed, excluded = []) {
+  if (!failed || !Number.isFinite(failed.tier)) throw new RangeError('the failed model needs a numeric tier, or weaker models could be offered');
   const ok = (m) => m.tier >= failed.tier && m.id !== failed.id && !excluded.includes(m.id);
   const byCost = (a, b) => a.tier - b.tier || (a.costBand ?? 99) - (b.costBand ?? 99) || a.id.localeCompare(b.id);
   const same = models.filter((m) => ok(m) && m.provider === failed.provider).sort(byCost);

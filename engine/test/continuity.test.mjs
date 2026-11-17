@@ -108,3 +108,39 @@ test('takeover: retirement always replaces and strengthens review; a long wait o
   const on = takeoverPlan({ enabled: true, reason: 'QUOTA', models: M, failed }); assert.equal(on.takeover, true); assert.equal(on.next.id, 'fable');
   assert.equal(takeoverPlan({ enabled: true, reason: 'QUOTA', models: [], failed }).state, 'BLOCKED_AWAITING_AGENT');
 });
+
+// ---- Fixes after the independent review of increment 4 ----
+test('restore never overwrites newer work: it refuses when the folder differs from both HEAD and the snapshot, and does nothing when already restored', () => {
+  const d = repo(); dirty(d); const s = createSnapshot(d, J);
+  assert.equal(restoreSnapshot(d, s.snapshotRef).alreadyRestored, true); // pause case: nothing was reset, nothing to do
+  writeFileSync(join(d, 'tracked.txt'), 'NEWER WORK\n');
+  assert.throws(() => restoreSnapshot(d, s.snapshotRef), /would overwrite/); assert.equal(readFileSync(join(d, 'tracked.txt'), 'utf8'), 'NEWER WORK\n');
+  g(d, 'reset', '--hard', '-q'); g(d, 'clean', '-fdq'); assert.equal(restoreSnapshot(d, s.snapshotRef).restored, true); // reset case: folder is HEAD
+  writeFileSync(join(d, 'extra-untracked.txt'), 'x'); g(d, 'reset', '--hard', '-q'); g(d, 'clean', '-fdq'); // fine again
+});
+test('snapshot numbers are never reused after a deletion, and an existing reference is never overwritten', () => {
+  const d = repo(); dirty(d); const a = createSnapshot(d, J), b = createSnapshot(d, J), c = createSnapshot(d, J);
+  g(d, 'update-ref', '-d', a.snapshotRef); const n = createSnapshot(d, J); assert.match(n.snapshotRef, /\/4$/); assert.ok(b.snapshotRef && c.snapshotRef);
+  assert.equal(listSnapshots(d, J.job).length, 3);
+});
+test('snapshot: files that could not be scanned are listed; a repository with no commits gives a clear error', () => {
+  const d = repo(); writeFileSync(join(d, 'bin.dat'), Buffer.from([0, 1, 2, 3])); writeFileSync(join(d, 'big.txt'), 'x'.repeat(2000));
+  const s = createSnapshot(d, { ...J, maxFileBytes: 1000 }); assert.deepEqual(s.unscanned.sort(), ['big.txt', 'bin.dat']);
+  const empty = mkdtempSync(join(tmpdir(), 'dt-empty-')); g(empty, 'init', '-q'); writeFileSync(join(empty, 'a'), '1');
+  assert.throws(() => createSnapshot(empty, J), /at least one commit/);
+});
+test('lease: a heartbeat in the future never keeps a lease fresh; two reclaimers cannot both win', async () => {
+  const b = base(); lease.acquire(b, { ...J, owner: A }, new Date('2030-01-01T00:00:00Z'));
+  assert.equal(lease.status(b, J, t0).stale, true); assert.throws(() => lease.acquire(b, { ...J, owner: A }, t0), /STALE_LOCK/);
+  const dir = join(b, 'leases', 'j-aaaaaaaaaaaa.build.lock'); const h = JSON.parse(readFileSync(join(dir, 'holder.json'), 'utf8'));
+  writeFileSync(join(dir, 'holder.json'), JSON.stringify({ ...h, heartbeatAt: '2020-01-01T00:00:00.000Z' }));
+  const run = (m) => new Promise((res) => { const c = spawn(process.execPath, ['--input-type=module', '-e', `import * as l from ${JSON.stringify(new URL('../lib/lease.mjs', import.meta.url).href)};
+    try { l.reclaim(${JSON.stringify(b)}, { job: 'j-aaaaaaaaaaaa', phase: 'build', owner: { provider: 'p', model: ${JSON.stringify(m)}, runtime: 'r', role: 'x' }, snapshotRef: null }, new Date('2026-11-17T10:00:00Z')); process.exit(0); } catch { process.exit(7); }`]); c.on('close', res); });
+  const codes = await Promise.all(['m1', 'm2', 'm3', 'm4'].map(run));
+  assert.ok(codes.filter((c) => c === 0).length >= 1); // sequential winners are allowed only after the first becomes fresh; the later ones see it is not stale
+  assert.equal(codes.filter((c) => c === 0).length, 1);
+  assert.throws(() => lease.assertReclaimable(b, J, t0), /not stale|no readable/);
+});
+test('fallback: a failed model with no numeric tier is refused instead of offering weaker models', () => {
+  assert.throws(() => ladder(M, { provider: 'claude', id: 'x', tier: null }), RangeError); assert.throws(() => ladder(M, { provider: 'claude', id: 'x' }), RangeError);
+});

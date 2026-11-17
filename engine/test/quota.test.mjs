@@ -48,3 +48,28 @@ test('pause or block: waits only for a known reset within 12 hours; never invent
   assert.equal(pauseOrBlock(h(-1), now).action, 'RETRY_NOW'); assert.equal(pauseOrBlock({ resetAt: 'garbage' }, now).action, 'BLOCK');
   assert.equal(pauseOrBlock(h(30), now, 48).action, 'PAUSE'); assert.throws(() => pauseOrBlock(h(1), now, 0), RangeError);
 });
+
+// ---- Fixes after the independent review of increment 4 ----
+test('time: a date in the message is honoured or the answer is null, never a wrong "next occurrence"', () => {
+  const now = at('2026-11-19T22:00:00Z');
+  const iso = parseClockTime('Resets 2026-11-25 09:00 UTC', { machineZone: L, now }); assert.equal(iso.resetAt, '2026-11-25T09:00:00.000Z'); assert.deepEqual(iso.assumptions, []);
+  const md = parseClockTime('Resets Nov 20 at 9:00 AM', { machineZone: L, now }); assert.equal(md.resetAt, '2026-11-20T09:00:00.000Z'); assert.ok(md.assumptions.includes('YEAR_INFERRED'));
+  assert.equal(parseClockTime('Resets Nov 20 at 9:00 AM', { machineZone: L, now: at('2026-11-21T00:00:00Z') }).resetAt, '2027-11-20T09:00:00.000Z');
+  for (const t of ['Resets on Tuesday at 9:00 AM', 'resets 25/11 at 09:00', 'resets 2026-11-25']) assert.equal(parseClockTime(t, { machineZone: L, now }).resetAt, null, t);
+  assert.equal(pauseOrBlock({ resetAt: parseClockTime('weekly limit. Resets 2026-11-25 09:00 UTC', { machineZone: L, now }).resetAt }, now).action, 'BLOCK');
+});
+test('time: the spring-forward gap moves forward in zones behind UTC too; the autumn overlap uses the first time; next day is a calendar day', () => {
+  assert.equal(new Date(zonedToUtc(2026, 3, 8, 2, 30, 'America/New_York')).toISOString(), '2026-03-08T07:30:00.000Z'); // 03:30 EDT
+  assert.equal(new Date(zonedToUtc(2026, 11, 1, 1, 30, 'America/New_York')).toISOString(), '2026-11-01T05:30:00.000Z'); // the first 01:30 (EDT)
+  assert.equal(new Date(zonedToUtc(2026, 10, 25, 1, 30, L)).toISOString(), '2026-10-25T00:30:00.000Z'); // first 01:30 (BST)
+  assert.equal(new Date(zonedToUtc(2026, 3, 29, 1, 30, L)).toISOString(), '2026-03-29T01:30:00.000Z'); // 01:30 does not exist in London that day; it lands just after the jump (02:30 BST)
+  assert.equal(parseClockTime('resets at 11pm', { machineZone: L, now: at('2026-11-17T23:30:00Z') }).resetAt, '2026-11-18T23:00:00.000Z');
+  assert.equal(new Date(zonedToUtc(2026, 3, 8, 9, 0, 'Asia/Kolkata')).toISOString(), '2026-03-08T03:30:00.000Z');
+});
+test('time and quota: a later "in" clause is found; "5h30m" is read; a short rate limit is not an exhausted allowance; gpt is a model family', () => {
+  const now = at('2026-11-17T10:00:00Z');
+  assert.equal(parseClockTime('Usage limit reached in your plan. Try again in 5 hours.', { machineZone: L, now }).resetAt, '2026-11-17T15:00:00.000Z');
+  assert.equal(parseClockTime('try again in 5h30m', { machineZone: L, now }).resetAt, '2026-11-17T15:30:00.000Z');
+  const r = parseQuotaMessage('429: rate limit exceeded, retry after 20 seconds', { provider: 'x', machineZone: L, now }); assert.equal(r.state, 'RATE_LIMITED'); assert.equal(pauseOrBlock(r, now).action, 'RETRY_LATER');
+  assert.equal(parseQuotaMessage("You've hit your GPT-5 usage limit", { provider: 'codex', machineZone: L, now }).scope, 'MODEL_FAMILY');
+});
