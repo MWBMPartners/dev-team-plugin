@@ -135,3 +135,18 @@ test('complex must be true or false; a lookalike never lowers the strength neede
   for (const bad of ['true', 1, 'yes']) assert.throws(() => route({ role: 'builder', providers: ['claude'], complex: bad }, seed, cfg()), BadRequest);
   assert.equal(route({ role: 'builder', providers: ['claude'], complex: true }, seed, cfg()).decision.tier, 3);
 });
+
+// ---- Fixes after the third independent review ----
+test('an empty or wrongly shaped pin stops the job instead of guessing', () => {
+  const load = (yaml) => { const proj = mkdtempSync(join(tmpdir(), 'dt-pin-')); mkdirSync(join(proj, '.dev-team')); writeFileSync(join(proj, '.dev-team', 'config.yml'), yaml); return loadRouting({ home: proj, projectDir: proj }); };
+  for (const y of ['routing:\n  pin:\n    opus: ""\n', 'routing:\n  pin:\n    opus:\n', 'routing:\n  pin: opus\n', 'routing:\n  pin:\n    - opus\n', 'routing:\n  pin: {opus: [1, 2]}\n']) {
+    const c = load(y); assert.ok(c.badPins.length > 0, y);
+    assert.equal(route({ role: 'architect', providers: ['claude'] }, seed, c).code, 'PIN_INVALID');
+  }
+  assert.deepEqual(load('routing:\n  pin:\n    opus: 4.10\n').pin, { opus: '4.10' });
+});
+test('local models are found when the provider is written in capitals', async () => {
+  const { discoverOllama } = await import('../lib/discover.mjs');
+  const found = await discoverOllama(async () => ({ stdout: 'NAME ID SIZE MODIFIED\nqwen2.5-coder:32b a 1GB now\n' }));
+  assert.equal(found.length, 1);
+});

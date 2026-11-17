@@ -75,8 +75,15 @@ export function loadRouting(opts = {}) {
   // user's own setting). A repository INSTRUCTION file may only add to it; that rule is applied by the lead,
   // which passes the combined list on, because this reader never looks at instruction files.
   const askFirst = Array.isArray(project.routing?.['ask-first']) ? project.routing['ask-first'].map(String) : DEFAULT_ASK_FIRST;
-  const pin = project.routing?.pin && typeof project.routing.pin === 'object' ? project.routing.pin : {};
-  return { order, orderDecidedBy, askedBefore, askFirst, pin, profile: project.profile ?? null };
+  // A pin must be a map of name to a non-empty piece of text. Anything else is kept out of `pin` and
+  // listed in `badPins`, and routing stops and asks rather than guess what version was meant.
+  const rawPin = project.routing?.pin;
+  const pin = {}, badPins = [];
+  if (rawPin !== undefined && rawPin !== null && (typeof rawPin !== 'object' || Array.isArray(rawPin))) badPins.push('pin (it must be a list of name: version pairs)');
+  else for (const [k, v] of Object.entries(rawPin ?? {})) {
+    if ((typeof v === 'string' && v.trim() !== '' && !/[\[\]{}]/.test(v)) || typeof v === 'number') pin[k] = String(v); else badPins.push(k);
+  }
+  return { order, orderDecidedBy, askedBefore, askFirst, pin, badPins, profile: project.profile ?? null };
 }
 
 /** Save this computer's own default order. Writes only the device file, outside any project. */

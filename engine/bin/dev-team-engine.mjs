@@ -38,6 +38,7 @@ export const commands = {
     let req;
     try { req = JSON.parse(readFileSync(resolve(a.flags['request-file']), 'utf8')); } catch { throw new BadInput('the request file is missing or is not valid JSON'); }
     if (!req || typeof req !== 'object' || Array.isArray(req)) throw new BadInput('the request must be a JSON object');
+    if (req.projectDir !== undefined && typeof req.projectDir !== 'string') throw new BadInput('projectDir must be text');
     const cfg = loadRouting({ projectDir: req.projectDir ?? process.cwd(), sessionOrder: req.order });
     let models = loadSeed();
     if (Array.isArray(req.providers) && req.providers.some((p) => String(p).toLowerCase() === 'ollama')) models = [...models, ...(await discoverOllama(execFile))];

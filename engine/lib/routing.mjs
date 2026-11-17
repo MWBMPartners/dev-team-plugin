@@ -51,6 +51,7 @@ export function route(req, models, cfg) {
     if (!Number.isInteger(req.minTier) || req.minTier < 1 || req.minTier > 4) throw new BadRequest('minTier must be a whole number from 1 to 4');
     need = Math.max(need, req.minTier);
   }
+  if (cfg.badPins && cfg.badPins.length) return negative('PIN_INVALID', `A pin in .dev-team/config.yml is not usable (${cfg.badPins.join(', ')}). I will not guess which version you meant; please correct it.`, [`The ${req.role} job needs tier ${need} or stronger.`], [], []);
   const approved = strList(req.approved, 'approved'), exhausted = strList(req.exhausted, 'exhausted');
   const providers = strList(req.providers ?? ['claude'], 'providers');
   const askFirst = cfg.askFirst.map(lc);

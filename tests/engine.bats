@@ -86,3 +86,10 @@ teardown() { rm -rf "$SCRATCH"; }
   [ "$status" -eq 2 ]
   [[ "$output" != *"sk-ant"* ]]
 }
+
+@test "engine.sh: Ollama written in capitals still counts as the local provider, and projectDir must be text" {
+  printf '{"role":"builder","providers":["OLLAMA","claude"],"projectDir":123}' > "$SCRATCH/req.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" route --request-file "$SCRATCH/req.json"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"projectDir must be text"* ]]
+}
