@@ -31,3 +31,21 @@ test('share warning: fires above the threshold on a known allowance; an unknown 
   assert.equal(shareWarning(30, 100).warn, true); assert.equal(shareWarning(10, 100).warn, false); const u = shareWarning(30, null); assert.deepEqual([u.warn, u.state, u.share], [false, 'UNKNOWN', undefined]);
   assert.throws(() => shareWarning(1, 0), RangeError);
 });
+
+import { route } from '../lib/routing.mjs';
+import { dryRun } from '../lib/dryrun.mjs';
+import { readFileSync } from 'node:fs'; import { join } from 'node:path'; import { pluginRoot } from '../lib/paths.mjs'; import { DEFAULT_ASK_FIRST } from '../lib/config.mjs';
+const seed = JSON.parse(readFileSync(join(pluginRoot(), 'engine/data/catalogue.seed.json'), 'utf8')).models;
+const cfg = (o = {}) => ({ order: 'local-first', orderDecidedBy: 't', askedBefore: true, askFirst: DEFAULT_ASK_FIRST, pin: {}, ...o });
+test('route: a low allowance keeps the strong model for planning and security; routine work moves down; unknown applies nothing', () => {
+  const routine = route({ role: 'architect', taskTypes: ['ARCHITECTURE_REVIEW'], risk: 'NORMAL', providers: ['claude', 'codex'], quotaRemaining: { claude: 10 } }, seed, cfg());
+  assert.equal(routine.decision.provider, 'claude'); // architecture review may use the reserve
+  const doc = route({ role: 'builder', taskTypes: ['COMPLEX_IMPLEMENTATION'], risk: 'NORMAL', providers: ['claude', 'codex'], quotaRemaining: { claude: 10 } }, seed, cfg());
+  assert.notEqual(doc.decision?.model, 'opus'); assert.ok(doc.dropped.some((x) => /kept for planning/.test(x)));
+  const unknown = route({ role: 'builder', taskTypes: ['COMPLEX_IMPLEMENTATION'], providers: ['claude'], quotaRemaining: { claude: null } }, seed, cfg()); assert.ok(unknown.decision);
+  assert.throws(() => route({ role: 'builder', providers: ['claude'], quotaRemaining: { claude: 150 } }, seed, cfg()), /quotaRemaining/); assert.throws(() => route({ role: 'builder', providers: ['claude'], quotaRemaining: [] }, seed, cfg()), /quotaRemaining/);
+});
+test('dry-run shows LOW/LIKELY/HIGH with the caveat and the allowance pressure when it was given', () => {
+  const r = dryRun([{ name: 'p', role: 'architect', taskTypes: ['DEEP_PLANNING'], risk: 'NORMAL', quotaRemaining: { claude: 40 } }], (q) => route({ providers: ['claude'], ...q }, seed, cfg()));
+  assert.ok(r.rows[0].cost.low <= r.rows[0].cost.likely && r.rows[0].cost.likely <= r.rows[0].cost.high); assert.equal(r.rows[0].quota, 'ELEVATED');
+});

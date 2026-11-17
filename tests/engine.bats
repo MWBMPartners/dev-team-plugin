@@ -281,3 +281,20 @@ teardown() { rm -rf "$SCRATCH"; }
   [[ "$output" == *"LOGIN.PHP"* ]]
   [[ "$output" == *"index.php"* ]]
 }
+
+@test "engine.sh: budget check stops at the limit with exit 1 and protects the reserve; estimate always carries its caveat" {
+  printf '{"limit":{"tokens":100},"spent":{"tokens":100}}' > "$SCRATCH/b.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" budget check --input "$SCRATCH/b.json"
+  [ "$status" -eq 1 ]
+  printf '{"remainingPercent":10,"tier":4,"taskTypes":["DOCUMENTATION"]}' > "$SCRATCH/r.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" budget check --input "$SCRATCH/r.json"
+  [ "$status" -eq 1 ]
+  printf '{"remainingPercent":null,"tier":4,"taskTypes":["DOCUMENTATION"]}' > "$SCRATCH/r2.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" budget check --input "$SCRATCH/r2.json"
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r .result.state)" = "UNKNOWN" ]
+  printf '{"taskTypes":["DEEP_PLANNING"],"costBand":5}' > "$SCRATCH/e.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" estimate --input "$SCRATCH/e.json"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"not a bill"* ]]
+}

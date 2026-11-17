@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Orchestrator engine, increment 7**: reserves that keep the strongest models for planning, security, hard
+  debugging and final review when an allowance is known and low; phase budgets (`budget check`); LOW/LIKELY/HIGH
+  relative cost estimates (`estimate`, and in `dry-run`) that always say they are not a bill. An unknown allowance
+  never produces a number.
+
 - **Orchestrator engine, increment 6**: five action levels mapped to the autopilot's three buckets (`gate check`),
   ten policy packs that can only make things stricter, rules collected from a project's instruction files
   (`invariants collect`), a rollback requirement for high-risk plans, and `scripts/check-no-lang-ext-urls.sh`

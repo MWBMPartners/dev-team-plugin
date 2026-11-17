@@ -356,7 +356,7 @@ test('dry-run: one row per phase, the route-order question once with its reason,
     (q) => route({ providers: ['claude'], ...q }, seed, c));
   assert.equal(r.rows.length, 2); assert.equal(r.questions.filter((q) => q.id === 'route-order').length, 1);
   assert.ok(r.questions.every((q) => q.why)); assert.ok(r.questions.some((q) => q.id === 'uncertain-input'));
-  assert.equal(r.rows[1].cost, 'available after increment 7');
+  assert.equal(r.rows[1].cost.unit, 'relative cost units'); assert.match(r.rows[1].cost.caveat, /not a bill/); assert.equal(r.rows[1].quota, 'UNKNOWN');
 });
 
 // ---- Fixes after the independent review of increment 1 ----

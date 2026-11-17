@@ -4,6 +4,7 @@
 //          a worker; it returns an instruction the lead carries out.
 import { floorFor } from './tiers.mjs';
 import { wantedEffort, applyEffort, claudeAgentFile } from './effort.mjs';
+import { reserveCheck } from './budget.mjs';
 
 // Rules it follows (from the locked plan):
 //   - Strength is judged by tier, never by a model's name (tier 1 utility .. tier 4 principal).
@@ -77,6 +78,8 @@ export function route(req, models, cfg) {
   if (cfg.badSettings && cfg.badSettings.length) return negative('SETTINGS_INVALID', `A routing setting in .dev-team/config.yml is ambiguous (${cfg.badSettings.join('; ')}). I will not guess which one you meant; please correct it.`, [`The ${req.role} job needs tier ${need} or stronger.`], [], []);
   if (cfg.badPins && cfg.badPins.length) return negative('PIN_INVALID', `A pin in .dev-team/config.yml is not usable (${cfg.badPins.join(', ')}). I will not guess which version you meant; please correct it.`, [`The ${req.role} job needs tier ${need} or stronger.`], [], []);
   if (req.builtBy !== undefined && typeof req.builtBy !== 'string') throw new BadRequest('builtBy must be text');
+  if (req.quotaRemaining !== undefined && (!req.quotaRemaining || typeof req.quotaRemaining !== 'object' || Array.isArray(req.quotaRemaining) || Object.values(req.quotaRemaining).some((v) => v !== null && (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 100)))) throw new BadRequest('quotaRemaining must map a provider to a percentage from 0 to 100, or null when not known');
+  if (req.reserves !== undefined && (!req.reserves || typeof req.reserves !== 'object' || Array.isArray(req.reserves))) throw new BadRequest('reserves must be an object');
   const approved = strList(req.approved, 'approved'), exhausted = strList(req.exhausted, 'exhausted');
   const providers = strList(req.providers ?? ['claude'], 'providers');
   if (req.escalateEffort !== undefined && typeof req.escalateEffort !== 'boolean') throw new BadRequest('escalateEffort must be true or false');
@@ -94,6 +97,18 @@ export function route(req, models, cfg) {
   let pool = models.filter((m) => m.roles.includes(req.role) && m.tier >= need);
   const available = (m) => providers.includes(lc(m.provider));
   pool = pool.filter((m) => { if (!available(m)) { dropped.push(`${m.id}: provider ${m.provider} is not available`); return false; } if (exhausted.includes(lc(m.provider))) { dropped.push(`${m.id}: ${m.provider}'s allowance is used up`); return false; } return true; });
+
+  // Reserves: when a provider's remaining allowance is known and low, its strongest models are kept for planning,
+  // security, hard debugging and final review. An unknown allowance applies no reserve and no number is guessed.
+  if (req.quotaRemaining) {
+    const qr = Object.fromEntries(Object.entries(req.quotaRemaining).map(([k, v]) => [lc(k), v]));
+    pool = pool.filter((m) => {
+      if (m.local || !Object.hasOwn(qr, lc(m.provider))) return true;
+      let r; try { r = reserveCheck({ remainingPercent: qr[lc(m.provider)], tier: m.tier, taskTypes: Array.isArray(req.taskTypes) ? req.taskTypes : [], reserves: req.reserves }); } catch (e) { throw new BadRequest(e instanceof Error ? e.message : 'bad reserves'); }
+      if (!r.allowed) dropped.push(`${m.id}: ${r.reason}`);
+      return r.allowed;
+    });
+  }
 
   // A pin names an exact version for one cloud model (a local model that happens to share the name
   // never takes a pin). If a pinned model fits this job but cannot be used right now, stop and ask:
