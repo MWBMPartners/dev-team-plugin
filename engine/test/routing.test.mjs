@@ -242,3 +242,10 @@ test('a stray list item, a repeated profile, a malformed device file all stop ro
 test('free text that merely contains the word routing inside an unrelated block is not blocked', () => {
   assert.equal(loadYaml('notes: |\n  this is about routing: how it works\n  and: more\nrouting:\n  order: cloud-first\n').badSettings.length, 0);
 });
+
+// ---- Fix after the eleventh independent review ----
+test('a name: value line inside a list stops routing instead of being dropped', () => {
+  const c = loadYaml('routing:\n  ask-first:\n    - fable\n    mythos: true\n');
+  assert.ok(c.badSettings.length > 0);
+  assert.equal(route({ role: 'architect', providers: ['claude'], minTier: 4, approved: ['fable'] }, seed, c).code, 'SETTINGS_INVALID');
+});

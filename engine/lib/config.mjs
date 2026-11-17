@@ -103,7 +103,7 @@ export function parseYamlChecked(text) {
     const parent = parentFrame.obj;
     const path = parentFrame.path ? `${parentFrame.path}.${m[1]}` : m[1];
     if (FORBIDDEN_KEYS.has(m[1])) { problems.push({ path, message: `the key name "${m[1]}" is not allowed` }); continue; }
-    if (Array.isArray(parent)) continue;
+    if (Array.isArray(parent)) { problems.push({ path: parentFrame.path || '(top level)', message: 'a name: value line inside a list' }); continue; }
     if (Object.hasOwn(parent, m[1])) problems.push({ path, message: `"${m[1]}" is written more than once` });
     if (m[2] === '') { parent[m[1]] = {}; stack.push({ indent, obj: parent[m[1]], parent, key: m[1], path }); }
     else parent[m[1]] = parentFrame.key === 'pin' ? m[2].trim().replace(/^["']|["']$/g, '') : scalar(m[2], (msg) => problems.push({ path, message: msg })); // pin versions stay exact text
