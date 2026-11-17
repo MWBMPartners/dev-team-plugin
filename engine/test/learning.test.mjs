@@ -62,3 +62,12 @@ test('canary: no bouncing and no spending one set of evidence twice; competency 
   assert.equal(competency(oldTen, q, now).score, null); assert.equal(competency([...oldTen, rec({ accepted: false })], q, now).score, null);
   assert.throws(() => healthState([], { baselineLatencyMs: -1 }), RangeError); assert.throws(() => healthState([], { baselineLatencyMs: 'abc' }), RangeError);
 });
+
+test('learning: records a day or a week old still give a score; field order cannot dodge the duplicate check; impossible dates with an offset are refused', () => {
+  const q = { provider: 'claude', model: 'sonnet', taskType: 'ROUTINE_IMPLEMENTATION' }, now = new Date('2026-11-17T00:00:00Z');
+  for (const at of ['2026-11-16T23:00:00Z', '2026-11-16T00:00:00Z', '2026-11-10T00:00:00Z']) { const five = Array.from({ length: 10 }, (_, i) => rec({ at: at.replace(':00Z', `:${String(i).padStart(2, '0')}Z`) })); assert.notEqual(competency(five, q, now).score, null, at); }
+  const d = dir(); const a = rec(), b = { provider: a.provider, taskType: a.taskType, model: a.model, tier: a.tier, risk: a.risk, accepted: a.accepted, at: a.at };
+  assert.equal(record(d, a, {}, NOW).recorded, true); assert.equal(record(d, b, {}, NOW).recorded, false);
+  for (const at of ['2026-02-31T10:00:00+00:00', '2026-04-31T10:00:00-05:00', '2026-02-30T10:00:00+01:00', '2026-11-17T24:00:00+00:00', '2026-13-01T10:00:00+01:00']) assert.throws(() => validateRecord(rec({ at }), NOW), RangeError, at);
+  assert.equal(validateRecord(rec({ at: '2026-11-17T10:00:00+05:30' }), NOW).at, '2026-11-17T04:30:00.000Z');
+});

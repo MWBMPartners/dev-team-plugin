@@ -40,10 +40,15 @@ export function validateRecord(r, now = new Date()) {
   // The time must be exactly a UTC date-time (no free text), real, and not in the future; it is stored in the engine's own form.
   if (typeof r.at !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/.test(r.at)) throw new RangeError('at must be a date and time such as 2026-11-17T10:00:00Z');
   const ms = Date.parse(r.at);
-  if (!Number.isFinite(ms) || new Date(ms).toISOString().slice(0, 10) !== r.at.slice(0, 10) && !/[+-]\d{2}:\d{2}$/.test(r.at)) throw new RangeError('at must be a real date and time');
+  { // check the date and time exactly as WRITTEN, whatever the offset (Date.parse would roll 31 February into March)
+    const [y, mo, d, h, mi, s] = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/.exec(r.at).slice(1).map(Number);
+    const dim = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+    if (!Number.isFinite(ms) || mo < 1 || mo > 12 || d < 1 || d > dim || h > 23 || mi > 59 || s > 59) throw new RangeError('at must be a real date and time');
+  }
   if (ms > now.getTime() + 86400000) throw new RangeError('at is in the future');
   if (looksLikeCredential(JSON.stringify(r))) throw new RangeError('the record looks like it contains a secret');
-  return { ...r, at: new Date(ms).toISOString() };
+  // Built in the fixed field order, so the same record written in a different order is still the same record.
+  return Object.fromEntries(KEYS.filter((k) => r[k] !== undefined).map((k) => [k, k === 'at' ? new Date(ms).toISOString() : r[k]]));
 }
 
 export const learningEnabled = (env = process.env) => !env.DEV_TEAM_NO_LEARNING;
@@ -87,7 +92,7 @@ export function competency(records, q, now = new Date()) {
     let w = 0, s = 0;
     for (const r of list) { const age = Math.max(0, (now.getTime() - Date.parse(r.at)) / 86400000); const wt = Math.pow(0.5, age / HALF_LIFE_DAYS); w += wt; s += wt * (r.accepted ? 1 : 0); }
     // The results must still carry enough WEIGHT, not just be numerous: ten results from years ago are not ten observations.
-    if (w < min) return null;
+    if (w < min / 2) return null; // on average the results must be no older than about one half-life (30 days)
     return { score: Math.round(((s + 0.5 * PRIOR_WEIGHT) / (w + PRIOR_WEIGHT)) * 1000) / 1000, observations: list.length, basis };
   };
   const proj = q.project ? calc(mine.filter((r) => r.project === q.project), MIN_PROJECT, 'PROJECT') : null;
