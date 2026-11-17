@@ -1,0 +1,252 @@
+{
+  "dev-team": "ledger=plan-contract schema=1.0",
+  "planId": "orchestrator-v2",
+  "planVersion": 1,
+  "planHash": "bd4f9f9bae169a717784bf02e296d45709643831563cc156867d9d2913a7b771",
+  "status": "LOCKED",
+  "approvedAt": "2026-11-17",
+  "approvedBy": "owner",
+  "supersedes": null,
+  "contract": {
+    "requirements": [
+      "R1 Route work by capability, tier, specialisation, runtime features, context, competency, reliability, lifecycle, quota, cost, latency and user policy — never by model name in central routing (brief 3, 71).",
+      "R2 Distinguish provider, model, runtime, role, agent instance, Job, Phase, Task, Attempt, Artifact, ReviewFinding (brief 4).",
+      "R3 Provider and runtime adapters with a registry; adding a provider touches no routing code (brief 5, 99.54).",
+      "R4 Dynamic discovery for Claude Code and Codex with provenance and UNKNOWN; refresh triggers; disappearing models and discovery failures handled without losing a good cache (brief 6–8).",
+      "R5 Locked, versioned, hashed plan contracts; drift levels with STOP; this plan hand-locked before the first code commit (brief 25–27, 97.11).",
+      "R6 Phase leases; quota observations that never invent a reset; ≤12 h pause/resume of the same owner with a work snapshot that includes untracked files; crash reclaim always snapshots before any reset; >12 h or unknown → BLOCKED; explicit recorded takeover; retirement takeover; pre-phase fallback (brief 29–38).",
+      "R7 Structured completion state, an evidence gate that deterministic results control, and bounded attempts with progress tracking (brief 46–48, 85).",
+      "R8 Independent review with cross-provider preference by risk, a recorded independence level, specialist and adversarial modes, finding lifecycle, reviewer precision, adjudication (brief 55–64).",
+      "R9 Invariants, policy packs, five destructive-action levels, human approval, rollback (brief 22–23, 75–77).",
+      "R10 Quota-aware routing, reserves, per-phase budgets, cost bands (brief 40–44).",
+      "R11 Local, private learning; canary stages (fixed first, dynamic later); probes; health/brownout; tool reliability; shadow evaluation (off); history views (brief 11–14, 17–19, 62, 65, 68–69, 83).",
+      "R12 Signed remote catalogue, plugin side, no private key committed (brief 16).",
+      "R13 Decomposition, risk-aware parallelism, integration stage, provenance graph (brief 50–54).",
+      "R14 Dry-run with an owner-questions block, routing visibility, explainability, decision records, observability events (brief 79–82, 95).",
+      "R15 Tests per brief 93, a simulator per 94, the completion gate per 98, documentation per 96.",
+      "R16 The owner's practices F1–F8, F10, F13–F15 (narrow), F24, F25, F27–F31, P1–P4, R2/R4 (partial) as mapped in §3.3.",
+      "R17 Where work starts is a setting: local-first is the built-in default, asked once per project and remembered; cloud-first and local-first profiles; a per-device default in ~/.dev-team/device.yml; local models are free and never need approval (owner, 17 Nov 2026).",
+      "R18 Models on the ask-first list (default: Fable, Mythos, OpenAI's and Google's top models, and any model with no known price) are never used without an explicit yes for the task; exact versions can be pinned and a pin that cannot be honoured stops and asks.",
+      "R19 Providers include Copilot (reviewer first), DeepSeek and Ollama as well as Claude Code, Codex, Gemini, Kimi and Grok; models found locally or on an account are usable without a plugin release.",
+      "R20 One shared project document set (handover, goals, requirements and prerequisites, plan) any model can read; tracker boards and milestones kept current; OpenAPI and Swagger UI checked for web projects with an API."
+    ],
+    "constraints": [
+      "C1 Plain everyday English in all text; detailed why/rejected/cannot-do comments; file headers; a glossary for the plan's own terms.",
+      "C2 Every JSON file has a schema with descriptions that CI validates through schemas/manifest.json — real files and fixtures alike; no JSON comments; fixtures paired with schemas.",
+      "C3 Engine: plain ES-module JavaScript, `// @ts-check` + JSDoc, zero runtime dependencies, Node ≥ 22, bash shim that refuses loudly; language-specific parts isolated (D1 delta).",
+      "C4 Everything committed lives in `.dev-team/` with the ownership marker as the first key (line 2); machine-local state under `CLAUDE_PLUGIN_DATA` keyed by the shared git common dir; nothing machine-local inside the repository.",
+      "C5 1.x behaviour continues unchanged when the engine is absent; additive schema changes only (`verdict` and `autopilot` stay 1.0); `config.yml` keeps 1.x keys only (plus `git.push-after-task`); profiles carry engine keys only.",
+      "C6 No credentials read, logged or written into committed config; provider text redacted; free text via stdin or file; no hidden reasoning stored; learning stores no code.",
+      "C7 One working branch (per D2), one pull request to alpha, no stacking; Codex reviews single and spaced; stand-in reviews recorded; catch-up review after any absence; an issue comment per package.",
+      "C8 Runtime scope for 2.0.0: Claude Code lead; Codex verified worker/reviewer; Gemini/Kimi/Grok unverified (DEP-1).",
+      "C9 Shell code stays bash-3.2-safe (no globstar); every increment ships with its own tests and documentation."
+    ],
+    "invariants": [
+      "I1 Verification never below tier 3 at NORMAL risk or above (1.x invariant 1, now a floor row).",
+      "I2 Plan expensive, execute cheap (1.x invariant 2).",
+      "I3 A locked plan's hash never changes; a change is a new version.",
+      "I4 No uncommitted work is ever discarded without a snapshot ref existing first; a paused lease is never treated as crashed; a snapshot with a secret in it is never written.",
+      "I5 A reset time is stored only with its provenance and assumptions; no clock time → UNKNOWN → BLOCKED.",
+      "I6 Remote catalogue data can never lower a floor, weaken a gate, or override verified runtime data.",
+      "I7 Whoever verifies is never whoever built; the independence level is always recorded.",
+      "I8 Tier 4 is never the default; the cheapest qualified candidate wins ties on cost.",
+      "I9 The engine never spawns a worker; it returns the spawn instruction and records the decision.",
+      "I10 A committed file written by the engine never contains a credential-shaped value."
+    ],
+    "architecturalDecisions": [
+      "AD1 Decide-and-record engine + executing lead (§2.1).",
+      "AD2 Storage split committed/local (§2.2), per-job decision files, JSON config with schema (DEP-9), the config.yml / orchestrator.json line.",
+      "AD3 Fixed command surface and exit codes (§2.3); large or sensitive input by stdin or file.",
+      "AD4 Adapter interfaces and registry (§2.4); Claude effort via a fixed set of role × effort agent files; model via spawn-time parameter; compat data (claude-aliases, openai-families) as the honest tier source before learning exists.",
+      "AD5 Snapshot = commit object from a temporary index under refs/dev-team/snapshots, secret-scanned, never pushed; reclaim always snapshots first.",
+      "AD6 Ed25519 over canonical JSON, pinned public key, hand-verifiable, test keys generated at run time.",
+      "AD7 Learning ON/local; shadow OFF; owner defaults as the `mwbm-standard` preset (engine keys) plus offered config.yml lines; brief defaults built in.",
+      "AD8 Host does the waiting (DEP-4); engine persists the reset time.",
+      "AD9 Agents renamed to roles with one-release aliases and enumerated effort variants (increment 2).",
+      "AD10 The plan itself is hand-locked in .claude/plans/ before code; the engine later verifies the same hash."
+    ],
+    "implementationTasks": [
+      {
+        "id": "INC-0A",
+        "title": "Hand-lock this plan; shim, doctor, schema+manifest rule, CI engine job, /dev-team-doctor, HT-0..HT-3",
+        "size": "S",
+        "dependsOn": []
+      },
+      {
+        "id": "INC-0B",
+        "title": "Discovery, adapters, compat data, simulator harness, event log, audit widening, Claude Code manifest schemas",
+        "size": "M",
+        "dependsOn": [
+          "INC-0A"
+        ]
+      },
+      {
+        "id": "INC-1",
+        "title": "Catalogue, taxonomy, floors, effort mapping, routing score, decision records, explain, dry-run, presets",
+        "size": "L",
+        "dependsOn": [
+          "INC-0B"
+        ]
+      },
+      {
+        "id": "INC-2",
+        "title": "Role-named agents with effort variants and aliases",
+        "size": "S",
+        "dependsOn": [
+          "INC-1"
+        ]
+      },
+      {
+        "id": "INC-3",
+        "title": "Job state, plan lock and verify, drift, evidence gate, checkpoints, attempt caps, deterministic discovery, handover fields, progress table",
+        "size": "L",
+        "dependsOn": [
+          "INC-1"
+        ]
+      },
+      {
+        "id": "INC-4",
+        "title": "Time handling, leases, quota adapters, snapshot, pause/resume, block, paused≠crashed reclaim rule, fallback, takeover, retirement, failure classes",
+        "size": "L",
+        "dependsOn": [
+          "INC-3"
+        ]
+      },
+      {
+        "id": "INC-5",
+        "title": "Review independence, cross-provider review, finding lifecycle, Codex reviewer, catch-up review",
+        "size": "M",
+        "dependsOn": [
+          "INC-4"
+        ]
+      },
+      {
+        "id": "INC-6",
+        "title": "Invariants, policy packs, destructive-action levels, human approval, rollback, P1–P4",
+        "size": "M",
+        "dependsOn": [
+          "INC-1"
+        ]
+      },
+      {
+        "id": "INC-7",
+        "title": "Quota-aware routing, reserves, budgets, cost bands",
+        "size": "M",
+        "dependsOn": [
+          "INC-4"
+        ]
+      },
+      {
+        "id": "INC-8",
+        "title": "Learning, competency, context quality, canary promotion, probes, health, reliability, shadow, history",
+        "size": "L",
+        "dependsOn": [
+          "INC-4",
+          "INC-5"
+        ]
+      },
+      {
+        "id": "INC-9",
+        "title": "Signed remote catalogue (plugin side)",
+        "size": "S",
+        "dependsOn": [
+          "INC-1"
+        ]
+      },
+      {
+        "id": "INC-10",
+        "title": "Decomposition, parallelism, integration engineer, provenance graph, worktrees",
+        "size": "M",
+        "dependsOn": [
+          "INC-4"
+        ],
+        "preconditions": [
+          "HT-4 recorded in hand-tests.md"
+        ]
+      },
+      {
+        "id": "INC-11",
+        "title": "Owner practice bundle",
+        "size": "M",
+        "dependsOn": [
+          "INC-3",
+          "INC-5"
+        ]
+      },
+      {
+        "id": "INC-12",
+        "title": "Documentation, completion gate, 2.0.0",
+        "size": "M",
+        "dependsOn": [
+          "INC-0A",
+          "INC-0B",
+          "INC-1",
+          "INC-2",
+          "INC-3",
+          "INC-4",
+          "INC-5",
+          "INC-6",
+          "INC-7",
+          "INC-8",
+          "INC-9",
+          "INC-10",
+          "INC-11",
+          "INC-1A",
+          "INC-6A",
+          "INC-11A",
+          "INC-12A"
+        ]
+      },
+      {
+        "id": "INC-1A",
+        "title": "Copilot, DeepSeek and Ollama adapters; route order, profiles and per-device default; allowance and difficulty switches",
+        "size": "M",
+        "dependsOn": [
+          "INC-1"
+        ]
+      },
+      {
+        "id": "INC-6A",
+        "title": "Engine enforcement of ask-first and pins; unpriced models count as ask-first",
+        "size": "S",
+        "dependsOn": [
+          "INC-1"
+        ]
+      },
+      {
+        "id": "INC-11A",
+        "title": "Project document set checks",
+        "size": "S",
+        "dependsOn": [
+          "INC-3"
+        ]
+      },
+      {
+        "id": "INC-12A",
+        "title": "Boards, milestones, API documentation check",
+        "size": "M",
+        "dependsOn": [
+          "INC-11A"
+        ]
+      }
+    ],
+    "acceptanceCriteria": [
+      "AC-1..AC-55 as listed in §3.2, each provable by the named test or hand test, all re-run at INC-12.",
+      "The hand tests HT-0..HT-3 recorded with commands and output before INC-1 builds on them; HT-4 before INC-10.",
+      "1.x behaviour unchanged with Node absent (bats exit-3 paths) and with the engine present but unused.",
+      "Every JSON file in the repository outside .claude/ is listed in schemas/manifest.json (or its reasoned exceptions) and validated in CI; every schema has a fixture and every fixture a schema.",
+      "The reclaim-after-crash test proves a dirty tree with an untracked file is snapshotted before any reset.",
+      "The departures note lists DEP-1..DEP-14 with reasons."
+    ],
+    "testsRequired": [
+      "engine/test/*.test.mjs per §5.1; engine/sim/scenarios/* per §5.1; tests/engine.bats per §5.2; tests/scripts.bats unchanged and green; scripts/completion-gate.sh per §5.3; CI jobs audit, test, engine green."
+    ],
+    "rollbackRequirements": [
+      "Each increment is one set of commits that can be reverted as a unit without breaking 1.x behaviour (the shim and the detect-first rule guarantee that).",
+      "Deprecated agent aliases remain for one release so a revert of INC-2 is a file restore.",
+      "Committed engine files are additive under .dev-team/; deleting .dev-team/jobs, .dev-team/plans, .dev-team/orchestrator.json and .dev-team/invariants.json returns a project to 1.5.0 state; local state is removable by deleting CLAUDE_PLUGIN_DATA subfolders; snapshot refs are removable with git update-ref -d or snapshot prune.",
+      "Schema changes are additive, so 1.5.0 readers keep reading 2.0.0 files.",
+      "The reclaim rule change in loop-runtime.md is reverted together with INC-4's engine code, never on its own, so the documented behaviour always matches what the engine does."
+    ]
+  }
+}
