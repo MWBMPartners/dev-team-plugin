@@ -10,9 +10,12 @@ export const STATUSES = ['OPEN', 'ACCEPTED', 'REJECTED', 'FALSE_POSITIVE', 'DEFE
 const NEXT = { OPEN: ['ACCEPTED', 'REJECTED', 'FALSE_POSITIVE', 'DEFERRED'], ACCEPTED: ['FIXED'], FIXED: ['VERIFIED', 'ACCEPTED'], DEFERRED: ['OPEN', 'ACCEPTED'], REJECTED: [], FALSE_POSITIVE: [], VERIFIED: [] };
 export const SEVERITIES = ['BLOCKING', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
 
-const norm = (s) => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
+const norm = (s) => String(s).normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
+// File names keep their case (a different case can be a different file) but are tidied: "./a.js" is "a.js".
+const normPath = (p) => String(p).normalize('NFC').replace(/\\/g, '/').replace(/^(\.\/)+/, '').trim();
+const person = (s) => String(s ?? '').normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
 /** The same file, rule and wording always give the same id, so a re-run does not create a duplicate. */
-export const findingId = ({ file, rule, summary }) => `F-${sha256Hex(canonicalJson({ file: norm(file), rule: norm(rule ?? ''), summary: norm(summary) })).slice(0, 8)}`;
+export const findingId = ({ file, rule, summary }) => `F-${sha256Hex(canonicalJson({ file: normPath(file), rule: norm(rule ?? ''), summary: norm(summary) })).slice(0, 8)}`;
 
 /** Add a finding (or leave the list alone if its id is already there). */
 export function addFinding(list, { file, rule = '', summary, severity, reviewer }) {
@@ -31,20 +34,25 @@ export function updateFinding(list, id, { status, by, evidence = '' }) {
   const reopen = f.status === 'VERIFIED' && ['OPEN', 'ACCEPTED'].includes(status);
   if (reopen) { if (typeof evidence !== 'string' || evidence.trim().length < 10) throw new RangeError('re-opening a verified finding needs new evidence (at least a sentence)'); }
   else if (!NEXT[f.status].includes(status)) throw new RangeError(`a finding cannot go from ${f.status} to ${status}`);
-  if (status === 'VERIFIED' && by === f.reviewer) throw new RangeError('a finding cannot be verified by the reviewer who raised it');
+  if (status === 'VERIFIED') {
+    if (typeof by !== 'string' || person(by) === '') throw new RangeError('a finding can only be verified by a named person or reviewer');
+    if (person(by) === person(f.reviewer)) throw new RangeError('a finding cannot be verified by the reviewer who raised it');
+  }
+  if (list.filter((x) => x.id === id).length !== 1) throw new RangeError('the findings list has more than one finding with that id');
   const next = list.map((x) => (x.id === id ? { ...x, status, history: [...x.history, { from: x.status, to: status, by: by ?? null, evidence: evidence || null }] } : x));
   return next;
 }
 
 /** How often each reviewer was right: raised, accepted (or fixed or verified), rejected, false positives. */
 export function precision(list) {
-  const out = {};
+  const out = new Map(); // a Map, so a reviewer called "__proto__" or "constructor" is just a name
   for (const f of list) {
-    const c = (out[f.reviewer] ??= { raised: 0, accepted: 0, rejected: 0, falsePositive: 0 });
+    const c = out.get(f.reviewer) ?? { raised: 0, accepted: 0, rejected: 0, falsePositive: 0 };
     c.raised++;
     if (['ACCEPTED', 'FIXED', 'VERIFIED'].includes(f.status)) c.accepted++;
     if (f.status === 'REJECTED') c.rejected++;
     if (f.status === 'FALSE_POSITIVE') c.falsePositive++;
+    out.set(f.reviewer, c);
   }
-  return out;
+  return Object.fromEntries(out);
 }

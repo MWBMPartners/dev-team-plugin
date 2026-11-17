@@ -1,0 +1,21 @@
+{
+  "dev-team": "ledger=policy-pack schema=1.0",
+  "id": "release-critical",
+  "description": "A release that must not go wrong.",
+  "raiseFloors": {
+    "RELEASE_REVIEW": 3,
+    "FINAL_AUDIT": 3
+  },
+  "mandatoryReviews": [
+    "RELEASE_REVIEW",
+    "FINAL_AUDIT"
+  ],
+  "invariants": [
+    "A release is only made from a verified state."
+  ],
+  "gates": {
+    "DEPLOY": "REQUIRE_HUMAN_APPROVAL",
+    "MERGE_PULL_REQUEST": "REQUIRE_HUMAN_APPROVAL"
+  },
+  "rollbackRequired": true
+}

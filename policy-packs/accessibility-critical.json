@@ -1,0 +1,16 @@
+{
+  "dev-team": "ledger=policy-pack schema=1.0",
+  "id": "accessibility-critical",
+  "description": "Work that must be usable by everyone.",
+  "raiseFloors": {
+    "ACCESSIBILITY_REVIEW": 3
+  },
+  "mandatoryReviews": [
+    "ACCESSIBILITY_REVIEW"
+  ],
+  "invariants": [
+    "Everything works with a keyboard and a screen reader."
+  ],
+  "gates": {},
+  "rollbackRequired": false
+}

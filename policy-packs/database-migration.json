@@ -1,0 +1,20 @@
+{
+  "dev-team": "ledger=policy-pack schema=1.0",
+  "id": "database-migration",
+  "description": "Changes to a database's structure.",
+  "raiseFloors": {
+    "MIGRATION": 3,
+    "DATABASE_REVIEW": 3
+  },
+  "mandatoryReviews": [
+    "DATABASE_REVIEW"
+  ],
+  "invariants": [
+    "Every migration has a tested way back."
+  ],
+  "gates": {
+    "APPLY_DATABASE_MIGRATION": "REQUIRE_HUMAN_APPROVAL",
+    "CHANGE_DATABASE_SCHEMA": "REQUIRE_HUMAN_APPROVAL"
+  },
+  "rollbackRequired": true
+}

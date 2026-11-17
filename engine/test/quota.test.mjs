@@ -85,3 +85,11 @@ test('time: a full date with "at 9:00 AM" or "9 AM" is read completely; a stated
   for (const t of ['resets Feb 30 at 9am', 'resets 2026-02-30 09:00 UTC', 'resets Feb 30, 2026 9 AM']) assert.equal(p(t, 'UTC'), null, t);
   assert.equal(p('resets Feb 29 at 9am', 'UTC'), null); // no such date this year or next: no reset time rather than a guess
 });
+
+test('time: a length of time never beats a stated date; a clock time before the date is read; month and year with no day is refused', () => {
+  const now = at('2026-11-17T10:00:00Z'), p = (s, z = 'UTC') => parseClockTime(s, { machineZone: z, now }).resetAt;
+  assert.equal(p('resets in 5 hours, 2026-11-25'), null); assert.equal(p('resets in 2 hours on Nov 20'), null);
+  assert.equal(p('resets 9:30 PM (Europe/London) on Nov 20'), '2026-11-20T21:30:00.000Z'); assert.equal(p('resets 12:30 am Nov 20'), '2026-11-20T00:30:00.000Z');
+  assert.equal(p('resets Nov 2026 at 9am'), null);
+  assert.equal(p('try again in 5 hours'), '2026-11-17T15:00:00.000Z'); // no date: still fine
+});

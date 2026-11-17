@@ -238,3 +238,31 @@ teardown() { rm -rf "$SCRATCH"; }
   run bash "$REPO_ROOT/scripts/engine.sh" findings precision --state-file "$f"
   [ "$(printf '%s' "$output" | jq -r .result.codex.accepted)" = "1" ]
 }
+
+@test "check-no-lang-ext-urls.sh: finds /x.php addresses, ignores .php inside a code fence and ordinary text" {
+  mkdir -p "$SCRATCH/site"
+  printf '<a href="/login.php">Log in</a>\n<a href="/about">About</a>\n' > "$SCRATCH/site/index.html"
+  run bash "$REPO_ROOT/scripts/check-no-lang-ext-urls.sh" "$SCRATCH/site"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"login.php"* ]]
+  [[ "$output" != *"about"* ]]
+  rm "$SCRATCH/site/index.html"
+  # shellcheck disable=SC2016
+  printf 'Example:\n\n```\n[x](/old.php)\n```\n\nThe file config.php is internal.\n' > "$SCRATCH/site/doc.md"
+  run bash "$REPO_ROOT/scripts/check-no-lang-ext-urls.sh" "$SCRATCH/site"
+  [ "$status" -eq 0 ]
+  printf 'See [login](/login.php) and https://example.com/a/page.asp today.\n' > "$SCRATCH/site/doc.md"
+  run bash "$REPO_ROOT/scripts/check-no-lang-ext-urls.sh" "$SCRATCH/site"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"page.asp"* ]]
+}
+
+@test "engine.sh: gate check exits 1 for a prohibited action even with every approval, and a pack can only raise a gate" {
+  run bash "$REPO_ROOT/scripts/engine.sh" gate check --action PUSH_DEFAULT_BRANCH --confident --deterministic-pass --review-verified --human-approved
+  [ "$status" -eq 1 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" gate check --action DEPLOY
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r .result.allowed)" = "false" ]
+  run bash "$REPO_ROOT/scripts/engine.sh" gate check --action DELETE_FILES --pack nope
+  [ "$status" -eq 2 ]
+}

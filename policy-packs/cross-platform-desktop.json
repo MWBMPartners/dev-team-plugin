@@ -1,0 +1,16 @@
+{
+  "dev-team": "ledger=policy-pack schema=1.0",
+  "id": "cross-platform-desktop",
+  "description": "Desktop apps for several operating systems.",
+  "raiseFloors": {
+    "COMPLEX_IMPLEMENTATION": 3
+  },
+  "mandatoryReviews": [
+    "CODE_REVIEW"
+  ],
+  "invariants": [
+    "Every change is checked against all supported operating systems, not just the one used to build it."
+  ],
+  "gates": {},
+  "rollbackRequired": false
+}

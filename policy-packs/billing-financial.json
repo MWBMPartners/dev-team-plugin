@@ -1,0 +1,22 @@
+{
+  "dev-team": "ledger=policy-pack schema=1.0",
+  "id": "billing-financial",
+  "description": "Money handling.",
+  "raiseFloors": {
+    "COMPLEX_IMPLEMENTATION": 3,
+    "CODE_REVIEW": 3
+  },
+  "mandatoryReviews": [
+    "CODE_REVIEW",
+    "SECURITY_REVIEW"
+  ],
+  "invariants": [
+    "Amounts are never stored or computed as floating point numbers.",
+    "Test mode only unless the owner says otherwise."
+  ],
+  "gates": {
+    "APPLY_DATABASE_MIGRATION": "REQUIRE_HUMAN_APPROVAL",
+    "DEPLOY": "REQUIRE_HUMAN_APPROVAL"
+  },
+  "rollbackRequired": true
+}

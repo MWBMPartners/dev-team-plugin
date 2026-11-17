@@ -33,8 +33,9 @@ test('diversity bonus: a provider that neither planned nor built is preferred', 
   assert.equal(diversityBonus('claude', 'codex', { provider: 'gemini' }), 1); assert.equal(diversityBonus('claude', 'codex', { provider: 'claude' }), 0);
 });
 test('findings: stable ids; allowed steps only; verified cannot be re-opened without evidence; the raiser cannot verify; counters', () => {
-  const id1 = findingId({ file: 'a.js', rule: 'R1', summary: 'Missing  check' }), id2 = findingId({ file: 'A.js', rule: 'r1', summary: 'missing check' });
-  assert.equal(id1, id2); assert.match(id1, /^F-[0-9a-f]{8}$/);
+  const id1 = findingId({ file: 'a.js', rule: 'R1', summary: 'Missing  check' }), id2 = findingId({ file: './a.js', rule: 'r1', summary: 'missing check' });
+  assert.equal(id1, id2); assert.notEqual(id1, findingId({ file: 'A.js', rule: 'R1', summary: 'Missing check' })); // a different case can be a different file
+  assert.equal(findingId({ file: 'a', summary: 'caf\u00e9' }), findingId({ file: 'a', summary: 'cafe\u0301' })); assert.match(id1, /^F-[0-9a-f]{8}$/);
   let r = addFinding([], { file: 'a.js', rule: 'R1', summary: 'Missing check', severity: 'BLOCKING', reviewer: 'codex' }); let list = r.list;
   assert.equal(addFinding(list, { file: 'a.js', rule: 'R1', summary: 'Missing check', severity: 'BLOCKING', reviewer: 'codex' }).added, false);
   assert.throws(() => updateFinding(list, r.id, { status: 'FIXED' }), /cannot go from OPEN to FIXED/);
@@ -62,4 +63,26 @@ test('review never uses an ask-first model without approval; local models are ex
   assert.ok(r.skipped.some((s) => s.model === 'claude/fable' && s.reason === 'NEEDS_APPROVAL')); assert.equal(r.independence, 'SAME_MODEL_FRESH_CONTEXT');
   const ok = chooseReviewer({ builtBy: { provider: 'claude', model: 'opus' }, risk: 'NORMAL', models: ms, askFirst: ['fable'], approved: ['fable'] }); assert.equal(ok.chosen.id, 'fable');
   const loc = chooseReviewer({ builtBy: { provider: 'claude', model: 'opus' }, risk: 'NORMAL', models: [...ms, { ...M('ollama', 'big', 3), local: true }], askFirst: ['unpriced', 'big'] }); assert.ok(!loc.skipped.some((s) => s.model === 'ollama/big'));
+});
+
+// ---- Fixes after the independent review of increment 5 ----
+test('independence: names compare ignoring case; inherited object names are not trust stages; a missing tier never passes the floor', () => {
+  const r = chooseReviewer({ builtBy: { provider: 'Claude', model: 'OPUS' }, risk: 'HIGH', models: [M('claude', 'opus', 3), M('claude', 'sonnet', 3)] });
+  assert.notEqual(r.chosen.id, 'opus'); assert.equal(r.independence, 'SAME_PROVIDER_DIFFERENT_MODEL');
+  const c = chooseReviewer({ builtBy: built, risk: 'CRITICAL', models: [M('claude', 'opus', 3), M('codex', 'gpt-x', 3, 'constructor')] }); assert.ok(c.skipped.some((s) => s.reason === 'CANARY_STAGE'));
+  const t = chooseReviewer({ builtBy: built, risk: 'CRITICAL', models: [M('claude', 'opus', 3), { ...M('codex', 'gpt-x', undefined) }] }); assert.ok(t.skipped.some((s) => s.reason === 'BELOW_REVIEW_FLOOR')); assert.notEqual(t.independence, 'CROSS_PROVIDER');
+  assert.equal(diversityBonus('Claude', 'codex', { provider: 'claude' }), 0);
+});
+test('findings: verifying needs a named verifier whose name differs ignoring case and spaces; duplicate ids are refused; odd reviewer names are only names', () => {
+  const r = addFinding([], { file: 'a', summary: 'x', severity: 'LOW', reviewer: 'Codex' }); let l = updateFinding(r.list, r.id, { status: 'ACCEPTED', by: 'lead' }); l = updateFinding(l, r.id, { status: 'FIXED', by: 'e' });
+  assert.throws(() => updateFinding(l, r.id, { status: 'VERIFIED' }), /named/); assert.throws(() => updateFinding(l, r.id, { status: 'VERIFIED', by: ' codex ' }), /raised/);
+  assert.throws(() => updateFinding([...l, l[0]], r.id, { status: 'VERIFIED', by: 'other' }), /more than one/);
+  const odd = addFinding([], { file: 'a', summary: 'y', severity: 'LOW', reviewer: '__proto__' }); assert.deepEqual(precision(odd.list), { ['__proto__']: { raised: 1, accepted: 0, rejected: 0, falsePositive: 0 } }); assert.equal(({}).raised, undefined);
+});
+test('the review command refuses unknown trust-stage names and bad inputs, and still works with good ones', async () => {
+  const { reviewCommands } = await import('../lib/review-commands.mjs');
+  const { writeFileSync, mkdtempSync } = await import('node:fs'); const { tmpdir } = await import('node:os'); const { join } = await import('node:path');
+  const d = mkdtempSync(join(tmpdir(), 'dt-rv-')); const call = (o) => { const f = join(d, 'i.json'); writeFileSync(f, JSON.stringify({ jobId: 'j-aaaaaaaaaaaa', phase: 'v', risk: 'CRITICAL', files: ['a'], builtBy: built, projectDir: d, ...o })); return reviewCommands.review({ sub: 'plan', flags: { input: f } }); };
+  await assert.rejects(call({ stageOverrides: { codex: 'constructor' } }), /stageOverrides/); await assert.rejects(call({ models: 'x' }), /models/); await assert.rejects(call({ files: [] }), /files/);
+  const ok = await call({ stageOverrides: { codex: 'TRUSTED' } }); assert.equal(ok.result.reviewer.independence, 'CROSS_PROVIDER');
 });

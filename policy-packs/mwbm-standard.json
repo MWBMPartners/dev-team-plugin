@@ -1,0 +1,16 @@
+{
+  "dev-team": "ledger=policy-pack schema=1.0",
+  "id": "mwbm-standard",
+  "description": "The owner's standard practices.",
+  "raiseFloors": {},
+  "mandatoryReviews": [
+    "CODE_REVIEW"
+  ],
+  "invariants": [
+    "Everything written for people is in plain, everyday English.",
+    "The handover and project documents are kept current as the work goes.",
+    "The tracker (issues, boards, milestones) is the source of truth."
+  ],
+  "gates": {},
+  "rollbackRequired": false
+}

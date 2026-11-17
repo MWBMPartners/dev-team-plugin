@@ -1,0 +1,21 @@
+{
+  "dev-team": "ledger=policy-pack schema=1.0",
+  "id": "shared-hosting-php",
+  "description": "Projects that run on ordinary shared hosting (PHP, no Docker, no root).",
+  "raiseFloors": {
+    "MIGRATION": 3,
+    "CI_CD": 2
+  },
+  "mandatoryReviews": [
+    "CODE_REVIEW"
+  ],
+  "invariants": [
+    "No Docker or container runtime is assumed.",
+    "Nothing needs root access, a daemon or a build step on the server.",
+    "Configuration works from files the host lets a user edit."
+  ],
+  "gates": {
+    "DEPLOY": "REQUIRE_HUMAN_APPROVAL"
+  },
+  "rollbackRequired": true
+}

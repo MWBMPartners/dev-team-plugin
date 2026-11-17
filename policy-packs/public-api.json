@@ -1,0 +1,17 @@
+{
+  "dev-team": "ledger=policy-pack schema=1.0",
+  "id": "public-api",
+  "description": "Anything other people's programs call.",
+  "raiseFloors": {
+    "API_COMPATIBILITY_REVIEW": 3
+  },
+  "mandatoryReviews": [
+    "API_COMPATIBILITY_REVIEW"
+  ],
+  "invariants": [
+    "Existing callers keep working, or the change is a new version.",
+    "The OpenAPI description and its Swagger UI page match the code."
+  ],
+  "gates": {},
+  "rollbackRequired": false
+}

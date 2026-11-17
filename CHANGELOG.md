@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Orchestrator engine, increment 6**: five action levels mapped to the autopilot's three buckets (`gate check`),
+  ten policy packs that can only make things stricter, rules collected from a project's instruction files
+  (`invariants collect`), a rollback requirement for high-risk plans, and `scripts/check-no-lang-ext-urls.sh`
+  (the owner's rule that web addresses should not end in a language extension).
+
 - **Orchestrator engine, increment 5**: review independence (`review plan`): the checker is never the builder, a
   different provider is preferred more the riskier the work (required for critical work where possible), the
   independence level is recorded and never overstated, ask-first models are never used for review unasked;

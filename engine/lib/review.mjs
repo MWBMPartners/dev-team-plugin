@@ -23,7 +23,8 @@ export function specialistsFor(taskTypes, risk = 'NORMAL', components = []) {
  */
 export function planReview(i) {
   const risk = String(i.risk ?? 'NORMAL').toUpperCase();
-  if (!Array.isArray(i.files) || i.files.some((f) => typeof f !== 'string')) throw new RangeError('files must be a list of paths');
+  if (!Array.isArray(i.files) || i.files.length === 0 || i.files.some((f) => typeof f !== 'string')) throw new RangeError('files must be a non-empty list of paths');
+  if (!Array.isArray(i.models)) throw new RangeError('models must be a list');
   const route = chooseReviewer({ builtBy: i.builtBy, risk, models: i.models, exhausted: i.exhausted, askFirst: i.askFirst, approved: i.approved });
   const sp = specialistsFor(i.taskTypes ?? [], risk, i.components ?? []);
   return {

@@ -1,0 +1,20 @@
+{
+  "dev-team": "ledger=policy-pack schema=1.0",
+  "id": "security-sensitive",
+  "description": "Anything handling logins, secrets or personal data.",
+  "raiseFloors": {
+    "SECURITY_REVIEW": 3,
+    "CODE_REVIEW": 3
+  },
+  "mandatoryReviews": [
+    "SECURITY_REVIEW"
+  ],
+  "invariants": [
+    "No secret is ever written to a file that is committed.",
+    "User input is never trusted."
+  ],
+  "gates": {
+    "ROTATE_OR_USE_SECRET": "REQUIRE_HUMAN_APPROVAL"
+  },
+  "rollbackRequired": true
+}

@@ -77,6 +77,50 @@
     {
       "schema": "schemas/data/failure-recovery.schema.json",
       "fixture": "engine/data/failure-recovery.json"
+    },
+    {
+      "schema": "schemas/data/destructive-actions.schema.json",
+      "fixture": "engine/data/destructive-actions.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/shared-hosting-php.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/native-macos.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/cross-platform-desktop.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/billing-financial.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/security-sensitive.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/public-api.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/database-migration.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/accessibility-critical.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/release-critical.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/mwbm-standard.json"
     }
   ],
   "exceptions": [

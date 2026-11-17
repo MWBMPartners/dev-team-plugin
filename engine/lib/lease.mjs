@@ -48,7 +48,14 @@ const GATE_STALE_MS = 120000;
 function gateBusy(dir) {
   const gate = `${dir}.reclaim`;
   if (!existsSync(gate)) return false;
-  try { if (Date.now() - statSync(gate).mtimeMs > GATE_STALE_MS) { rmSync(gate, { recursive: true, force: true }); return false; } } catch { return false; }
+  try {
+    if (Date.now() - statSync(gate).mtimeMs > GATE_STALE_MS) {
+      // Move it aside under a unique name first, so a racing process cannot delete a FRESH gate made in the meantime.
+      const aside = `${gate}.old-${process.pid}-${Math.random().toString(16).slice(2)}`;
+      try { renameSync(gate, aside); rmSync(aside, { recursive: true, force: true }); } catch { /* someone else removed it */ }
+      return existsSync(gate);
+    }
+  } catch { return false; }
   return true;
 }
 

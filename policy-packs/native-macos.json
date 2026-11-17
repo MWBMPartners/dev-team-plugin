@@ -1,0 +1,18 @@
+{
+  "dev-team": "ledger=policy-pack schema=1.0",
+  "id": "native-macos",
+  "description": "Native Apple platform apps.",
+  "raiseFloors": {
+    "COMPLEX_IMPLEMENTATION": 3
+  },
+  "mandatoryReviews": [
+    "CODE_REVIEW",
+    "ACCESSIBILITY_REVIEW"
+  ],
+  "invariants": [
+    "Accessibility labels and Dynamic Type are kept working.",
+    "No private Apple API is used."
+  ],
+  "gates": {},
+  "rollbackRequired": false
+}

@@ -28,6 +28,9 @@ export function lockPlan(doc, { approver, now = new Date() }) {
   if (!doc || typeof doc !== 'object' || Array.isArray(doc) || !doc.contract) throw new RangeError('not a plan contract');
   if (doc.status === 'LOCKED') throw new Conflict(`plan ${doc.planId} version ${doc.planVersion} is already locked; a change is a new version`);
   if (doc.status !== 'DRAFT') throw new RangeError('only a plan whose status is exactly DRAFT can be locked');
+  // A plan for risky work must say how to roll it back before it can be locked.
+  const risk = String(doc.contract.risk ?? '').toUpperCase();
+  if ((risk === 'HIGH' || risk === 'CRITICAL') && !(Array.isArray(doc.contract.rollbackRequirements) ? doc.contract.rollbackRequirements.length : typeof doc.contract.rollbackRequirements === 'string' && doc.contract.rollbackRequirements.trim() !== '')) throw new RangeError('a plan for HIGH or CRITICAL risk work must include rollbackRequirements before it can be locked');
   // Lock only what was drafted: if the contract changed since its fingerprint was made, refuse.
   if (planHash(doc.contract) !== doc.planHash) throw new StaleDraft('the contract was changed after the draft was made; draft it again so the fingerprint matches what the owner reads');
   if (typeof approver !== 'string' || approver.trim() === '' || /[\x00-\x1f\x7f]/.test(approver) || approver.length > 80) throw new RangeError('an approver is needed to lock a plan: plain text, no control characters, at most 80 characters');

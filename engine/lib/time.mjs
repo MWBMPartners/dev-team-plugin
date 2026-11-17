@@ -41,7 +41,8 @@ export function parseClockTime(text, { zoneStated = null, machineZone, now }) {
   const s = String(text);
   const assumptions = [];
   // 1. A length of time ("in 2 hours 30 minutes"): add it to now.
-  if (!/\d{1,2}:\d{2}/.test(s)) {
+  const hasDate = new RegExp(`\\b(${MONTHS.join('|')})[a-z]*\\.?\\s+\\d{1,2}\\b`, 'i').test(s) || /\b\d{4}-\d{2}-\d{2}\b/.test(s) || /\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/.test(s);
+  if (!/\d{1,2}:\d{2}/.test(s) && !hasDate) {
     for (const rel of s.matchAll(/\b(?:in|after)\s+(?:(\d+)\s*(?:hours?|hrs?|h)(?![a-z]))?\s*(?:and\s+)?(?:(\d+)\s*(?:minutes?|mins?|m)(?![a-z]))?/gi)) {
       if (!rel[1] && !rel[2]) continue; // "in your plan": not a length of time, look at the next one
       const ms = (Number(rel[1] ?? 0) * 60 + Number(rel[2] ?? 0)) * 60000;
@@ -74,10 +75,14 @@ export function parseClockTime(text, { zoneStated = null, machineZone, now }) {
     if (!c || !realDate(y, mo, d)) return NONE;
     return { resetAt: new Date(zonedToUtc(y, mo, d, c[0], c[1], zone)).toISOString(), assumptions, confidence: assumptions.length ? 'LOW' : 'HIGH' };
   }
+  // 3a. A month and a year but no day ("Nov 2026 at 9am") is not a date this can read.
+  if (new RegExp(`\\b(${MONTHS.join('|')})[a-z]*\\.?,?\\s+\\d{4}\\b`, 'i').test(s)) return NONE;
   // 3b. A month and day with no year ("Nov 20 at 9:00 AM"): the next such date, and say so.
   const md = new RegExp(`\\b(${MONTHS.join('|')})[a-z]*\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b(?!,?\\s+\\d{4})`, 'i').exec(s);
   if (md) {
-    const cm = /\b(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*(am|pm)\b/i.exec(s.slice((md.index ?? 0) + md[0].length)) ?? /\b([01]?\d|2[0-3]):([0-5]\d)\b/.exec(s.slice((md.index ?? 0) + md[0].length));
+    // The clock time may come after the date ("Nov 20 at 9am") or before it ("9:30 PM on Nov 20").
+    const rest = s.slice(0, md.index ?? 0) + ' ' + s.slice((md.index ?? 0) + md[0].length);
+    const cm = /\b(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*(am|pm)\b/i.exec(rest) ?? /\b([01]?\d|2[0-3]):([0-5]\d)\b/.exec(rest);
     const cc = cm ? (cm[3] ? clock(cm[1], cm[2] ?? '0', cm[3]) : clock(cm[1], cm[2], null)) : null;
     const month = MONTHS.indexOf(md[1].toLowerCase()) + 1, day = Number(md[2]); const year = datePartsIn(zone, now.getTime()).y;
     if (!cc || day < 1 || !(realDate(year, month, day) || realDate(year + 1, month, day))) return NONE;

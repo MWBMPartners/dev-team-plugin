@@ -6,6 +6,7 @@ import { resolve, join } from 'node:path';
 import { ExitCodes } from './cli.mjs';
 import { BadInput, pluginRoot } from './paths.mjs';
 import { planReview } from './review.mjs';
+import { STAGES } from './independence.mjs';
 import { addFinding, updateFinding, precision, STATUSES, SEVERITIES } from './findings.mjs';
 import { writeJsonAtomic } from './store.mjs';
 import { loadRouting } from './config.mjs';
@@ -21,6 +22,7 @@ function seedReviewModels(stages = {}) {
 function loadFindings(f) {
   if (!existsSync(f)) return [];
   const j = readJson(f, 'the findings file');
+  if (j && Array.isArray(j.findings) && new Set(j.findings.map((x) => x?.id)).size !== j.findings.length) throw new BadInput('the findings file has two findings with the same id');
   if (!j || !Array.isArray(j.findings) || j.findings.some((x) => !x || typeof x.id !== 'string' || !STATUSES.includes(x.status) || !SEVERITIES.includes(x.severity) || typeof x.reviewer !== 'string' || !Array.isArray(x.history))) throw new BadInput('the findings file is not a valid findings list');
   return j.findings;
 }
@@ -29,7 +31,11 @@ export const reviewCommands = {
   async review(a) {
     if (a.sub !== 'plan' || typeof a.flags.input !== 'string') throw new BadInput('usage: review plan --input <json>');
     const i = readJson(a.flags.input, 'the input file');
-    const stages = i.stageOverrides && typeof i.stageOverrides === 'object' && !Array.isArray(i.stageOverrides) ? i.stageOverrides : {};
+    if (!i || typeof i !== 'object' || Array.isArray(i)) throw new BadInput('the input must be a JSON object');
+    if (i.models !== undefined && !Array.isArray(i.models)) throw new BadInput('models must be a list');
+    if (!Array.isArray(i.files) || i.files.length === 0 || i.files.some((f) => typeof f !== 'string' || f === '')) throw new BadInput('files must be a non-empty list of paths');
+    if (i.stageOverrides !== undefined && (typeof i.stageOverrides !== 'object' || i.stageOverrides === null || Array.isArray(i.stageOverrides) || Object.values(i.stageOverrides).some((v) => typeof v !== 'string' || !STAGES.includes(v)))) throw new BadInput(`stageOverrides must map a provider to one of ${STAGES.join(', ')}`);
+    const stages = i.stageOverrides ?? {};
     const cfg = loadRouting({ projectDir: typeof i.projectDir === 'string' ? i.projectDir : process.cwd() });
     if ((cfg.badSettings ?? []).length) return { code: ExitCodes.NEGATIVE, result: null, problems: [{ code: 'SETTINGS_INVALID', message: `a routing setting is ambiguous (${cfg.badSettings.join('; ')}); not guessing` }] };
     const r = planReview({ ...i, askFirst: cfg.askFirst, models: Array.isArray(i.models) ? i.models : seedReviewModels(stages) });
