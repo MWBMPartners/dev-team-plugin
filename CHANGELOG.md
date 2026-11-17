@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Orchestrator engine, increment 11 (practice bundle, part)**: `git.push-after-task` (off by default) and
+  `engine.sh push check` (run branch only, only a checker-cleared commit, never the default branch, never a force);
+  the named-issue and end-of-run-report rules in the issue-sync protocol.
+
 - **Orchestrator engine, increment 9 (plugin side)**: signed remote catalogue. Ed25519 over canonical JSON with a
   pinned public key (a placeholder until the service exists); a payload that cannot carry floors, gates or
   approvals; expiry, future-date, wrong-key and tamper checks; `catalogue verify` and `catalogue fetch`; a verified

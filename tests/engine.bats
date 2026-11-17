@@ -339,3 +339,16 @@ teardown() { rm -rf "$SCRATCH"; }
   [[ "$output" == *"OUT5"* ]]
   [[ "$output" != *"IN4"* ]]
 }
+
+@test "engine.sh: push check says no by default and for the default branch even when on, and yes only for a cleared run-branch commit when on" {
+  mkdir -p "$SCRATCH/p/.dev-team"
+  run bash "$REPO_ROOT/scripts/engine.sh" push check --branch autopilot/x --checker-cleared --confident --deterministic-pass --project "$SCRATCH/p"
+  [ "$status" -eq 1 ]
+  printf 'git:\n  push-after-task: on\n' > "$SCRATCH/p/.dev-team/config.yml"
+  run bash "$REPO_ROOT/scripts/engine.sh" push check --branch autopilot/x --checker-cleared --confident --deterministic-pass --project "$SCRATCH/p"
+  [ "$status" -eq 0 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" push check --branch main --checker-cleared --confident --deterministic-pass --project "$SCRATCH/p"
+  [ "$status" -eq 1 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" push check --branch autopilot/x --confident --deterministic-pass --project "$SCRATCH/p"
+  [ "$status" -eq 1 ]
+}

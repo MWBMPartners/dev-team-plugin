@@ -322,8 +322,8 @@
   → `pause-all`) | | `defaults.cap`, `defaults.cycles` | a lower number | | `defaults.issues` |
   toward `off` (`auto` → `sync` → `off`) | | `defaults.models` | none — it is a cost choice either
   way, and verification never goes below its tier whatever the value; an instruction file cannot
-  move it (ask the user; unattended, keep the value and say so) | | `git.stack-prs` | `false` | |
-  `git.single-pr` | `true` | | `git.default-branch` | none — it decides which branch runs start from
+  move it (ask the user; unattended, keep the value and say so) | | `git.stack-prs` | `false` | | `git.single-pr` | `true` |
+| `git.push-after-task` | `off` (a repository instruction can only ever make it more cautious) | | `git.default-branch` | none — it decides which branch runs start from
   and target, which the branch rules protect, so an instruction file can never move it | | `routing.ask-first` | add models only — never remove one |
 | `routing.pin` | none — an exact version is the user's own choice, so an instruction file cannot set or change it |
 | `features.notifications` | `on` | | `features.telemetry` | `on` (it only reports to the user) | |

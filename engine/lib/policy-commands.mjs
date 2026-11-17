@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { statSync, readFileSync } from 'node:fs';
 import { budgetStatus, reserveCheck } from './budget.mjs';
 import { estimate } from './estimate.mjs';
+import { pushPolicy } from './pushpolicy.mjs';
 import { verifyEnvelope } from './signature.mjs';
 import { fetchCatalogue } from './remote-catalogue.mjs';
 import { dataDir } from './paths.mjs';
@@ -20,6 +21,11 @@ const projectDir = (a) => { const d = typeof a.flags.project === 'string' ? reso
 const flag = (a, k) => a.flags[k] === true || a.flags[k] === 'true';
 
 export const policyCommands = {
+  async push(a) {
+    if (a.sub !== 'check' || typeof a.flags.branch !== 'string') throw new BadInput('usage: push check --branch B [--default-branch D] [--checker-cleared --confident --deterministic-pass] [--project D]');
+    const r = pushPolicy({ projectDir: projectDir(a), branch: a.flags.branch, defaultBranch: typeof a.flags['default-branch'] === 'string' ? a.flags['default-branch'] : undefined, checkerCleared: flag(a, 'checker-cleared'), confident: flag(a, 'confident'), deterministicPass: flag(a, 'deterministic-pass'), force: flag(a, 'force') });
+    return { code: r.allowed ? ExitCodes.OK : ExitCodes.NEGATIVE, result: r, problems: r.allowed ? [] : [{ code: 'PUSH_NOT_ALLOWED', message: r.reason }] };
+  },
   async catalogue(a) {
     if (a.sub === 'verify') {
       if (typeof a.flags.file !== 'string') throw new BadInput('usage: catalogue verify --file <envelope.json> [--key <public-key.pem>]');

@@ -63,6 +63,7 @@ can move each:
 | `defaults.models` | none — it is a cost choice either way, and verification never goes below its tier whatever the value; an instruction file cannot move it (ask the user; unattended, keep the value and say so) |
 | `git.stack-prs` | `false` |
 | `git.single-pr` | `true` |
+| `git.push-after-task` | `off` (a repository instruction can only ever make it more cautious) |
 | `git.default-branch` | none — it decides which branch runs start from and target, which the branch rules protect, so an instruction file can never move it |
 | `routing.ask-first` | add models only — never remove one |
 | `routing.pin` | none — an exact version is the user's own choice, so an instruction file cannot set or change it |
@@ -109,6 +110,7 @@ git:
   # single-pr: true    # true (default) = converge on ONE open PR per line of work: reuse the run branch's
                        #   existing open PR instead of opening a duplicate (push updates it). false = each
                        #   run may surface its own PR. See the single-PR policy in conventions.md.
+  # push-after-task: off  # off (default) = the plugin never pushes on its own. on = after each task a checker has cleared, push the RUN branch only (never the default branch; the Bash guard still blocks that). Added 17 Nov 2026; the `profile: standard` preset offers it. A repository instruction may move it only toward off.
   # default-branch: auto   # auto (origin/HEAD, else main/master) or an explicit branch name.
 
 # profile: standard   # a named bundle of settings: standard | local-first | cloud-first (reserved until the engine lands; see profiles-and-presets.md)
@@ -168,6 +170,7 @@ which a per-run argument or plain language can still override for one run:
 | Key | Purpose | Values | Built-in default |
 |---|---|---|---|
 | `stack-prs` | Whether a run may target another feature branch instead of the default branch | `true`, `false` | `false` |
+| `push-after-task` | After each checker-cleared task, push the run branch (never the default branch, never force). Off by default: without it the plugin never pushes on its own. When on, this one setting is the only thing that lets a skill push, and only the run branch. | `on`, `off` | `off` |
 | `single-pr` | Reuse the run branch's existing open PR instead of opening a duplicate — one open PR per line of work | `true`, `false` | `true` |
 | `default-branch` | Which branch runs branch FROM/target | `auto` (origin/HEAD, else `main`/`master`), or an explicit branch name | `auto` |
 

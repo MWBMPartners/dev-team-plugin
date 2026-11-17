@@ -17,7 +17,7 @@ Anything else the same file sets explicitly wins over the profile.
 
 | Practice | What the profile sets |
 |---|---|
-| Push after each task (F13) | `git.push-after-task: on` (reserved; **off** everywhere else). The guard's rule against pushing to `main` still applies. |
+| Push after each task (F13) | `git.push-after-task: on` (**off** everywhere else). Built 17 Nov 2026: the setting exists in `config-and-toggles.md` and `engine.sh push check` answers whether a push is allowed (run branch only, only a checker-cleared commit, never the default branch, never a force). The Bash guard's rule against pushing to `main` still applies. |
 | Second opinion from another system (F10) | The Claude checker always runs; Codex adds an independent review **in addition**, when installed and under its allowance. If it cannot run, say so and treat the work as "not fully reviewed". |
 | One after another for thinking (F5) | Analysis and planning agents run in sequence, each building on or checking the last. Debates keep their side-by-side design so debaters cannot see each other's arguments. |
 | Cheaper building (F7, F8) | Build on Sonnet or Haiku; Opus only when the change is complex and needs judgement (`defaults.models: economy`). |
