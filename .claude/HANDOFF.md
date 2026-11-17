@@ -74,11 +74,18 @@ working branch, merged into `alpha` by one pull request**, opened when the owner
 4. **Tidy the record:** the 14 September to 5 October detail below is long. Once the review debt is
    cleared, fold it into a short summary.
 
-### Open owner decisions (unchanged — see the table in "START HERE" below)
+### Owner decisions — answered 17 November 2026 (recorded only; none of this has been built yet)
 
-Q1 to Q5 are all still open. Nothing in the 9 November work answered them. In short: #46 (provider-
-agnostic orchestrator) and #45 (the owner's standard practices as features) both wait on the owner;
-#42, #43 and #44 are filed but not started.
+| # | Question | Owner's answer | What it means for the next session |
+| --- | --- | --- | --- |
+| Q1 | Where `.dev-team/` lives when a session starts in a subfolder | **The subfolder** (as recommended) | Nothing to change in the skills. `/dev-team-move-ledgers` should also look in the subfolder — check it does. |
+| Q2 | #46 D1–D4 (engine language, branch, unverified providers, hand-over after 12+ hours) | **Accept all as recommended** in `.claude/plans/orchestrator-v2/plan.md` | Node engine; a fresh branch from `alpha` (a stated exception to the one-branch rule, approved here); Gemini, Kimi and Grok documented but marked unverified; hand over after 12+ hours of outage. |
+| Q3 | #45: built-in defaults or a preset | **A named preset** (`profile: standard`) | Built-in defaults stay cautious. Which features the preset contains is still open: the four sub-choices in issue #45 (F13 push after each task, F10 Codex replacing or adding to the Claude checker, F5 "one after another" scope, F7/F8 cheaper building default) have **not** been answered. |
+| Q4 | `deep-architect` default model | **Change the default to Opus now** (not the recommended "leave it") | **To do:** change the default in `agents/deep-architect.md` and anything that describes it (model-routing reference, README, CHANGELOG, `.claude/` and `.OpenAI/` notes), then run the model-id audit and bats. This also needs a version/CHANGELOG entry. Do it on the new working branch, not before. |
+| Q5 | Device-wide rules on the owner's computer | **Yes, ask a local session** | The wording is in `.claude/device-wide-rules.md`. It needs a session running on the owner's own computer, because a cloud session cannot reach `~/.claude/CLAUDE.md` or `~/.codex/AGENTS.md`. Not done; the owner runs it. |
+
+Still waiting on the owner: the four #45 sub-choices above, and the decision on issues #42, #43 and
+#44 (filed, not started).
 
 ### Facts that are easy to get wrong
 
