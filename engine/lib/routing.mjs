@@ -73,14 +73,15 @@ export function route(req, models, cfg) {
   // never carry on with another version or another model as if nothing had been pinned.
   const pins = Object.entries(cfg.pin);
   for (const [alias, exact] of pins) {
-    // A pin only matters for a model this job could really use: one whose provider is offered in this
-    // request, and (for tier 4) only when the job needs tier 4, since tier 4 is never the default pick.
+    // 1. Attach the pin to EVERY matching model still in the pool, so a pinned model can never be chosen
+    //    without its exact version, whichever way it came to be chosen.
+    pool = pool.map((m) => (!m.local && lc(m.alias) === lc(alias) ? { ...m, pinnedId: String(exact) } : m));
+    // 2. Stop and ask only when a pinned model this job could really use is unusable right now: one whose
+    //    provider is offered in this request, and (for tier 4) only when the job needs tier 4.
     const fits = models.filter((m) => !m.local && lc(m.alias) === lc(alias) && m.roles.includes(req.role) && m.tier >= need && providers.includes(lc(m.provider)) && (m.tier < 4 || need >= 4));
-    if (!fits.length) continue;
-    if (!pool.some((m) => !m.local && lc(m.alias) === lc(alias))) {
+    if (fits.length && !pool.some((m) => !m.local && lc(m.alias) === lc(alias))) {
       return negative('PIN_UNAVAILABLE', `You pinned ${alias} to ${exact}, but it cannot be used for this job right now. I will not swap in another version or model without asking.`, reasons, dropped, questions);
     }
-    pool = pool.map((m) => (!m.local && lc(m.alias) === lc(alias) ? { ...m, pinnedId: String(exact) } : m));
   }
 
   // Ask-first: hold back anything that needs a yes this task has not been given.

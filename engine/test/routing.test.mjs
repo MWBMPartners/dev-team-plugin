@@ -275,3 +275,10 @@ test('a pin on a model this job could not use anyway does not block the job', ()
   // but a pin on a usable model that is out of allowance still stops the job
   assert.equal(route({ role: 'architect', providers: ['claude'], exhausted: ['claude'] }, seed, cfg({ pin: { opus: 'x' } })).code, 'PIN_UNAVAILABLE');
 });
+
+// ---- Fix after the fifteenth independent review ----
+test('a pinned tier-4 model that ends up chosen always carries its exact version', () => {
+  const only = seed.filter((m) => m.alias === 'opus' || m.alias === 'fable');
+  const r = route({ role: 'reviewer', providers: ['claude'], approved: ['fable'] }, only, cfg({ askFirst: ['opus'], pin: { fable: 'fable-exact-1' } }));
+  assert.equal(r.decision.model, 'fable'); assert.equal(r.decision.exactId, 'fable-exact-1');
+});
