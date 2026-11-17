@@ -24,10 +24,11 @@ export const learningCommands = {
   },
   async canary(a) {
     if (a.sub !== 'evaluate' || typeof a.flags.input !== 'string') throw new BadInput('usage: canary evaluate --input <json with current and results>');
-    const r = nextStage(readJson(a.flags.input, 'the input file')); return { code: ExitCodes.OK, result: { ...r, sampleShare: SAMPLE_SHARE[r.stage] } };
+    const inp = readJson(a.flags.input, 'the input file'); if (!inp || typeof inp !== 'object' || Array.isArray(inp)) throw new BadInput('the input must be a JSON object');
+    const r = nextStage(inp); return { code: ExitCodes.OK, result: { ...r, sampleShare: SAMPLE_SHARE[r.stage] } };
   },
   async health(a) {
     if (a.sub !== 'status' || typeof a.flags.input !== 'string') throw new BadInput('usage: health status --input <json with signals>');
-    const i = readJson(a.flags.input, 'the input file'); return { code: ExitCodes.OK, result: healthState(i.signals, { baselineLatencyMs: i.baselineLatencyMs }) };
+    const i = readJson(a.flags.input, 'the input file'); if (!i || typeof i !== 'object' || Array.isArray(i)) throw new BadInput('the input must be a JSON object'); return { code: ExitCodes.OK, result: healthState(i.signals, { baselineLatencyMs: i.baselineLatencyMs }) };
   },
 };

@@ -5,6 +5,7 @@
 //          informs the choice for the NEXT phase.
 /** @param {{latencyMs?: number, error?: boolean, dropped?: boolean}[]} signals newest last @param {{baselineLatencyMs?: number}} [o] */
 export function healthState(signals, { baselineLatencyMs = null } = {}) {
+  if (baselineLatencyMs !== null && baselineLatencyMs !== undefined && (typeof baselineLatencyMs !== 'number' || !Number.isFinite(baselineLatencyMs) || baselineLatencyMs <= 0)) throw new RangeError('baselineLatencyMs must be a positive number');
   if (!Array.isArray(signals) || signals.some((s) => !s || typeof s !== 'object')) throw new RangeError('signals must be a list of objects');
   const w = signals.slice(-20);
   if (w.length < 5) return { state: 'UNKNOWN', reason: 'Too few recent signals to say.' };
