@@ -43,3 +43,14 @@
   problems; low findings, wording points and older faults become GitHub issues, not new rounds.
 - A record identifier such as `F-001` can run past 999 (`F-1000`); patterns must allow three or
   more digits.
+
+## After the 9 November 2026 merge
+
+- Merging three branches by hand: read the real diffs first. Here one branch already contained
+  another (check with `git rev-list --count A..B` both ways), and two branches both used version 1.5.0
+  for different work — look for version-number clashes in `plugin.json` and the CHANGELOG.
+- A cloud session cannot delete branches (the connection answers 403); do not try workarounds, ask
+  the owner. Moving `alpha`/`beta` forward with an ordinary push did work.
+- Three checks on `main` failing after about two seconds, with no steps run and logs gone, was not a
+  code fault: the same checkout pin passed on the next run. Look at the run's job list for a missing
+  machine (`runner_id` 0) before suspecting the workflow files.

@@ -43,11 +43,12 @@ not on pushes to the working branch — so run them yourself.
 
 ## Branches
 
-- `main` is the released line; `alpha` is fully contained in `main`.
-- Current working branch: `claude/ledger-file-clashes`. It will go to `alpha` in one pull request,
-  opened later by the owner's say-so.
-- Also in flight: `feature/bcp47-language-policy` (issue #47), cut from `claude/ledger-file-clashes`
-  and waiting on it.
+- `main` is the released line (version 1.7.0). `alpha` and `beta` were set equal to `main` on
+  9 November 2026 (`00e0b67`).
+- No working branch is in flight. `claude/ledger-file-clashes`, `feature/bcp47-language-policy` and
+  `claude/gifted-wright-y3ze25` were merged into `main` by pull request #49 and then deleted. Start
+  new work from `alpha`; it goes back to `alpha` in one pull request, opened by the owner's say-so.
+  (Merging straight to `main` on 9 November was a one-off.)
 
 ## Live work (details in `.claude/HANDOFF.md`)
 

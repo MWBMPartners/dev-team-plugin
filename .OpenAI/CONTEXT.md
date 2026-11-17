@@ -33,6 +33,8 @@ work it does is then reviewed by Claude Code when Claude Code is back.
   high or medium problems, and low findings, wording points and older faults become GitHub issues
   rather than new rounds. The whole #47 change is compared with `claude/ledger-file-clashes`
   (where it was cut, at `413d570`), not with `main`, so #41's changes are not reported as #47's.
+  **Out of date since 9 November 2026:** both are now merged into `main` and that branch is deleted;
+  a new review compares the new working branch with `alpha`.
   To run the bats tests, set `TMPDIR` to a writable folder (the sandbox's default was not).
 - Earlier Codex review results: `.claude/plans/ledger-file-clashes/codex-review-3.md` and
   `codex-review-3-verification.md`.

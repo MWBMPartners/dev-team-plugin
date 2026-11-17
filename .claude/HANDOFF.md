@@ -6,19 +6,95 @@
             Rewritten as work happens, not tidied at the end. See .claude/CLAUDE.md section 2.
 -->
 
-**Last updated:** 5 October 2026 — issue #47's sixth round, acting on Codex's catch-up review of
-`748e87c..2f91439`; the #47 section straight below says where its review stands and what is next.
-The "START HERE" section dates from 23 September; everything below "Detailed history" is the
-older, fuller record.
-**Working branch:** `claude/ledger-file-clashes` (made from `main`; `alpha` is fully contained in
-`main`, so this branch can later go to `alpha` in one pull request).
-**28 September 2026:** a second branch, `feature/bcp47-language-policy` (issue #47), is in flight —
-see the section straight below.
-**Issues:** [#41](https://github.com/MWBMPartners/dev-team-plugin/issues/41) (the main work),
+**Last updated:** 17 November 2026 — the three open lines of work (#41, #47 and the polish skill) were
+merged into `main` on 9 November. The section straight below ("Current state") is the one to trust; the
+sections after it (the #47 notes, "START HERE", "Detailed history") are the older record and say, in
+places, that things are still waiting that are now done. Where they disagree, this section wins.
+**Working branch:** none in flight. The branch `claude/ledger-file-clashes` and the others named in the
+older sections are **deleted** (see below). Start the next piece of work from `alpha`.
+**Issues:** [#41](https://github.com/MWBMPartners/dev-team-plugin/issues/41),
+[#47](https://github.com/MWBMPartners/dev-team-plugin/issues/47) (both still open on GitHub — see
+"Housekeeping"), [#48](https://github.com/MWBMPartners/dev-team-plugin/issues/48),
 [#46](https://github.com/MWBMPartners/dev-team-plugin/issues/46),
 [#45](https://github.com/MWBMPartners/dev-team-plugin/issues/45).
 
-## Also in flight: `feature/bcp47-language-policy` (issue #47) — added 28 September 2026
+## Current state — 17 November 2026
+
+### What happened on 9 November
+
+| Step | Result |
+| --- | --- |
+| Compared three unmerged branches by reading the real code, not commit titles | `feature/bcp47-language-policy` (112 commits) already contained all of `claude/ledger-file-clashes` (66 commits), so the ledger branch needed no separate step. `claude/gifted-wright-y3ze25` (2 commits, the polish skill) was independent. |
+| Merged them into one new branch and opened **one** pull request, [#49](https://github.com/MWBMPartners/dev-team-plugin/pull/49), straight to `main` | Merged as `00e0b67`. Five files conflicted when the polish branch went in; all were resolved by keeping both sides. |
+| Version numbers | The polish skill had been numbered 1.5.0 on its own branch, which clashed with 1.5.0 (ledger) and 1.6.0 (language policy). It is now **1.7.0**, and `plugin.json` says 1.7.0. |
+| Checks | On the pull request and again on `main` after the merge: `plugin-audit` (audit and test) and `Lint Workflows` all passed. Run by hand beforehand: both audits, smoke test, shellcheck, and bats 207 of 207. |
+| Branches | `alpha` and `beta` were moved forward to the same commit as `main` (`00e0b67`). They had nothing of their own, so nothing was lost. The three old branches and the working branch were then deleted by the owner (this session's connection to GitHub is not allowed to delete branches). |
+
+**Merging straight to `main` was a one-off**, at the owner's request. The standing rule is unchanged
+(`.claude/CLAUDE.md` rule 6, and the owner confirmed it on 9 November): future work goes on **one
+working branch, merged into `alpha` by one pull request**, opened when the owner says.
+
+### The red checks on `main` — what is known
+
+- Since the `actions/checkout` update in [#40](https://github.com/MWBMPartners/dev-team-plugin/pull/40)
+  (23 September), all three checks on `main` failed within about two seconds. The jobs never got a
+  machine to run on (no steps ran), and GitHub had already discarded the logs, so **the real cause was
+  never seen**.
+- The same checkout version passed on the pull request and on `main` on 9 November, so it is **not**
+  a fault in that version. Most likely a temporary GitHub problem on 23 September. This is an
+  inference, not something checked.
+
+### Still true: the review debt
+
+- **Never cleared:** a clean Codex review. The older sections record that #41's fix rounds 3 to 5 and
+  #47's sixth round had **not** had a clean Codex pass when this work was last touched in early
+  October, and nothing in the repository or on GitHub shows one happened afterwards. The 9 November
+  merge did not add a review: it combined work and ran the automatic checks. Under rule 5 this work
+  therefore still counts as **not fully reviewed**.
+- **What to do:** when the Codex allowance is available, run it over the whole of what is now on
+  `main` (the brief and exact command are in
+  `.claude/plans/ledger-file-clashes/codex-review-prompt-5.md`), fix every confirmed finding on a new
+  working branch, and repeat until a round finds nothing. If Codex cannot run, use a fresh, independent
+  Claude reviewer and say so plainly.
+- **Not reviewed at all:** the polish skill (`dev-team-polish`, its command and the SessionStart
+  reminder). It was written on its own branch and no cross-system review is recorded for it.
+
+### Housekeeping to do next
+
+1. **Issues #41 and #47 are still open** and still say their work is "on branch
+   `claude/ledger-file-clashes`" / "`feature/bcp47-language-policy`". Add a comment to each saying it
+   merged in #49 on 9 November (as 1.5.0 and 1.6.0 respectively), and that the review debt above
+   remains. Do not close them until the review is clean — the owner's call.
+2. **Documents still name deleted branches.** `.claude/CONTEXT.md` and `.claude/MEMORY.md` were updated on 17 November.
+   `.OpenAI/CONTEXT.md` has a dated note. The issue texts for #41, #45, #46 and #47 still name
+   `claude/ledger-file-clashes`; the older sections of this file do too, on purpose (history).
+3. **Issue [#48](https://github.com/MWBMPartners/dev-team-plugin/issues/48)** (the conventions text
+   says both guard hooks fail open, which is no longer true of the Bash guard) is a small
+   wording-only fix, ready to do.
+4. **Tidy the record:** the 14 September to 5 October detail below is long. Once the review debt is
+   cleared, fold it into a short summary.
+
+### Open owner decisions (unchanged — see the table in "START HERE" below)
+
+Q1 to Q5 are all still open. Nothing in the 9 November work answered them. In short: #46 (provider-
+agnostic orchestrator) and #45 (the owner's standard practices as features) both wait on the owner;
+#42, #43 and #44 are filed but not started.
+
+### Facts that are easy to get wrong
+
+- Version on `main`: **1.7.0**. Verdict schema, ledger guard, language-policy rule and polish skill
+  are all in it.
+- `main`, `alpha` and `beta` were identical at `00e0b67` on 9 November. Check with `git log
+  origin/alpha..origin/main` before assuming that still holds.
+- From a cloud session, deleting branches or moving a branch other than the session's own is blocked
+  at the connection; moving `alpha`/`beta` forward worked, deleting did not. Ask the owner to delete.
+- The `.claude/CLAUDE.md` rules (plain English, handover kept current, a different system reviews the
+  work) were not run through the plugin during #49: the merge was done by hand.
+
+## Older record: `feature/bcp47-language-policy` (issue #47) — added 28 September 2026
+
+> **Superseded 17 November 2026:** this branch was merged into `main` on 9 November (#49) and deleted.
+> What follows is the record as it stood on 5 October; its "next" steps are out of date.
 
 - **What it adds (plugin version 1.6.0):** a shared rule, "Repository instructions and normative
   documents" (first bullet of "Shared discipline" in
@@ -487,7 +563,7 @@ see the section straight below.
   (`dry-run: off`, `gates: hybrid`, …), so a freshly initialised config could overrule a project's
   cautious instruction. Decided by the lead and built in the starter-file commit (above).
 
-## START HERE — for a fresh session with no chat history
+## START HERE — for a fresh session with no chat history (written 23 September; see "Current state" above for what has changed since)
 
 Read, in this order: this section; `.claude/CLAUDE.md` (the standing rules, revised on 23 September);
 `.claude/CONTEXT.md` (what the repository is and how to check it); `.claude/MEMORY.md` (traps already
