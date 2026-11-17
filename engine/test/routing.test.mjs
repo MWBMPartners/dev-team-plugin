@@ -125,3 +125,13 @@ test('yaml: pin versions keep their exact text, and a list written one item per 
   const y = parseYaml('routing:\n  pin: {opus: 4.10, sonnet: 007}\n  ask-first:\n    - opus\n    - fable\n');
   assert.deepEqual(y.routing.pin, { opus: '4.10', sonnet: '007' }); assert.deepEqual(y.routing['ask-first'], ['opus', 'fable']);
 });
+
+// ---- Fixes after the second independent review ----
+test('pin versions keep their exact text in every yaml style', () => {
+  const y = parseYaml('routing:\n  pin:\n    opus: 4.10\n    sonnet: 007\n');
+  assert.deepEqual(y.routing.pin, { opus: '4.10', sonnet: '007' });
+});
+test('complex must be true or false; a lookalike never lowers the strength needed', () => {
+  for (const bad of ['true', 1, 'yes']) assert.throws(() => route({ role: 'builder', providers: ['claude'], complex: bad }, seed, cfg()), BadRequest);
+  assert.equal(route({ role: 'builder', providers: ['claude'], complex: true }, seed, cfg()).decision.tier, 3);
+});

@@ -35,10 +35,12 @@ export const commands = {
   },
   async route(a) {
     if (typeof a.flags['request-file'] !== 'string') throw new BadInput('usage: route --request-file <json>');
-    const req = JSON.parse(readFileSync(resolve(a.flags['request-file']), 'utf8'));
+    let req;
+    try { req = JSON.parse(readFileSync(resolve(a.flags['request-file']), 'utf8')); } catch { throw new BadInput('the request file is missing or is not valid JSON'); }
+    if (!req || typeof req !== 'object' || Array.isArray(req)) throw new BadInput('the request must be a JSON object');
     const cfg = loadRouting({ projectDir: req.projectDir ?? process.cwd(), sessionOrder: req.order });
     let models = loadSeed();
-    if ((req.providers ?? []).includes('ollama')) models = [...models, ...(await discoverOllama(execFile))];
+    if (Array.isArray(req.providers) && req.providers.some((p) => String(p).toLowerCase() === 'ollama')) models = [...models, ...(await discoverOllama(execFile))];
     const out = route(req, models, cfg);
     return { code: out.ok ? ExitCodes.OK : ExitCodes.NEGATIVE, result: out, problems: out.ok ? [] : [{ code: out.code, message: out.reasons[out.reasons.length - 1] }] };
   },

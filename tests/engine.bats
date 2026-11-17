@@ -76,3 +76,13 @@ teardown() { rm -rf "$SCRATCH"; }
   [ "$status" -eq 1 ]
   [[ "$output" == *"NEEDS_APPROVAL"* ]]
 }
+
+@test "engine.sh: a request that is not a JSON object, or not JSON at all, exits 2 with a fixed message" {
+  printf 'null' > "$SCRATCH/req.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" route --request-file "$SCRATCH/req.json"
+  [ "$status" -eq 2 ]
+  printf 'sk-ant-api03-notreallyakey' > "$SCRATCH/req.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" route --request-file "$SCRATCH/req.json"
+  [ "$status" -eq 2 ]
+  [[ "$output" != *"sk-ant"* ]]
+}

@@ -43,7 +43,7 @@ export function parseYaml(text) {
     if (!m) continue;
     while (stack.length > 1 && indent <= stack[stack.length - 1].indent) stack.pop();
     const parent = stack[stack.length - 1].obj;
-    if (m[2] === '') { parent[m[1]] = {}; stack.push({ indent, obj: parent[m[1]], parent, key: m[1] }); } else parent[m[1]] = scalar(m[2]);
+    if (m[2] === '') { parent[m[1]] = {}; stack.push({ indent, obj: parent[m[1]], parent, key: m[1] }); } else parent[m[1]] = stack[stack.length - 1].key === 'pin' ? m[2].trim().replace(/^["']|["']$/g, '') : scalar(m[2]); // pin versions stay exact text
   }
   return root;
 }

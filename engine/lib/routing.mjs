@@ -28,10 +28,11 @@ function strList(v, name) {
 /** The lowest tier the job needs. Higher risk or a complex change raises a builder's floor by one. */
 export function requiredTier(role, risk = 'NORMAL', complex = false) {
   if (typeof role !== 'string' || !Object.hasOwn(ROLE_FLOOR, role)) throw new BadRequest(`unknown role "${String(role).slice(0, 30)}"`);
+  if (complex !== undefined && typeof complex !== 'boolean') throw new BadRequest('complex must be true or false');
   const rk = String(risk).toUpperCase();
   if (!RISKS.includes(rk)) throw new BadRequest(`risk must be one of ${RISKS.join(', ')}`);
   let t = ROLE_FLOOR[role];
-  if (role === 'builder' && (rk === 'HIGH' || complex === true)) t = 3;
+  if (role === 'builder' && (rk === 'HIGH' || complex)) t = 3;
   return t;
 }
 
