@@ -1,0 +1,46 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { initJob, loadJob, recordPhase, createCheckpoint, verifyCheckpoints, progressRows, JobProblem } from '../lib/job.mjs';
+
+const g = (cwd, ...a) => execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...a], { cwd, stdio: 'pipe', encoding: 'utf8' });
+// The job file lives in .dev-team/, which this test keeps out of git so resetting history cannot remove it.
+const repo = () => { const d = mkdtempSync(join(tmpdir(), 'dt-job-')); g(d, 'init', '-q'); writeFileSync(join(d, '.git', 'info', 'exclude'), '.dev-team/\n'); writeFileSync(join(d, 'a'), '1'); g(d, 'add', '.'); g(d, 'commit', '-q', '-m', 'one'); return d; };
+
+test('a job starts from a template, is saved with the ownership marker on line 2, and reads back', () => {
+  const d = repo(); const j = initJob(d, { template: 'normal', request: 'Add a login page', issue: 12 });
+  assert.match(j.jobId, /^j-[0-9a-f]{12}$/); assert.equal(j.phases.length, 4); assert.ok(j.phases.every((p) => p.status === 'PENDING'));
+  assert.match(readFileSync(join(d, '.dev-team', 'jobs', j.jobId, 'job.json'), 'utf8').split('\n')[1], /"dev-team": "ledger=job schema=1.0"/);
+  assert.equal(loadJob(d, j.jobId).request, 'Add a login page');
+  assert.throws(() => initJob(d, { template: 'nope', request: 'x' }), RangeError); assert.throws(() => initJob(d, { template: 'normal', request: ' ' }), RangeError);
+  assert.throws(() => initJob(d, { template: 'normal', request: 'x', issue: NaN }), RangeError);
+});
+test('phases only move along allowed steps, and ids can never be paths', () => {
+  const d = repo(); const j = initJob(d, { template: 'small-task', request: 'x' });
+  assert.throws(() => recordPhase(d, j.jobId, 'build', 'DONE'), JobProblem);
+  recordPhase(d, j.jobId, 'build', 'IN_PROGRESS'); recordPhase(d, j.jobId, 'build', 'BLOCKED', 'waiting for a key'); recordPhase(d, j.jobId, 'build', 'IN_PROGRESS'); recordPhase(d, j.jobId, 'build', 'DONE');
+  assert.throws(() => recordPhase(d, j.jobId, 'build', 'IN_PROGRESS'), JobProblem);
+  assert.throws(() => recordPhase(d, j.jobId, 'nope', 'IN_PROGRESS'), JobProblem); assert.throws(() => recordPhase(d, j.jobId, 'verify', 'MAYBE'), RangeError);
+  assert.throws(() => recordPhase(d, j.jobId, 'verify', 'IN_PROGRESS', 'bad\u0007note'), RangeError);
+  assert.throws(() => loadJob(d, '../../etc/passwd'), RangeError); assert.throws(() => loadJob(d, 'j-000000000000'), JobProblem);
+  assert.equal(progressRows(loadJob(d, j.jobId))[0].status, 'DONE');
+});
+test('a file that is not ours is never overwritten, and a damaged job is reported', () => {
+  const d = repo(); const j = initJob(d, { template: 'normal', request: 'x' });
+  const p = join(d, '.dev-team', 'jobs', j.jobId, 'job.json'); writeFileSync(p, '{"mine":true}');
+  assert.throws(() => recordPhase(d, j.jobId, 'discover', 'IN_PROGRESS'), JobProblem); assert.equal(readFileSync(p, 'utf8'), '{"mine":true}');
+});
+test('checkpoints are tied to commits: verify passes, then fails when the commit is gone', () => {
+  const d = repo(); const j = initJob(d, { template: 'normal', request: 'x' });
+  writeFileSync(join(d, 'b'), '2'); const cp = createCheckpoint(d, j.jobId, 'plan', 'planning'); assert.equal(cp.uncommittedChanges, true);
+  assert.equal(verifyCheckpoints(d, j.jobId).ok, true);
+  g(d, 'add', '.'); g(d, 'commit', '-q', '-m', 'two'); const cp2 = createCheckpoint(d, j.jobId, 'build', 'build'); assert.equal(cp2.uncommittedChanges, false);
+  g(d, 'reset', '-q', '--hard', 'HEAD~1'); g(d, 'reflog', 'expire', '--expire=now', '--all'); g(d, 'gc', '-q', '--prune=now');
+  const v = verifyCheckpoints(d, j.jobId); assert.equal(v.ok, false); assert.equal(v.results.filter((r) => !r.ok).length, 1);
+  assert.throws(() => createCheckpoint(d, j.jobId, 'plan', 'weird'), RangeError); assert.throws(() => createCheckpoint(d, j.jobId, 'nope', 'build'), JobProblem);
+  const empty = mkdtempSync(join(tmpdir(), 'dt-nogit-')); const j2 = initJob(empty, { template: 'small-task', request: 'x' });
+  assert.throws(() => createCheckpoint(empty, j2.jobId, 'build', 'build'), JobProblem);
+});

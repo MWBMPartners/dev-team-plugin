@@ -156,3 +156,23 @@ teardown() { rm -rf "$SCRATCH"; }
   [ "$status" -eq 1 ]
   [[ "$output" == *"ATTEMPT_CAP_REACHED"* ]]
 }
+
+@test "engine.sh: job init, record, checkpoint create and verify, and the progress table work end to end in a temp repo" {
+  git -C "$SCRATCH" init -q && printf 'x' > "$SCRATCH/f" && git -C "$SCRATCH" add f && git -C "$SCRATCH" -c user.email=t@t -c user.name=t commit -q -m one
+  run bash "$REPO_ROOT/scripts/engine.sh" job init --template small-task --request "Add a thing" --project "$SCRATCH"
+  [ "$status" -eq 0 ]
+  id="$(printf '%s' "$output" | jq -r .result.jobId)"
+  run bash "$REPO_ROOT/scripts/engine.sh" job record --job "$id" --phase build --status DONE --project "$SCRATCH"
+  [ "$status" -eq 4 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" job record --job "$id" --phase build --status IN_PROGRESS --project "$SCRATCH"
+  [ "$status" -eq 0 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" checkpoint create --job "$id" --phase build --kind build --project "$SCRATCH"
+  [ "$status" -eq 0 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" checkpoint verify --job "$id" --project "$SCRATCH"
+  [ "$status" -eq 0 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" report --job "$id" --progress --project "$SCRATCH"
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq '.result.rows | length')" -eq 2 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" job status --job "../x" --project "$SCRATCH"
+  [ "$status" -eq 2 ]
+}

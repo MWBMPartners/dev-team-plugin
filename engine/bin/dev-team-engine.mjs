@@ -28,6 +28,7 @@ import { classifyDrift } from '../lib/drift.mjs';
 import { checkEvidence } from '../lib/evidence.mjs';
 import { newTask, recordAttempt, recordEscalation, validateTask } from '../lib/attempts.mjs';
 import { writeJsonAtomic } from '../lib/store.mjs';
+import { initJob, loadJob, recordPhase, createCheckpoint, verifyCheckpoints, progressRows, JobProblem } from '../lib/job.mjs';
 import { canonicalJson, sha256Hex } from '../lib/canonical.mjs';
 const execFile = promisify(execFileCb);
 const seedPath = () => resolve(pluginRoot(), 'engine', 'data', 'catalogue.seed.json');
@@ -154,6 +155,34 @@ export const commands = {
     try { const r = recordAttempt(task, { outcome: a.flags.outcome, progressMade: a.flags['progress-made'] === 'true' }); writeJsonAtomic(f, r.task);
       return { code: r.capReached ? ExitCodes.NEGATIVE : ExitCodes.OK, result: { attempts: r.task.attempts.length, closed: r.task.closed, capReached: r.capReached }, problems: r.capReached ? [{ code: 'ATTEMPT_CAP_REACHED', message: r.reason }] : [] };
     } catch (e) { if (e instanceof RangeError) throw e; return { code: ExitCodes.NEGATIVE, result: null, problems: [{ code: 'ATTEMPT_CAP_REACHED', message: e instanceof Error ? e.message : 'no more attempts' }] }; }
+  },
+  async job(a) {
+    const dir = typeof a.flags.project === 'string' ? resolve(a.flags.project) : process.cwd();
+    const problem = (e) => ({ code: ExitCodes.CONFLICT, result: null, problems: [{ code: 'JOB_PROBLEM', message: e.message }] });
+    try {
+      if (a.sub === 'init') {
+        const issue = a.flags.issue === undefined ? null : /^[0-9]+$/.test(String(a.flags.issue)) ? Number(a.flags.issue) : NaN;
+        const j = initJob(dir, { template: String(a.flags.template ?? ''), request: String(a.flags.request ?? ''), issue });
+        return { code: ExitCodes.OK, result: { jobId: j.jobId, phases: j.phases.map((p) => p.id) } };
+      }
+      if (a.sub === 'status') return { code: ExitCodes.OK, result: loadJob(dir, String(a.flags.job ?? '')) };
+      if (a.sub === 'record') { const j = recordPhase(dir, String(a.flags.job ?? ''), String(a.flags.phase ?? ''), String(a.flags.status ?? ''), typeof a.flags.note === 'string' ? a.flags.note : ''); return { code: ExitCodes.OK, result: { jobId: j.jobId, phases: progressRows(j) } }; }
+    } catch (e) { if (e instanceof JobProblem) return problem(e); throw e; }
+    throw new BadInput('usage: job init --template T --request TEXT [--issue N] | job status --job ID | job record --job ID --phase P --status S [--note TEXT]');
+  },
+  async checkpoint(a) {
+    const dir = typeof a.flags.project === 'string' ? resolve(a.flags.project) : process.cwd();
+    try {
+      if (a.sub === 'create') return { code: ExitCodes.OK, result: createCheckpoint(dir, String(a.flags.job ?? ''), String(a.flags.phase ?? ''), String(a.flags.kind ?? '')) };
+      if (a.sub === 'verify') { const v = verifyCheckpoints(dir, String(a.flags.job ?? '')); return { code: v.ok ? ExitCodes.OK : ExitCodes.VERIFY_FAILED, result: v, problems: v.ok ? [] : v.results.filter((r) => !r.ok).map((r) => ({ code: 'CHECKPOINT_MISSING', message: `checkpoint ${r.id} points at a commit that no longer exists` })) }; }
+    } catch (e) { if (e instanceof JobProblem) return { code: ExitCodes.CONFLICT, result: null, problems: [{ code: 'JOB_PROBLEM', message: e.message }] }; throw e; }
+    throw new BadInput('usage: checkpoint create --job ID --phase P --kind planning|build|verify|handover | checkpoint verify --job ID');
+  },
+  async report(a) {
+    if (!a.flags.progress || typeof a.flags.job !== 'string') throw new BadInput('usage: report --job ID --progress [--project DIR]');
+    const dir = typeof a.flags.project === 'string' ? resolve(a.flags.project) : process.cwd();
+    try { return { code: ExitCodes.OK, result: { jobId: a.flags.job, rows: progressRows(loadJob(dir, a.flags.job)) } }; }
+    catch (e) { if (e instanceof JobProblem) return { code: ExitCodes.CONFLICT, result: null, problems: [{ code: 'JOB_PROBLEM', message: e.message }] }; throw e; }
   },
   async doctor() { return { code: ExitCodes.OK, result: await runDoctor() }; },
   async schema(a) {

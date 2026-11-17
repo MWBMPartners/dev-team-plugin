@@ -34,6 +34,10 @@ Each prints one JSON answer (add `--format text` for a short reading):
 | `drift --input F` | NO_DRIFT, MINOR, SIGNIFICANT or ARCHITECTURAL from the changed files; exit 1 means STOP and go back to planning. | yes |
 | `evidence check --input F` | Whether a task may be called complete: failed or missing results, open blocking findings, unproven criteria, a changed plan. Exit 1 if not. A model's own "confident" never counts. | yes |
 | `attempt record --state-file F --outcome SUCCESS\|FAIL --progress-made true\|false` | Bounded retries: three failures or two with no progress stop with exit 1 `ATTEMPT_CAP_REACHED`; `--escalated` allows one more. | yes |
+| `job init --template normal\|small-task\|critical --request TEXT [--issue N] [--project D]` | Starts a job from a template and saves it in `.dev-team/jobs/<id>/job.json` (committed with the project, so any machine or assistant can resume). | yes |
+| `job status --job ID` / `job record --job ID --phase P --status S [--note T]` | Reads a job, or moves a phase along PENDING, IN_PROGRESS, DONE or BLOCKED (only allowed steps; exit 4 otherwise). | yes |
+| `checkpoint create --job ID --phase P --kind K` / `checkpoint verify --job ID` | Ties a checkpoint to the current git commit; verify exits 5 if a checkpoint's commit no longer exists. | yes |
+| `report --job ID --progress` | The progress table: one row per phase with status, checkpoints and note. | yes |
 
 How `route` decides (details: [routing.md](routing.md)): strength is a tier (1 utility to 4 principal), never a model name; checking work is never below tier 3; the cheapest qualifying model wins and tier 4 is never the default; models on the ask-first list are held back until approved (local models never are); a pin is carried through exactly or the job stops and asks; local-first or cloud-first only changes the order tried, never the strength needed. The starting catalogue is `engine/data/catalogue.seed.json`; every provider except Claude and Codex review is unverified.
 

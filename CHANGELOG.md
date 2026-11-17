@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Orchestrator engine, rest of increment 3**: job files from templates (`job init|status|record`),
+  git-backed checkpoints (`checkpoint create|verify`) and the progress table (`report --progress`).
+
 - **Orchestrator engine, increment 3 (part)**: plan contracts locked by a fingerprint (`plan draft|lock|verify|diff`,
   and the engine verifies this project's own hand-locked plan), drift detection with STOP, the completion
   evidence gate, bounded attempts, job templates and schemas (`plan-contract`, `job-templates`). Not yet
