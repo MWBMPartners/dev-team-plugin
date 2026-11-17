@@ -23,10 +23,16 @@ export async function fetchCatalogue({ url = null, dataDir, fetchImpl = globalTh
   try {
     const res = await fetchImpl(u.href, { redirect: 'error', signal: AbortSignal.timeout(8000), headers: { accept: 'application/json' } });
     if (!res.ok) return { status: 'UNREACHABLE', note: 'The catalogue service did not answer successfully; carrying on without it.' };
-    text = await res.text();
-    if (text.length > MAX_BYTES) return { status: 'IGNORED', note: 'The catalogue answer was too large and was ignored.' };
+    const declared = Number(res.headers?.get?.('content-length') ?? 0);
+    if (declared > MAX_BYTES) return { status: 'REJECTED', note: 'The catalogue answer was too large and was ignored.' };
+    // Read at most MAX_BYTES bytes, counted as bytes, and stop reading beyond that.
+    if (res.body && typeof res.body.getReader === 'function') {
+      const reader = res.body.getReader(); const chunks = []; let n = 0;
+      for (;;) { const { done, value } = await reader.read(); if (done) break; n += value.byteLength; if (n > MAX_BYTES) { try { await reader.cancel(); } catch { /* ignore */ } return { status: 'REJECTED', note: 'The catalogue answer was too large and was ignored.' }; } chunks.push(value); }
+      text = Buffer.concat(chunks).toString('utf8');
+    } else { text = await res.text(); if (Buffer.byteLength(text, 'utf8') > MAX_BYTES) return { status: 'REJECTED', note: 'The catalogue answer was too large and was ignored.' }; }
   } catch { return { status: 'UNREACHABLE', note: 'The catalogue service could not be reached; carrying on without it.' }; }
-  let env; try { env = JSON.parse(text); } catch { return { status: 'IGNORED', note: 'The catalogue answer was not valid JSON and was ignored.' }; }
+  let env; try { env = JSON.parse(text); } catch { return { status: 'REJECTED', note: 'The catalogue answer was not valid JSON and was ignored.' }; }
   const v = verifyEnvelope(env, { publicKeyPem, now });
   if (!v.ok) return { status: 'REJECTED', note: `The catalogue failed verification (${v.reason}) and was ignored. It is never used unsigned.` };
   mkdirSync(join(dataDir, 'remote-catalogue'), { recursive: true });

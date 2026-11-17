@@ -29,7 +29,9 @@ export const policyCommands = {
       return { code: v.ok ? ExitCodes.OK : ExitCodes.VERIFY_FAILED, result: { ok: v.ok, reason: v.reason }, problems: v.ok ? [] : [{ code: 'CATALOGUE_REJECTED', message: `${v.reason}; the file is ignored and never used unsigned` }] };
     }
     if (a.sub === 'fetch') {
-      const r = await fetchCatalogue({ url: typeof a.flags.url === 'string' ? a.flags.url : process.env.DEV_TEAM_CATALOGUE_URL ?? null, dataDir: dataDir(), refresh: a.flags.refresh === true });
+      const given = typeof a.flags.url === 'string' ? a.flags.url : null;
+      if (given !== null) { let u; try { u = new URL(given); } catch { throw new BadInput('--url is not a valid web address'); } if (u.protocol !== 'https:') throw new BadInput('--url must be an https address'); }
+      const r = await fetchCatalogue({ url: given ?? process.env.DEV_TEAM_CATALOGUE_URL ?? null, dataDir: dataDir(), refresh: a.flags.refresh === true });
       return { code: r.status === 'REJECTED' ? ExitCodes.VERIFY_FAILED : ExitCodes.OK, result: r, problems: r.status === 'REJECTED' ? [{ code: 'CATALOGUE_REJECTED', message: r.note }] : [] };
     }
     throw new BadInput('usage: catalogue verify --file F [--key K] | catalogue fetch [--url https://...] [--refresh]');

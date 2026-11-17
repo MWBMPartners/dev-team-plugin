@@ -47,10 +47,18 @@ export function checkPayloadShape(p) {
 export function verifyEnvelope(env, { publicKeyPem = pinnedKeyPem(), now = new Date() } = {}) {
   if (!env || typeof env !== 'object' || Array.isArray(env)) return { ok: false, reason: 'not a catalogue envelope' };
   for (const k of Object.keys(env)) if (!['payload', 'signature', 'keyId', 'issuedAt', 'expiresAt'].includes(k)) return { ok: false, reason: `the envelope may not contain "${k}"` };
+  // The signature must be written in exactly one way: standard base64 with padding that decodes to 64 bytes.
   if (typeof env.signature !== 'string' || !B64.test(env.signature) || env.signature.length > 200) return { ok: false, reason: 'the signature is missing or not valid base64' };
+  { const raw = Buffer.from(env.signature, 'base64'); if (raw.length !== 64 || raw.toString('base64') !== env.signature) return { ok: false, reason: 'the signature is not in its one valid written form (64 bytes, standard base64)' }; }
   if (typeof env.keyId !== 'string' || typeof env.issuedAt !== 'string' || typeof env.expiresAt !== 'string' || !ISO.test(env.issuedAt) || !ISO.test(env.expiresAt)) return { ok: false, reason: 'keyId, issuedAt and expiresAt are needed (times in UTC ISO form)' };
   let pubId; try { pubId = keyIdOf(publicKeyPem); } catch { return { ok: false, reason: 'the pinned public key cannot be read' }; }
   if (env.keyId !== pubId) return { ok: false, reason: 'the envelope names a different key than the pinned one' };
+  // Dates must be real, in order, and not valid for longer than 30 days.
+  const iat = Date.parse(env.issuedAt), eat = Date.parse(env.expiresAt);
+  const realIso = (s, ms) => Number.isFinite(ms) && new Date(ms).toISOString().slice(0, 19) === s.slice(0, 19);
+  if (!realIso(env.issuedAt, iat) || !realIso(env.expiresAt, eat)) return { ok: false, reason: 'issuedAt and expiresAt must be real dates and times' };
+  if (eat <= iat) return { ok: false, reason: 'the catalogue expires before it was issued' };
+  if (eat - iat > 30 * 86400000) return { ok: false, reason: 'the catalogue is valid for longer than 30 days' };
   const shape = checkPayloadShape(env.payload); if (shape.length) return { ok: false, reason: shape[0] };
   let good = false;
   try { good = verify(null, Buffer.from(canonicalJson({ payload: env.payload, keyId: env.keyId, issuedAt: env.issuedAt, expiresAt: env.expiresAt }), 'utf8'), createPublicKey(publicKeyPem), Buffer.from(env.signature, 'base64')); } catch { good = false; }

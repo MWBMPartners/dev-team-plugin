@@ -329,3 +329,13 @@ teardown() { rm -rf "$SCRATCH"; }
   [ "$status" -eq 0 ]
   [[ "$output" == *"NOT_CONFIGURED"* ]]
 }
+
+@test "check-no-lang-ext-urls.sh: a closing fence indented four spaces is not a closer" {
+  mkdir -p "$SCRATCH/site4"
+  # shellcheck disable=SC2016
+  printf '```\nin\n    ```\nhttps://a.b/IN4.php\n```\nhttps://a.b/OUT5.php\n' > "$SCRATCH/site4/a.md"
+  run bash "$REPO_ROOT/scripts/check-no-lang-ext-urls.sh" "$SCRATCH/site4"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"OUT5"* ]]
+  [[ "$output" != *"IN4"* ]]
+}

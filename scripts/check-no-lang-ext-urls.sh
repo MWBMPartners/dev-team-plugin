@@ -25,8 +25,9 @@ while IFS= read -r f; do
       if (open == "") {
         if (match($0, /^ ? ? ?(```+)[^`]*$/) || match($0, /^ ? ? ?(~~~+)/)) { s = $0; sub(/^ */, "", s); match(s, /^(`+|~+)/); open = substr(s, 1, 1); openlen = RLENGTH; next }
       } else {
-        s = $0; sub(/^ */, "", s)
-        if (match(s, /^(`+|~+)[ \t]*$/) && substr(s, 1, 1) == open) { n = s; gsub(/[ \t]/, "", n); if (length(n) >= openlen) { open = ""; openlen = 0 } }
+        s = $0
+        if (match(s, /^ ? ? ?(`+|~+)[ \t]*$/)) { sub(/^ */, "", s) } else { next }
+        if (substr(s, 1, 1) == open) { n = s; gsub(/[ \t]/, "", n); if (length(n) >= openlen) { open = ""; openlen = 0 } }
         next
       }
     }
