@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dev-team job templates",
+  "description": "Starting lists of phases for a job.",
+  "type": "object",
+  "required": [
+    "dev-team",
+    "description",
+    "templates"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "dev-team": {
+      "description": "Ownership marker.",
+      "type": "string"
+    },
+    "description": {
+      "description": "What the file is.",
+      "type": "string"
+    },
+    "templates": {
+      "description": "Template name to its phases.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "required": [
+            "id",
+            "name",
+            "role",
+            "taskTypes"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "description": "Short phase id.",
+              "type": "string"
+            },
+            "name": {
+              "description": "Phase name.",
+              "type": "string"
+            },
+            "role": {
+              "description": "Which role does it.",
+              "type": "string"
+            },
+            "taskTypes": {
+              "description": "Kinds of task, from floors.json.",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

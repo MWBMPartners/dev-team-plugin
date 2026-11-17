@@ -65,6 +65,14 @@
     {
       "schema": "schemas/hooks.schema.json",
       "fixture": "hooks/hooks.json"
+    },
+    {
+      "schema": "schemas/data/job-templates.schema.json",
+      "fixture": "engine/data/job-templates.json"
+    },
+    {
+      "schema": "schemas/plan-contract.schema.json",
+      "fixture": ".claude/plans/orchestrator-v2/plan-contract.orchestrator-v2.v1.json"
     }
   ],
   "exceptions": [

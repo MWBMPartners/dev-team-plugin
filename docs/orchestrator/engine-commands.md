@@ -27,6 +27,13 @@ Each prints one JSON answer (add `--format text` for a short reading):
 | `dry-run --phases-file F` | What would happen for a list of planned phases (model, effort, held back) plus the owner's questions, each with why. Cost and quota columns say "available after increment 7". | yes |
 | `docs check [--project D]` | Read-only: does `.dev-team/PROJECT.md` have goals, requirements and prerequisites, plan and status sections (standing rule 13)? Each missing piece is a finding. | yes |
 | `docs check --api [--project D]` | Read-only: if the project has an OpenAPI description, is there a Swagger UI page, and is the spec old (standing rule 15)? | yes |
+| `plan draft --file C --id ID --out P` | Makes an unlocked plan file from a contract. | yes |
+| `plan lock --file P --approver NAME` | Locks a plan with the owner's approval; exit 4 if already locked. | yes |
+| `plan verify --file P` | Checks a plan's fingerprint (works on any path, including this project's hand-locked plan); exit 5 if a locked plan was edited. | yes |
+| `plan diff --a P1 --b P2` | Lists which sections of the contract changed. | yes |
+| `drift --input F` | NO_DRIFT, MINOR, SIGNIFICANT or ARCHITECTURAL from the changed files; exit 1 means STOP and go back to planning. | yes |
+| `evidence check --input F` | Whether a task may be called complete: failed or missing results, open blocking findings, unproven criteria, a changed plan. Exit 1 if not. A model's own "confident" never counts. | yes |
+| `attempt record --state-file F --outcome SUCCESS\|FAIL --progress-made true\|false` | Bounded retries: three failures or two with no progress stop with exit 1 `ATTEMPT_CAP_REACHED`; `--escalated` allows one more. | yes |
 
 How `route` decides (details: [routing.md](routing.md)): strength is a tier (1 utility to 4 principal), never a model name; checking work is never below tier 3; the cheapest qualifying model wins and tier 4 is never the default; models on the ask-first list are held back until approved (local models never are); a pin is carried through exactly or the job stops and asks; local-first or cloud-first only changes the order tried, never the strength needed. The starting catalogue is `engine/data/catalogue.seed.json`; every provider except Claude and Codex review is unverified.
 

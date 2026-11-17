@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Orchestrator engine, increment 3 (part)**: plan contracts locked by a fingerprint (`plan draft|lock|verify|diff`,
+  and the engine verifies this project's own hand-locked plan), drift detection with STOP, the completion
+  evidence gate, bounded attempts, job templates and schemas (`plan-contract`, `job-templates`). Not yet
+  built: job files, git-backed checkpoints and the progress table.
+
 - **Orchestrator engine, queued items from the owner's requirements**: adapters for Ollama (local models,
   found by asking what is installed), Copilot and DeepSeek (unverified); `docs check` (do the goals,
   requirements and plan sections exist) and `docs check --api` (an OpenAPI file needs a Swagger UI page).

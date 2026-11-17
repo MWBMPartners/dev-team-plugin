@@ -23,6 +23,11 @@ import { route, BadRequest } from '../lib/routing.mjs';
 import { recordDecision, getDecision, explain, DecisionUnreadable } from '../lib/decisions.mjs';
 import { dryRun } from '../lib/dryrun.mjs';
 import { checkProjectDocs, checkApiDocs } from '../lib/projectdocs.mjs';
+import { draftPlan, lockPlan, verifyPlan, diffPlans, Conflict } from '../lib/plan.mjs';
+import { classifyDrift } from '../lib/drift.mjs';
+import { checkEvidence } from '../lib/evidence.mjs';
+import { newTask, recordAttempt, recordEscalation } from '../lib/attempts.mjs';
+import { writeJsonAtomic } from '../lib/store.mjs';
 import { canonicalJson, sha256Hex } from '../lib/canonical.mjs';
 const execFile = promisify(execFileCb);
 const seedPath = () => resolve(pluginRoot(), 'engine', 'data', 'catalogue.seed.json');
@@ -97,6 +102,53 @@ export const commands = {
     const dir = typeof a.flags.project === 'string' ? resolve(a.flags.project) : process.cwd();
     const r = a.flags.api ? checkApiDocs(dir) : checkProjectDocs(dir);
     return { code: ExitCodes.OK, result: r, problems: r.findings };
+  },
+  async plan(a) {
+    const file = typeof a.flags.file === 'string' ? resolve(a.flags.file) : null;
+    const read = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { throw new BadInput('the plan file is missing or is not valid JSON'); } };
+    if (a.sub === 'verify') {
+      if (!file) throw new BadInput('usage: plan verify --file <plan.json>');
+      const v = verifyPlan(read(file));
+      return { code: v.ok ? ExitCodes.OK : ExitCodes.VERIFY_FAILED, result: v, problems: v.ok ? [] : [{ code: v.status, message: v.reason }] };
+    }
+    if (a.sub === 'lock') {
+      if (!file || typeof a.flags.approver !== 'string') throw new BadInput('usage: plan lock --file <plan.json> --approver <name>');
+      try { const locked = lockPlan(read(file), { approver: a.flags.approver }); writeJsonAtomic(file, locked); return { code: ExitCodes.OK, result: { planId: locked.planId, planVersion: locked.planVersion, planHash: locked.planHash, status: locked.status } }; }
+      catch (e) { if (e instanceof Conflict) return { code: ExitCodes.CONFLICT, result: null, problems: [{ code: 'ALREADY_LOCKED', message: e.message }] }; throw e; }
+    }
+    if (a.sub === 'draft') {
+      if (!file || typeof a.flags.id !== 'string' || typeof a.flags.out !== 'string') throw new BadInput('usage: plan draft --file <contract.json> --id <planId> --out <plan.json>');
+      const doc = draftPlan({ planId: a.flags.id, contract: read(file) });
+      writeJsonAtomic(resolve(a.flags.out), doc);
+      return { code: ExitCodes.OK, result: { planId: doc.planId, planHash: doc.planHash, status: doc.status } };
+    }
+    if (a.sub === 'diff') {
+      if (typeof a.flags.a !== 'string' || typeof a.flags.b !== 'string') throw new BadInput('usage: plan diff --a <plan.json> --b <plan.json>');
+      return { code: ExitCodes.OK, result: diffPlans(read(resolve(a.flags.a)), read(resolve(a.flags.b))) };
+    }
+    throw new BadInput('usage: plan draft|lock|verify|diff');
+  },
+  async drift(a) {
+    if (typeof a.flags.input !== 'string') throw new BadInput('usage: drift --input <json with taskFiles, changedFiles, ...>');
+    let i; try { i = JSON.parse(readFileSync(resolve(a.flags.input), 'utf8')); } catch { throw new BadInput('the input file is missing or is not valid JSON'); }
+    const r = classifyDrift(i);
+    return { code: r.stop ? ExitCodes.NEGATIVE : ExitCodes.OK, result: r, problems: r.stop ? [{ code: r.level, message: 'STOP: go back to planning before any more work.' }] : [] };
+  },
+  async evidence(a) {
+    if (a.sub !== 'check' || typeof a.flags.input !== 'string') throw new BadInput('usage: evidence check --input <json>');
+    let i; try { i = JSON.parse(readFileSync(resolve(a.flags.input), 'utf8')); } catch { throw new BadInput('the input file is missing or is not valid JSON'); }
+    const r = checkEvidence(i);
+    return { code: r.complete ? ExitCodes.OK : ExitCodes.NEGATIVE, result: r, problems: r.failing.map((f) => ({ code: f.gate, message: f.detail })) };
+  },
+  async attempt(a) {
+    if (a.sub !== 'record' || typeof a.flags['state-file'] !== 'string') throw new BadInput('usage: attempt record --state-file <json> --outcome SUCCESS|FAIL --progress-made true|false | attempt record --state-file <json> --escalated');
+    const f = resolve(a.flags['state-file']);
+    let task; try { task = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : newTask(); } catch { throw new BadInput('the state file is not valid JSON'); }
+    if (a.flags.escalated) { task = recordEscalation(task); writeJsonAtomic(f, task); return { code: ExitCodes.OK, result: { escalations: task.escalations } }; }
+    if (typeof a.flags.outcome !== 'string' || (a.flags['progress-made'] !== 'true' && a.flags['progress-made'] !== 'false')) throw new BadInput('--outcome and --progress-made true|false are needed');
+    try { const r = recordAttempt(task, { outcome: a.flags.outcome, progressMade: a.flags['progress-made'] === 'true' }); writeJsonAtomic(f, r.task);
+      return { code: r.capReached ? ExitCodes.NEGATIVE : ExitCodes.OK, result: { attempts: r.task.attempts.length, closed: r.task.closed, capReached: r.capReached }, problems: r.capReached ? [{ code: 'ATTEMPT_CAP_REACHED', message: r.reason }] : [] };
+    } catch (e) { if (e instanceof RangeError) throw e; return { code: ExitCodes.NEGATIVE, result: null, problems: [{ code: 'ATTEMPT_CAP_REACHED', message: e instanceof Error ? e.message : 'no more attempts' }] }; }
   },
   async doctor() { return { code: ExitCodes.OK, result: await runDoctor() }; },
   async schema(a) {

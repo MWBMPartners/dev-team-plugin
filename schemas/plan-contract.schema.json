@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dev-team plan contract",
+  "description": "A plan that can be locked by a fingerprint of its contract.",
+  "type": "object",
+  "required": [
+    "dev-team",
+    "planId",
+    "planVersion",
+    "planHash",
+    "status",
+    "approvedAt",
+    "approvedBy",
+    "supersedes",
+    "contract"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "dev-team": {
+      "description": "Ownership marker.",
+      "type": "string",
+      "pattern": "^ledger=plan-contract schema=1\\.0$"
+    },
+    "planId": {
+      "description": "The plan's name.",
+      "type": "string"
+    },
+    "planVersion": {
+      "description": "Version number; a change to a locked plan is a new version.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "planHash": {
+      "description": "SHA-256 of the contract written in the engine's fixed JSON form.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "status": {
+      "description": "DRAFT or LOCKED.",
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "LOCKED"
+      ]
+    },
+    "approvedAt": {
+      "description": "Date approved, or null.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "approvedBy": {
+      "description": "Who approved, or null.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "supersedes": {
+      "description": "The version this replaces, or null.",
+      "type": [
+        "integer",
+        "string",
+        "null"
+      ]
+    },
+    "contract": {
+      "description": "The plan itself.",
+      "type": "object"
+    }
+  }
+}

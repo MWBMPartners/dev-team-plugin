@@ -128,3 +128,31 @@ teardown() { rm -rf "$SCRATCH"; }
   [ "$status" -eq 0 ]
   [ "$(printf '%s' "$output" | jq '.result.rows | length')" -eq 2 ]
 }
+
+@test "engine.sh: plan verify accepts this project's hand-locked plan; lock then edit is caught with exit 5; a second lock is exit 4" {
+  run bash "$REPO_ROOT/scripts/engine.sh" plan verify --file "$REPO_ROOT/.claude/plans/orchestrator-v2/plan-contract.orchestrator-v2.v1.json"
+  [ "$status" -eq 0 ]
+  printf '{"requirements":["R1"]}' > "$SCRATCH/c.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" plan draft --file "$SCRATCH/c.json" --id t --out "$SCRATCH/p.json"
+  [ "$status" -eq 0 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" plan lock --file "$SCRATCH/p.json" --approver tester
+  [ "$status" -eq 0 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" plan lock --file "$SCRATCH/p.json" --approver tester
+  [ "$status" -eq 4 ]
+  sed -i.bak 's/"R1"/"R9"/' "$SCRATCH/p.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" plan verify --file "$SCRATCH/p.json"
+  [ "$status" -eq 5 ]
+}
+
+@test "engine.sh: drift and evidence and attempt exit 1 on the negative answers" {
+  printf '{"taskFiles":["a.js"],"changedFiles":["b.js"]}' > "$SCRATCH/d.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" drift --input "$SCRATCH/d.json"
+  [ "$status" -eq 1 ]
+  printf '{"results":[{"name":"t","kind":"test","status":"FAIL"}]}' > "$SCRATCH/e.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" evidence check --input "$SCRATCH/e.json"
+  [ "$status" -eq 1 ]
+  for _ in 1 2; do bash "$REPO_ROOT/scripts/engine.sh" attempt record --state-file "$SCRATCH/s.json" --outcome FAIL --progress-made true >/dev/null; done
+  run bash "$REPO_ROOT/scripts/engine.sh" attempt record --state-file "$SCRATCH/s.json" --outcome FAIL --progress-made true
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"ATTEMPT_CAP_REACHED"* ]]
+}
