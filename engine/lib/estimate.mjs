@@ -13,16 +13,17 @@ const doc = () => JSON.parse(readFileSync(join(pluginRoot(), 'engine', 'data', '
 export function estimate(i) {
   const d = doc();
   if (!Array.isArray(i.taskTypes) || i.taskTypes.length === 0) throw new RangeError('taskTypes must be a non-empty list');
-  if (typeof i.costBand !== 'number' || !Number.isFinite(i.costBand) || i.costBand < 0) throw new RangeError('costBand must be a number of at least 0');
-  let low = 0, likely = 0, high = 0, source = 'BUILT_IN_BANDS';
+  if (typeof i.costBand !== 'number' || !Number.isFinite(i.costBand) || i.costBand < 0 || i.costBand > 100) throw new RangeError('costBand must be a number from 0 to 100');
+  if (i.history !== undefined && (!Array.isArray(i.history) || i.history.some((r) => !r || typeof r !== 'object'))) throw new RangeError('history must be a list of {taskType, units} objects');
+  let low = 0, likely = 0, high = 0; const sources = new Set();
   for (const t of i.taskTypes) {
     if (!Object.hasOwn(d.bands, t)) throw new RangeError(`unknown task type "${String(t).slice(0, 40)}"`);
     const h = (i.history ?? []).filter((r) => r.taskType === t && Number.isFinite(r.units) && r.units >= 0).map((r) => r.units).sort((a, b) => a - b);
-    if (h.length >= 10) { source = 'LOCAL_HISTORY'; low += h[Math.floor(h.length * 0.1)]; likely += h[Math.floor(h.length * 0.5)]; high += h[Math.min(h.length - 1, Math.floor(h.length * 0.9))]; }
-    else { low += d.bands[t].low; likely += d.bands[t].likely; high += d.bands[t].high; }
+    if (h.length >= 10) { sources.add('LOCAL_HISTORY'); low += h[Math.floor(h.length * 0.1)]; likely += h[Math.floor(h.length * 0.5)]; high += h[Math.min(h.length - 1, Math.floor(h.length * 0.9))]; }
+    else { sources.add('BUILT_IN_BANDS'); low += d.bands[t].low; likely += d.bands[t].likely; high += d.bands[t].high; }
   }
   const f = Math.max(i.costBand, 0.1) ; // a free local model still takes time, so it is never shown as exactly zero
-  return { unit: 'relative cost units', low: Math.round(low * f * 10) / 10, likely: Math.round(likely * f * 10) / 10, high: Math.round(high * f * 10) / 10, source, caveat: d.caveat };
+  return { unit: 'relative cost units', low: Math.round(low * f * 10) / 10, likely: Math.round(likely * f * 10) / 10, high: Math.round(high * f * 10) / 10, source: sources.size > 1 ? 'MIXED_HISTORY_AND_BANDS' : [...sources][0], caveat: d.caveat };
 }
 
 /** Warn when a job would use an unusually large share of an allowance that is KNOWN. Unknown allowance: no number, no warning. */

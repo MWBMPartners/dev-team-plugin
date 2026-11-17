@@ -298,3 +298,34 @@ teardown() { rm -rf "$SCRATCH"; }
   [ "$status" -eq 0 ]
   [[ "$output" == *"not a bill"* ]]
 }
+
+@test "check-no-lang-ext-urls.sh: inline triple-backtick code does not hide the rest; a longer fence needs a longer closer" {
+  mkdir -p "$SCRATCH/site3"
+  # shellcheck disable=SC2016
+  printf '```npm test``` runs the tests.\n<a href="/real.php">x</a>\n\n````\n```\n[a](/in-block.php)\n````\n\n[b](/after.php)\n' > "$SCRATCH/site3/a.md"
+  run bash "$REPO_ROOT/scripts/check-no-lang-ext-urls.sh" "$SCRATCH/site3"
+  [ "$status" -eq 1 ]
+  [[ "$output" != *"in-block"* ]]
+  [[ "$output" == *"after.php"* ]]
+}
+
+@test "engine.sh: catalogue verify accepts a freshly signed file (keys made now), rejects tampering with exit 5, and the pinned placeholder key accepts nothing" {
+  node --input-type=module -e "
+    import { generateKeyPairSync } from 'node:crypto'; import { writeFileSync } from 'node:fs';
+    import { signEnvelope } from '$REPO_ROOT/engine/lib/signature.mjs';
+    const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+    const pub = publicKey.export({ type: 'spki', format: 'pem' }), priv = privateKey.export({ type: 'pkcs8', format: 'pem' });
+    const now = Date.now(); const iso = (d) => new Date(d).toISOString().replace(/\\.\\d+Z/, 'Z');
+    const env = signEnvelope({ catalogueVersion: 1, models: [{ provider: 'x', id: 'y', tierHint: 2 }] }, priv, { publicKeyPem: pub, issuedAt: iso(now - 3600000), expiresAt: iso(now + 86400000) });
+    writeFileSync('$SCRATCH/good.json', JSON.stringify(env)); writeFileSync('$SCRATCH/pub.pem', pub);
+    env.payload.models[0].tierHint = 4; writeFileSync('$SCRATCH/bad.json', JSON.stringify(env));"
+  run bash "$REPO_ROOT/scripts/engine.sh" catalogue verify --file "$SCRATCH/good.json" --key "$SCRATCH/pub.pem"
+  [ "$status" -eq 0 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" catalogue verify --file "$SCRATCH/bad.json" --key "$SCRATCH/pub.pem"
+  [ "$status" -eq 5 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" catalogue verify --file "$SCRATCH/good.json"
+  [ "$status" -eq 5 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" catalogue fetch
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"NOT_CONFIGURED"* ]]
+}

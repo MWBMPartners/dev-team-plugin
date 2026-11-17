@@ -19,13 +19,17 @@ while IFS= read -r f; do
   esac
   awk -v file="$f" -v fence="$fence" '
     BEGIN { ext = "(php|asp|aspx|jsp|cfm|cgi|pl)" }
-    fence && /^[ ]?[ ]?[ ]?(```+|~~~+)/ {
-      m = $0; sub(/^[ ]*/, "", m); mk = substr(m, 1, 1)
-      if (open == "") { open = mk; next }
-      if (mk == open && m ~ /^(```+|~~~+)[ ]*$/) { open = ""; next }
-      next
+    fence {
+      # A code block opens with 3+ backticks (and no backtick after them, or it is inline code) or 3+ tildes, indented by at
+      # most three spaces, and closes with the same kind at least as long.
+      if (open == "") {
+        if (match($0, /^ ? ? ?(```+)[^`]*$/) || match($0, /^ ? ? ?(~~~+)/)) { s = $0; sub(/^ */, "", s); match(s, /^(`+|~+)/); open = substr(s, 1, 1); openlen = RLENGTH; next }
+      } else {
+        s = $0; sub(/^ */, "", s)
+        if (match(s, /^(`+|~+)[ \t]*$/) && substr(s, 1, 1) == open) { n = s; gsub(/[ \t]/, "", n); if (length(n) >= openlen) { open = ""; openlen = 0 } }
+        next
+      }
     }
-    fence && open != "" { next }
     {
       line = $0; low = tolower($0); base = 0
       # an address ending in a language extension: an href/src/action value, a root-relative markdown link, or a full URL

@@ -51,6 +51,7 @@ Each prints one JSON answer (add `--format text` for a short reading):
 | `estimate --input F` | LOW, LIKELY and HIGH relative cost for the task types and a model price band. Always says "an estimate, not a bill". After 10 local history records for a kind of task, the history replaces the built-in guess. | yes |
 
 `route` also accepts `quotaRemaining` (provider to a percentage, or null when not known) and `reserves`; `dry-run` shows the cost band and the allowance pressure per phase.
+| `catalogue verify --file F [--key K]` / `catalogue fetch [--url U] [--refresh]` | Checks a signed catalogue file (exit 5 if it fails; it is then ignored, never used unsigned), or fetches one over https (does nothing without an address; keeps a good copy 24 hours). The pinned key is a placeholder today. See [remote-catalogue-contract.md](remote-catalogue-contract.md). | yes |
 
 How `route` decides (details: [routing.md](routing.md)): strength is a tier (1 utility to 4 principal), never a model name; checking work is never below tier 3; the cheapest qualifying model wins and tier 4 is never the default; models on the ask-first list are held back until approved (local models never are); a pin is carried through exactly or the job stops and asks; local-first or cloud-first only changes the order tried, never the strength needed. The starting catalogue is `engine/data/catalogue.seed.json`; every provider except Claude and Codex review is unverified.
 

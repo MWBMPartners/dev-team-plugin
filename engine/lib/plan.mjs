@@ -33,7 +33,8 @@ export function lockPlan(doc, { approver, now = new Date(), risk: riskOption = n
   if (typeof approver !== 'string' || approver.trim() === '' || /[\x00-\x1f\x7f]/.test(approver) || approver.length > 80) throw new RangeError('an approver is needed to lock a plan: plain text, no control characters, at most 80 characters');
   // A plan for risky work (or under a policy pack that asks for it) must say how to roll it back before it can be locked.
   // The risk comes from the contract (risk, or riskLevel, as text or {level}) or from the lock command's own --risk.
-  const lvl = (v) => String(v && typeof v === 'object' ? v.level : v ?? '').trim().toUpperCase();
+  // A risk that is present must be exactly LOW, NORMAL, HIGH or CRITICAL (as text, or {level}); anything else is refused, never read as "no risk".
+  const lvl = (v) => { if (v === undefined || v === null || v === '') return ''; const raw = typeof v === 'object' && !Array.isArray(v) ? v.level : v; const s = typeof raw === 'string' ? raw.trim().toUpperCase() : ''; if (!['LOW', 'NORMAL', 'HIGH', 'CRITICAL'].includes(s)) throw new RangeError('risk must be exactly LOW, NORMAL, HIGH or CRITICAL'); return s; };
   const risks = [lvl(doc.contract.risk), lvl(doc.contract.riskLevel), lvl(riskOption)];
   const rb = doc.contract.rollbackRequirements;
   const hasRollback = Array.isArray(rb) ? rb.some((x) => typeof x === 'string' && x.trim() !== '') : typeof rb === 'string' && rb.trim() !== '';

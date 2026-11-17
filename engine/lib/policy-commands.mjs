@@ -5,6 +5,9 @@ import { resolve } from 'node:path';
 import { statSync, readFileSync } from 'node:fs';
 import { budgetStatus, reserveCheck } from './budget.mjs';
 import { estimate } from './estimate.mjs';
+import { verifyEnvelope } from './signature.mjs';
+import { fetchCatalogue } from './remote-catalogue.mjs';
+import { dataDir } from './paths.mjs';
 import { ExitCodes } from './cli.mjs';
 import { BadInput } from './paths.mjs';
 import { gateCheck } from './gates.mjs';
@@ -17,6 +20,20 @@ const projectDir = (a) => { const d = typeof a.flags.project === 'string' ? reso
 const flag = (a, k) => a.flags[k] === true || a.flags[k] === 'true';
 
 export const policyCommands = {
+  async catalogue(a) {
+    if (a.sub === 'verify') {
+      if (typeof a.flags.file !== 'string') throw new BadInput('usage: catalogue verify --file <envelope.json> [--key <public-key.pem>]');
+      let env; try { env = JSON.parse(readFileSync(resolve(a.flags.file), 'utf8')); } catch { throw new BadInput('the envelope file is missing or is not valid JSON'); }
+      let pem; if (typeof a.flags.key === 'string') { try { pem = readFileSync(resolve(a.flags.key), 'utf8'); } catch { throw new BadInput('the key file is missing'); } }
+      const v = verifyEnvelope(env, pem ? { publicKeyPem: pem } : {});
+      return { code: v.ok ? ExitCodes.OK : ExitCodes.VERIFY_FAILED, result: { ok: v.ok, reason: v.reason }, problems: v.ok ? [] : [{ code: 'CATALOGUE_REJECTED', message: `${v.reason}; the file is ignored and never used unsigned` }] };
+    }
+    if (a.sub === 'fetch') {
+      const r = await fetchCatalogue({ url: typeof a.flags.url === 'string' ? a.flags.url : process.env.DEV_TEAM_CATALOGUE_URL ?? null, dataDir: dataDir(), refresh: a.flags.refresh === true });
+      return { code: r.status === 'REJECTED' ? ExitCodes.VERIFY_FAILED : ExitCodes.OK, result: r, problems: r.status === 'REJECTED' ? [{ code: 'CATALOGUE_REJECTED', message: r.note }] : [] };
+    }
+    throw new BadInput('usage: catalogue verify --file F [--key K] | catalogue fetch [--url https://...] [--refresh]');
+  },
   async budget(a) {
     if (a.sub !== 'check' || typeof a.flags.input !== 'string') throw new BadInput('usage: budget check --input <json with limit and spent> | budget check --input <json with remainingPercent, tier, taskTypes>');
     let i; try { i = JSON.parse(readFileSync(resolve(a.flags.input), 'utf8')); } catch { throw new BadInput('the input file is missing or is not valid JSON'); }

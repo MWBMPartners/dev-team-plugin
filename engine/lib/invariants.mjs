@@ -22,8 +22,10 @@ export function collectInvariants(projectDir, packs = []) {
     let text; try { const st = lstatSync(p); if (st.isSymbolicLink() || !st.isFile() || st.size > 256 * 1024) continue; text = readFileSync(p, 'utf8'); } catch { continue; } // a link or a huge file is not read
     let fence = null; // the marker that opened the current code block
     text.split(/\r?\n/).forEach((line, i) => {
-      const fm = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
-      if (fm) { if (fence === null) fence = fm[1]; else if (fm[1][0] === fence[0] && fm[1].length >= fence.length && /^\s{0,3}(`+|~+)\s*$/.test(line)) fence = null; return; }
+      // A code block opens with three or more backticks (with no backtick after them: that is inline code) or tildes, indented by at most three spaces, and closes with the same kind at least as long.
+      const fm = /^ {0,3}(`{3,})([^`]*)$/.exec(line) ?? /^ {0,3}(~{3,})(.*)$/.exec(line);
+      if (fence === null) { if (fm) { fence = fm[1]; return; } }
+      else { const cl = /^ {0,3}(`{3,}|~{3,})[ \t]*$/.exec(line); if (cl && cl[1][0] === fence[0] && cl[1].length >= fence.length) fence = null; return; }
       if (fence !== null) return; // example code is not a rule
       const m = /^\s*(?:[-*]|\d+[.)])\s+(.{12,300})$/.exec(line) ?? (/^[A-Z].{20,300}[.!]$/.test(line.trim()) ? [null, line.trim()] : null);
       if (!m || !RULE.test(m[1])) return;

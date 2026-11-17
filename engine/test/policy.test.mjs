@@ -71,3 +71,20 @@ test('invariants: CRLF files, mismatched fences and symbolic links', () => {
   const e = mkdtempSync(join(tmpdir(), 'dt-inv3-')); wf(join(e, 'real.md'), '- You must never read this through a link.\n'); symlinkSync(join(e, 'real.md'), join(e, 'GEMINI.md'));
   assert.deepEqual(collectInvariants(e, []), []); // an instruction file that is a symbolic link is not followed
 });
+
+// ---- Second review of increment 6 ----
+test('gates: the same action under two spellings in one pack - the strictest counts, and the pack is invalid', () => {
+  const pack = { id: 'x', gates: { Deploy: 'REQUIRE_HUMAN_APPROVAL', deploy: 'PROHIBITED' } };
+  assert.equal(levelFor('DEPLOY', [pack]).level, 'PROHIBITED'); assert.ok(validatePack(pack).some((m) => /twice/.test(m)));
+});
+test('plan: an unrecognised risk is refused instead of being read as no risk', () => {
+  const d = (c) => draftPlan({ planId: 'p', contract: c });
+  for (const c of [{ risk: ['HIGH'] }, { risk: { value: 'HIGH' } }, { risk: 'High risk' }]) assert.throws(() => lockPlan(d(c), { approver: 'o' }), /exactly LOW, NORMAL, HIGH or CRITICAL/, JSON.stringify(c));
+  assert.throws(() => lockPlan(d({ goal: 'x' }), { approver: 'o', risk: 'HIHG' }), /exactly/); assert.equal(lockPlan(d({ risk: ' low ' }), { approver: 'o' }).status, 'LOCKED');
+});
+test('invariants: inline triple-backtick code is not a fence; tab-indented fences are not fences; a longer fence is not closed by a shorter one', () => {
+  const d = mkdtempSync(join(tmpdir(), 'dt-inv4-'));
+  wf(join(d, 'CLAUDE.md'), '```npm test``` runs the tests.\n- You must never push to main.\n\t```\n- You must always keep this rule.\n````\n```\n- You must not collect this one.\n````\n- Never skip the last rule.\n');
+  const t = collectInvariants(d, []).map((x) => x.text).join('\n');
+  assert.ok(t.includes('never push to main') && t.includes('always keep this rule') && t.includes('Never skip the last rule')); assert.ok(!t.includes('not collect this one'));
+});

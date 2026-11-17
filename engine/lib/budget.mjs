@@ -26,8 +26,10 @@ export function pressure(remainingPercent) {
  */
 export function reserveCheck(i) {
   const remaining = pct(i.remainingPercent, 'remainingPercent');
-  const res = { ...DEFAULT_RESERVES, ...(i.reserves ?? {}) };
-  for (const k of ['frontierReservePercent', 'architectReservePercent']) pct(res[k], k);
+  if (i.reserves !== undefined && (i.reserves === null || typeof i.reserves !== 'object' || Array.isArray(i.reserves))) throw new RangeError('reserves must be an object');
+  if (!Number.isInteger(i.tier) || i.tier < 0 || i.tier > 4) throw new RangeError('tier must be a whole number from 0 to 4');
+  const res = { ...DEFAULT_RESERVES };
+  for (const k of ['frontierReservePercent', 'architectReservePercent']) { const v = i.reserves?.[k]; if (v === undefined || v === null) continue; if (typeof v !== 'number') throw new RangeError(`${k} must be a number from 0 to 100`); res[k] = pct(v, k); } // null means "use the default", never "no reserve"
   if (!Array.isArray(i.taskTypes) || i.taskTypes.some((t) => typeof t !== 'string')) throw new RangeError('taskTypes must be a list of text values');
   if (remaining === null) return { allowed: true, state: 'UNKNOWN', reason: 'The remaining allowance is not known, so no reserve is applied and no number is guessed.' };
   const reserve = i.tier >= 4 ? res.frontierReservePercent : i.tier === 3 ? res.architectReservePercent : 0;
@@ -41,6 +43,10 @@ export function reserveCheck(i) {
  * @returns {{status: 'OK'|'WARN'|'STOP', reasons: string[]}}
  */
 export function budgetStatus(b) {
+  const KEYS = ['tokens', 'credits', 'money'];
+  if (!b || typeof b.limit !== 'object' || b.limit === null || Array.isArray(b.limit) || Object.keys(b.limit).length === 0) throw new RangeError('limit must be an object with at least one of tokens, credits or money');
+  for (const k of Object.keys(b.limit)) if (!KEYS.includes(k)) throw new RangeError(`limit may only contain tokens, credits or money, not "${String(k).slice(0, 20)}"`);
+  if (typeof b.spent !== 'object' || b.spent === null || Array.isArray(b.spent)) throw new RangeError('spent must be an object');
   const reasons = []; let status = 'OK';
   for (const k of ['tokens', 'credits', 'money']) {
     const lim = b.limit?.[k], sp = b.spent?.[k];

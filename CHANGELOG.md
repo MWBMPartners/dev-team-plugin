@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Orchestrator engine, increment 9 (plugin side)**: signed remote catalogue. Ed25519 over canonical JSON with a
+  pinned public key (a placeholder until the service exists); a payload that cannot carry floors, gates or
+  approvals; expiry, future-date, wrong-key and tamper checks; `catalogue verify` and `catalogue fetch`; a verified
+  hint only fills a field still UNKNOWN. No private key is committed; tests make keys at run time.
+
 - **Orchestrator engine, increment 7**: reserves that keep the strongest models for planning, security, hard
   debugging and final review when an allowance is known and low; phase budgets (`budget check`); LOW/LIKELY/HIGH
   relative cost estimates (`estimate`, and in `dry-run`) that always say they are not a bill. An unknown allowance

@@ -79,6 +79,7 @@ export function route(req, models, cfg) {
   if (cfg.badPins && cfg.badPins.length) return negative('PIN_INVALID', `A pin in .dev-team/config.yml is not usable (${cfg.badPins.join(', ')}). I will not guess which version you meant; please correct it.`, [`The ${req.role} job needs tier ${need} or stronger.`], [], []);
   if (req.builtBy !== undefined && typeof req.builtBy !== 'string') throw new BadRequest('builtBy must be text');
   if (req.quotaRemaining !== undefined && (!req.quotaRemaining || typeof req.quotaRemaining !== 'object' || Array.isArray(req.quotaRemaining) || Object.values(req.quotaRemaining).some((v) => v !== null && (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 100)))) throw new BadRequest('quotaRemaining must map a provider to a percentage from 0 to 100, or null when not known');
+  if (req.quotaRemaining && new Set(Object.keys(req.quotaRemaining).map(lc)).size !== Object.keys(req.quotaRemaining).length) throw new BadRequest('quotaRemaining names the same provider twice (differing only in capitals)');
   if (req.reserves !== undefined && (!req.reserves || typeof req.reserves !== 'object' || Array.isArray(req.reserves))) throw new BadRequest('reserves must be an object');
   const approved = strList(req.approved, 'approved'), exhausted = strList(req.exhausted, 'exhausted');
   const providers = strList(req.providers ?? ['claude'], 'providers');

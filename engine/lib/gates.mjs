@@ -24,7 +24,7 @@ export function levelFor(kind, packs = []) {
   packs = Array.isArray(packs) ? packs : [];
   let level = Object.hasOwn(t.actions, kind) ? t.actions[kind] : 'REQUIRE_HUMAN_APPROVAL';
   const known = Object.hasOwn(t.actions, kind);
-  for (const p of packs) { const gk = p?.gates && typeof p.gates === 'object' ? Object.keys(p.gates).find((k) => canon(k) === kind) : undefined; const g = gk !== undefined ? p.gates[gk] : null; if (g && LEVEL_ORDER.indexOf(g) > LEVEL_ORDER.indexOf(level)) level = g; }
+  for (const p of packs) { if (!p?.gates || typeof p.gates !== 'object' || Array.isArray(p.gates)) continue; for (const k of Object.keys(p.gates)) { if (canon(k) !== kind) continue; const g = p.gates[k]; if (LEVEL_ORDER.includes(g) && LEVEL_ORDER.indexOf(g) > LEVEL_ORDER.indexOf(level)) level = g; } /* every spelling counts; the strictest wins */ }
   return { level, known };
 }
 

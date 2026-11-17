@@ -49,3 +49,19 @@ test('dry-run shows LOW/LIKELY/HIGH with the caveat and the allowance pressure w
   const r = dryRun([{ name: 'p', role: 'architect', taskTypes: ['DEEP_PLANNING'], risk: 'NORMAL', quotaRemaining: { claude: 40 } }], (q) => route({ providers: ['claude'], ...q }, seed, cfg()));
   assert.ok(r.rows[0].cost.low <= r.rows[0].cost.likely && r.rows[0].cost.likely <= r.rows[0].cost.high); assert.equal(r.rows[0].quota, 'ELEVATED');
 });
+
+// ---- Fixes after the independent review of increment 7 ----
+test('budget: unknown limit names, empty or non-object limits are errors, never a silent OK; reserves null means default; bad tiers and text reserves are refused', () => {
+  for (const b of [{ limit: { Tokens: 100 }, spent: { Tokens: 500 } }, { limit: 'abc', spent: {} }, { limit: {}, spent: {} }, { limit: { tokens: 1 }, spent: 'x' }]) assert.throws(() => budgetStatus(b), RangeError, JSON.stringify(b));
+  assert.equal(reserveCheck({ remainingPercent: 10, tier: 3, taskTypes: ['DOCUMENTATION'], reserves: { architectReservePercent: null } }).allowed, false);
+  for (const tier of [undefined, 3.5, -1, 9]) assert.throws(() => reserveCheck({ remainingPercent: 5, tier, taskTypes: [] }), RangeError, String(tier));
+  assert.throws(() => reserveCheck({ remainingPercent: 5, tier: 4, taskTypes: [], reserves: { frontierReservePercent: '30' } }), RangeError); assert.throws(() => reserveCheck({ remainingPercent: 5, tier: 4, taskTypes: [], reserves: [] }), RangeError);
+});
+test('estimate: bad history and huge price bands are refused; a mix of history and guesses is reported as mixed', () => {
+  assert.throws(() => estimate({ taskTypes: ['DOCUMENTATION'], costBand: 1, history: 'x' }), RangeError); assert.throws(() => estimate({ taskTypes: ['DOCUMENTATION'], costBand: 1, history: [null] }), RangeError); assert.throws(() => estimate({ taskTypes: ['DOCUMENTATION'], costBand: 1e308 }), RangeError);
+  const hist = Array.from({ length: 10 }, (_, i) => ({ taskType: 'DOCUMENTATION', units: i + 1 }));
+  assert.equal(estimate({ taskTypes: ['DOCUMENTATION', 'HOUSEKEEPING'], costBand: 1, history: hist }).source, 'MIXED_HISTORY_AND_BANDS');
+});
+test('route: a provider named twice in quotaRemaining with different capitals is refused', () => {
+  assert.throws(() => route({ role: 'reviewer', providers: ['claude'], quotaRemaining: { claude: 10, Claude: 90 } }, seed, cfg()), /twice/);
+});

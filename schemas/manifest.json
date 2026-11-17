@@ -125,6 +125,10 @@
     {
       "schema": "schemas/data/cost-bands.schema.json",
       "fixture": "engine/data/cost-bands.json"
+    },
+    {
+      "schema": "schemas/catalogue.schema.json",
+      "fixture": "tests/fixtures/catalogue-envelope.sample.json"
     }
   ],
   "exceptions": [

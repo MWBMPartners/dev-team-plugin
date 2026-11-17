@@ -19,7 +19,9 @@ export function validatePack(p) {
   if (p.gates !== undefined && (typeof p.gates !== 'object' || p.gates === null || Array.isArray(p.gates))) bad.push('gates must be a map of action to level');
   for (const f of ['invariants', 'mandatoryReviews']) if (p[f] !== undefined && (!Array.isArray(p[f]) || p[f].some((x) => typeof x !== 'string'))) bad.push(`${f} must be a list of text values`);
   if (p.rollbackRequired !== undefined && typeof p.rollbackRequired !== 'boolean') bad.push('rollbackRequired must be true or false');
+  const seenKinds = new Set();
   for (const [kind, lvl] of Object.entries(p.gates && typeof p.gates === 'object' && !Array.isArray(p.gates) ? p.gates : {})) {
+    const ck = String(kind).trim().toUpperCase().replace(/[\s-]+/g, '_'); if (seenKinds.has(ck)) bad.push(`gate ${kind}: the same action is listed twice under different spellings`); seenKinds.add(ck);
     if (!LEVEL_ORDER.includes(lvl)) bad.push(`gate ${kind}: unknown level ${String(lvl).slice(0, 30)}`);
     else if (LEVEL_ORDER.indexOf(lvl) < LEVEL_ORDER.indexOf(levelFor(kind, []).level) && levelFor(kind, []).known) bad.push(`gate ${kind}: ${lvl} is less careful than the built-in ${levelFor(kind, []).level}; a pack may only raise a gate`);
   }
