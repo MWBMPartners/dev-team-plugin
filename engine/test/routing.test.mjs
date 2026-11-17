@@ -267,3 +267,11 @@ test('a pin whose name or version is not plain text stops routing', () => {
 test('builtBy must be text', () => {
   for (const b of [{}, ['claude', 'x'], 5]) assert.throws(() => route({ role: 'reviewer', providers: ['claude'], builtBy: b }, seed, cfg()), BadRequest);
 });
+
+// ---- Fix after the fourteenth independent review ----
+test('a pin on a model this job could not use anyway does not block the job', () => {
+  assert.equal(route({ role: 'architect', providers: ['claude'] }, seed, cfg({ pin: { 'gemini-top': 'g-3' } })).ok, true);
+  assert.equal(route({ role: 'reviewer', providers: ['codex'] }, seed, cfg({ pin: { fable: 'x' } })).ok, true);
+  // but a pin on a usable model that is out of allowance still stops the job
+  assert.equal(route({ role: 'architect', providers: ['claude'], exhausted: ['claude'] }, seed, cfg({ pin: { opus: 'x' } })).code, 'PIN_UNAVAILABLE');
+});

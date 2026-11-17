@@ -73,7 +73,9 @@ export function route(req, models, cfg) {
   // never carry on with another version or another model as if nothing had been pinned.
   const pins = Object.entries(cfg.pin);
   for (const [alias, exact] of pins) {
-    const fits = models.filter((m) => !m.local && lc(m.alias) === lc(alias) && m.roles.includes(req.role) && m.tier >= need);
+    // A pin only matters for a model this job could really use: one whose provider is offered in this
+    // request, and (for tier 4) only when the job needs tier 4, since tier 4 is never the default pick.
+    const fits = models.filter((m) => !m.local && lc(m.alias) === lc(alias) && m.roles.includes(req.role) && m.tier >= need && providers.includes(lc(m.provider)) && (m.tier < 4 || need >= 4));
     if (!fits.length) continue;
     if (!pool.some((m) => !m.local && lc(m.alias) === lc(alias))) {
       return negative('PIN_UNAVAILABLE', `You pinned ${alias} to ${exact}, but it cannot be used for this job right now. I will not swap in another version or model without asking.`, reasons, dropped, questions);
