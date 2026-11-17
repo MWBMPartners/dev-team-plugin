@@ -19,6 +19,7 @@ const clean = (p) => posix.normalize(String(p).replace(/\\/g, '/')).replace(/^\.
  * @param {{taskFiles: string[], protectedPaths?: string[], protectedNames?: string[], changedFiles: string[], changedText?: string, declared?: {kind: 'minor'|'architectural', note: string}[]}} i
  */
 export function classifyDrift(i) {
+  if (!i || typeof i !== 'object' || Array.isArray(i)) throw new RangeError('the drift input must be a JSON object');
   for (const k of ['taskFiles', 'changedFiles']) if (!Array.isArray(i[k]) || i[k].some((x) => typeof x !== 'string')) throw new RangeError(`${k} must be a list of file paths`);
   const task = i.taskFiles.map(clean), changed = i.changedFiles.map(clean);
   const prot = (i.protectedPaths ?? []).map(clean), names = i.protectedNames ?? [];

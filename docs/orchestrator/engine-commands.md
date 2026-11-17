@@ -27,7 +27,7 @@ Each prints one JSON answer (add `--format text` for a short reading):
 | `dry-run --phases-file F` | What would happen for a list of planned phases (model, effort, held back) plus the owner's questions, each with why. Cost and quota columns say "available after increment 7". | yes |
 | `docs check [--project D]` | Read-only: does `.dev-team/PROJECT.md` have goals, requirements and prerequisites, plan and status sections (standing rule 13)? Each missing piece is a finding. | yes |
 | `docs check --api [--project D]` | Read-only: if the project has an OpenAPI description, is there a Swagger UI page, and is the spec old (standing rule 15)? | yes |
-| `plan draft --file C --id ID --out P` | Makes an unlocked plan file from a contract. | yes |
+| `plan draft --file C --id ID --out P [--version N --supersedes M]` | Makes an unlocked plan file from a contract; a change to a locked plan is a new version that supersedes the old one. | yes |
 | `plan lock --file P --approver NAME` | Locks a plan with the owner's approval; exit 4 if already locked. | yes |
 | `plan verify --file P` | Checks a plan's fingerprint (works on any path, including this project's hand-locked plan); exit 5 if a locked plan was edited. | yes |
 | `plan diff --a P1 --b P2` | Lists which sections of the contract changed. | yes |

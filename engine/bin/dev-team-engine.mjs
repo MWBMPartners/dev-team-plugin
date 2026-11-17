@@ -117,8 +117,9 @@ export const commands = {
       catch (e) { if (e instanceof Conflict) return { code: ExitCodes.CONFLICT, result: null, problems: [{ code: 'ALREADY_LOCKED', message: e.message }] }; if (e instanceof StaleDraft) return { code: ExitCodes.VERIFY_FAILED, result: null, problems: [{ code: 'STALE_DRAFT', message: e.message }] }; throw e; }
     }
     if (a.sub === 'draft') {
-      if (!file || typeof a.flags.id !== 'string' || typeof a.flags.out !== 'string') throw new BadInput('usage: plan draft --file <contract.json> --id <planId> --out <plan.json>');
-      const doc = draftPlan({ planId: a.flags.id, contract: read(file) });
+      if (!file || typeof a.flags.id !== 'string' || typeof a.flags.out !== 'string') throw new BadInput('usage: plan draft --file <contract.json> --id <planId> --out <plan.json> [--version N --supersedes M]');
+      const num = (v) => (v === undefined ? undefined : /^[0-9]+$/.test(String(v)) ? Number(v) : NaN);
+      const doc = draftPlan({ planId: a.flags.id, contract: read(file), ...(a.flags.version !== undefined ? { planVersion: num(a.flags.version) } : {}), ...(a.flags.supersedes !== undefined ? { supersedes: num(a.flags.supersedes) } : {}) });
       writeJsonAtomic(resolve(a.flags.out), doc);
       return { code: ExitCodes.OK, result: { planId: doc.planId, planHash: doc.planHash, status: doc.status } };
     }

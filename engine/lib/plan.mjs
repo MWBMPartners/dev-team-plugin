@@ -17,6 +17,8 @@ export const planHash = (contract) => sha256Hex(canonicalJson(contract));
 /** A new, unlocked plan. */
 export function draftPlan({ planId, planVersion = 1, contract, supersedes = null }) {
   if (typeof planId !== 'string' || !/^[A-Za-z0-9._-]+$/.test(planId)) throw new RangeError('planId must be plain letters, numbers, dots, dashes or underscores');
+  if (!Number.isInteger(planVersion) || planVersion < 1 || planVersion > 10000) throw new RangeError('planVersion must be a whole number of at least 1');
+  if (supersedes !== null && (!Number.isInteger(supersedes) || supersedes < 1 || supersedes >= planVersion)) throw new RangeError('supersedes must be an earlier version number');
   if (!contract || typeof contract !== 'object' || Array.isArray(contract)) throw new RangeError('contract must be an object');
   return { 'dev-team': markerFor('plan-contract'), planId, planVersion, planHash: planHash(contract), status: 'DRAFT', approvedAt: null, approvedBy: null, supersedes, contract };
 }
@@ -49,6 +51,7 @@ export function verifyPlan(doc) {
 
 /** What changed between two versions of a contract: sections added, removed, or edited, and which list items. */
 export function diffPlans(a, b) {
+  for (const d of [a, b]) if (!d || typeof d !== 'object' || !d.contract || typeof d.contract !== 'object' || Array.isArray(d.contract)) throw new RangeError('both files must be plan contracts');
   const out = { added: [], removed: [], changed: [] };
   const ka = new Set(Object.keys(a.contract)), kb = new Set(Object.keys(b.contract));
   for (const k of kb) if (!ka.has(k)) out.added.push(k);

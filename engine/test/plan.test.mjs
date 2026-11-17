@@ -122,3 +122,11 @@ test('plan: an approver with control characters is refused; a garbage approval d
   const l = lockPlan(d, { approver: 'owner' }); assert.equal(verifyPlan({ ...l, approvedAt: 'garbage' }).ok, false);
   assert.throws(() => lockPlan(null, { approver: 'o' }), RangeError);
 });
+
+// ---- Fixes after the third independent review of increment 3 ----
+test('plan: a new version can be drafted and must supersede an earlier one; odd versions and non-plan files are refused', () => {
+  const v2 = draftPlan({ planId: 'p', planVersion: 2, supersedes: 1, contract: c1 }); assert.equal(v2.planVersion, 2); assert.equal(v2.supersedes, 1);
+  for (const bad of [{ planVersion: 'x' }, { planVersion: -1 }, { planVersion: 2, supersedes: 2 }, { planVersion: 2, supersedes: 'a' }]) assert.throws(() => draftPlan({ planId: 'p', contract: c1, ...bad }), RangeError);
+  assert.throws(() => diffPlans(null, v2), RangeError); assert.throws(() => diffPlans({}, v2), RangeError);
+  assert.throws(() => classifyDrift(null), RangeError);
+});
