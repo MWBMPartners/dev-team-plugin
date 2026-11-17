@@ -15,7 +15,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   and, if git already tracks the file, says so and gives the command to stop tracking it without running
   it. `commit-security: on` allows committing, for private repositories.
 
+- **Models that need approval first, and exact versions** (documented; applied by the lead's
+  instructions now, enforced by the engine later): new `routing.ask-first` (default empty) and
+  `routing.pin` settings in `.dev-team/config.yml`; see `model-routing.md`.
+- **Other AI systems** (Copilot, Gemini, Kimi, Grok, DeepSeek, Ollama) are listed in `model-routing.md`
+  with their intended roles, all marked unverified.
+
 ### Changed
+
+- **`deep-architect` now defaults to Opus, not Fable** (owner's decision, 17 November 2026). Fable is an
+  optional top rung of the escalation chain, used only with the user's approval. The model-routing
+  reference, README and cost-posture table are updated.
 
 - **The Bash guard now treats "a run is in progress" as "the folder `.dev-team/loop.lock/` exists"**
   (issue #44). It used to check for `.dev-team/autopilot.json`, but several projects keep that file in

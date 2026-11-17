@@ -103,7 +103,7 @@ Most skills also accept **plain-language equivalents** — e.g. "keep costs down
 
 ## Skills
 
-All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`), with a `sonnet-scribe` documentarian owning the state files and — for hard reasoning — the `deep-architect` (Fable) tier. See [Model routing & tiers](#model-routing--tiers).
+All skills run as a team lead delegating to Opus-tier subagents (`opus-builder`), with a `sonnet-scribe` documentarian owning the state files and — for hard reasoning — the `deep-architect` (Opus) tier. See [Model routing & tiers](#model-routing--tiers).
 
 ### dev-team-orchestrator
 
@@ -486,7 +486,7 @@ The suite routes each kind of work to a named agent/tier. Source of truth: [mode
 
 | Tier | Agent | Alias | Used for |
 |---|---|---|---|
-| Reasoning | [`deep-architect`][deep-architect] | fable | Architecture, subtle multi-file bugs, algorithm design, concurrency/data-model trade-offs, big cross-cutting refactors, debate advocates — the genuinely hard stuff. Also the recommended taste-first orchestrator tier. |
+| Reasoning | [`deep-architect`][deep-architect] | opus | Architecture, subtle multi-file bugs, algorithm design, concurrency/data-model trade-offs, big cross-cutting refactors, debate advocates — the genuinely hard stuff. Also the recommended taste-first orchestrator tier. |
 | Build / Verify | [`opus-builder`][opus-builder] | opus | Building features, scouting, and **all** verification (checker, red-team, validator, reviewer) — the default worker. |
 | Scribe | [`sonnet-scribe`][sonnet-scribe] | sonnet | Documentarian: `.dev-team/PROJECT.md` / `.dev-team/FEATURES.md` / `.dev-team/SECURITY.md` / `.dev-team/VERIFICATION.md` upkeep, ledgers, run records, `.dev-team/HANDOFF.md`, `.dev-team/autopilot.json` budget bookkeeping. |
 | Mechanical | [`quick-edits`][quick-edits] | haiku | Renames, formatting, import sorting, docstrings, boilerplate, trivial config. Start of the escalation chain. |
@@ -502,7 +502,7 @@ The suite routes each kind of work to a named agent/tier. Source of truth: [mode
 `models=economy|balanced|max` is an optional run-level knob (or plain language, e.g. "keep costs down" → economy) on any skill that takes arguments; default `balanced`. Per-work remap:
 
 - **Build/scout** → `opus-builder` in balanced & max; `sonnet-builder` in economy.
-- **Hard reasoning/debate** → `deep-architect` (Fable) in balanced & max (used liberally in max); `opus-builder` (Opus) in economy.
+- **Hard reasoning/debate** → `deep-architect` (Opus) in balanced & max (used liberally in max); `opus-builder` (Opus) in economy.
 - **Verification** → `opus-builder` (Opus) in **every** posture, no exceptions.
 - **Docs/state** → `sonnet-scribe` everywhere; **mechanical** → `quick-edits` everywhere.
 - `max` never economizes and never auto-tightens.
@@ -517,7 +517,7 @@ An optional profile layered on top of routing ([orchestration-profiles.md][orche
 
 ### Escalation
 
-Start a mechanical-looking workstream on `quick-edits` (Haiku); on a genuine **capability** failure (not a bad-brief failure), escalate one tier at a time — **Haiku → Sonnet → Opus → Fable**. The two-strike rule applies: strike one may be a bad brief (re-brief, same tier); a second, capability-bound failure escalates the tier. Never escalate verification below Opus. "Judge the output, not the price tag" — tiers are defaults, not limits.
+Start a mechanical-looking workstream on `quick-edits` (Haiku); on a genuine **capability** failure (not a bad-brief failure), escalate one tier at a time — **Haiku → Sonnet → Opus**, then Fable only with your approval. The two-strike rule applies: strike one may be a bad brief (re-brief, same tier); a second, capability-bound failure escalates the tier. Never escalate verification below Opus. "Judge the output, not the price tag" — tiers are defaults, not limits.
 
 ### Cross-cutting behaviors
 

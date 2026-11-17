@@ -15,15 +15,15 @@ one edit per model release instead of six that rot together.
 
 | Tier | Endpoint agent (spawn via `subagent_type`) | Model alias | Use for |
 |---|---|---|---|
-| Reasoning | `deep-architect` | `fable` | Architecture, subtle multi-file bugs, algorithm design, concurrency/data-model trade-offs, big cross-cutting refactors, debate advocates. The genuinely hard stuff. |
+| Reasoning | `deep-architect` | `opus` | Architecture, subtle multi-file bugs, algorithm design, concurrency/data-model trade-offs, big cross-cutting refactors, debate advocates. The genuinely hard stuff. |
 | Build/Verify | `opus-builder` | `opus` | Building features, scouting, and ALL verification (checker, red-team, validator, reviewer). The default worker. |
 | Scribe | `sonnet-scribe` | `sonnet` | Documentarian: `.dev-team/PROJECT.md` / `.dev-team/HANDOFF.md` / `.dev-team/FEATURES.md` / `.dev-team/SECURITY.md` / `.dev-team/VERIFICATION.md` upkeep, ledgers, run records. |
 | Mechanical | `quick-edits` | `haiku` | Renames, formatting, import sorting, docstrings, boilerplate, trivial config. |
 
 ## Orchestrator tier (the lead)
 Model routing above binds SUBAGENTS. The lead/orchestrator is the *session* model, which the
-plugin cannot set. For maximum taste, run the session on Fable (or Opus): `/model fable` before
-you start, or pin it in settings with `{"model":"fable"}`. See `orchestration-profiles.md` for
+plugin cannot set. For maximum taste, run the session on Opus (or Fable, if you accept the cost): `/model opus` before
+you start, or pin it in settings with `{"model":"opus"}`. See `orchestration-profiles.md` for
 the optional taste-first profile (top-taste orchestrator + cheap grunt work + optional
 GPT-5.5/Codex offload).
 
@@ -33,7 +33,8 @@ GPT-5.5 via Codex is an OPTIONAL external bulk-executor tier for non-user-facing
 ## Model ids and aliases (the ONE place concrete ids live)
 | Tier | Model | Alias | Dated id (fallback) |
 |---|---|---|---|
-| Reasoning | Fable 5 | `fable` | `claude-fable-5` |
+| Reasoning | Opus 4.8 | `opus` | `claude-opus-4-8` |
+| Optional top tier (ask first) | Fable 5 | `fable` | `claude-fable-5` |
 | Build/Verify | Opus 4.8 | `opus` | `claude-opus-4-8` |
 | Scribe | Sonnet 5 | `sonnet` | `claude-sonnet-5` |
 | Mechanical | Haiku 4.5 | `haiku` | `claude-haiku-4-5-20251001` |
@@ -69,13 +70,13 @@ that takes arguments, or use plain language ("keep costs down" → `economy`); d
 | Work | balanced (default) | economy | max |
 |---|---|---|---|
 | Build / scout | `opus-builder` (Opus) | `sonnet-builder` (Sonnet) | `opus-builder` (Opus) |
-| Hard reasoning / debate | `deep-architect` (Fable) | `opus-builder` (Opus) | `deep-architect` (Fable), used liberally |
+| Hard reasoning / debate | `deep-architect` (Opus) | `opus-builder` (Opus) | `deep-architect` (Opus), used liberally |
 | Verification (checker/red-team/validator/reviewer) | `opus-builder` (Opus) | `opus-builder` (Opus) | `opus-builder` (Opus) |
 | Documentation / state | `sonnet-scribe` (Sonnet) | `sonnet-scribe` (Sonnet) | `sonnet-scribe` (Sonnet) |
 | Mechanical | `quick-edits` (Haiku) | `quick-edits` (Haiku) | `quick-edits` (Haiku) |
 
 **Invariant 1 holds in every posture: verification never drops below Opus, even in `economy`** —
-that, plus the escalation rule below (capability failure escalates Haiku → Sonnet → Opus → Fable),
+that, plus the escalation rule below (capability failure escalates Haiku → Sonnet → Opus, and then Fable only with approval — see "Models that need approval first"),
 is the safety net for an economy build-tier misroute. Honest tradeoff: `economy` trades some
 first-pass build quality for cost; the frontier checker plus escalation keep it safe. `max` never
 economizes and never auto-tightens (see `loop-runtime.md`).
@@ -85,7 +86,7 @@ economizes and never auto-tightens (see `loop-runtime.md`).
 
 ## Escalation — the dynamic part
 Start a mechanical-looking workstream on `quick-edits` (Haiku); on a genuine CAPABILITY
-failure (not a brief-quality failure), escalate one tier: Haiku → Sonnet → Opus → Fable. This reuses
+failure (not a brief-quality failure), escalate one tier: Haiku → Sonnet → Opus, and then — only with the user's approval — Fable. This reuses
 the orchestrator's two-strike rule: strike one may be a bad brief (re-brief, same tier); a
 second failure that looks capability-bound escalates the tier. Never escalate verification
 below Opus.
@@ -94,6 +95,52 @@ below Opus.
 tier's output doesn't meet the bar, redo it on a smarter tier without asking — escalating
 costs less than shipping mediocre work. Cost is only a tie-breaker: when axes conflict for
 anything that ships, intelligence > taste > cost.
+
+## Models that need approval first, and exact versions (added 17 November 2026)
+
+Two settings under `routing:` in `.dev-team/config.yml` (see `config-and-toggles.md`), also set in
+plain words for one session ("don't use Fable without asking", "use exactly this version"):
+
+- **`routing.ask-first`** — a list of models that must never be used silently, because they cost a lot.
+  The list is **empty by default**. Before the lead spawns any agent on a listed model (this includes
+  the Fable rung of the escalation chain, and a per-spawn model override), it asks the user, in plain
+  words: which model, for which task, why the cheaper default is not enough, and what the cheaper
+  choice would be and cost relative to it. One yes covers that one task only. Without a yes — and in
+  an unattended run, where there is nobody to ask — the work goes ahead on the cheaper suggestion, an
+  approval item is queued in the gate ledger, and the run report says what was held back. Verification
+  never drops below Opus while doing this (Invariant 1). A repository instruction may add models to
+  this list; it can never remove one.
+- **`routing.pin`** — exact versions the developer wants, as `alias: exact-id` pairs. Without a pin the
+  plugin uses the alias, which means the newest model the account offers under it. With a pin, the
+  lead passes the exact id wherever the host tool accepts one, and where it does not (for example an
+  agent spawn that only takes an alias), it says so in the run report and **stops to ask** rather than
+  quietly using a different version. Pins are the user's own choice: a repository instruction cannot
+  set or change one. In Claude Code, the host's own settings (its model-alias environment variables)
+  are another way to pin a version for the whole session; check that your version supports them.
+
+Both settings apply to every AI system, not only Claude: a model on another system is named the same
+way, and the same rules hold.
+
+## Other AI systems (added 17 November 2026; documented, not yet routed automatically)
+
+The plugin is meant to work across AI systems (standing rule 12). Until the orchestrator engine
+(issue #46) can route to them, this table says how each is meant to be used; **none of the "unverified"
+ones has been tried against a real account**, so treat the roles as plans, not promises.
+
+| System | Role today | Status |
+|---|---|---|
+| Claude Code | The host. Every tier above. | Verified |
+| Codex (OpenAI) | Independent reviewer of Claude's work, and optional bulk executor (`orchestration-profiles.md`) | Verified for review |
+| GitHub Copilot | Reviewer first, builder later (owner's decision, 17 Nov 2026) | Unverified |
+| Gemini (Google) | Scout and reviewer candidate | Unverified |
+| Kimi (Moonshot) | Scout and builder candidate | Unverified |
+| Grok (xAI) | Reviewer candidate | Unverified |
+| DeepSeek | Builder candidate; may run in the cloud or locally | Unverified |
+| Ollama (Qwen and other local models) | Free local scout, builder and mechanical work; first choice when the project is local-first | Unverified |
+
+Local models are free to run, so they never go on the ask-first list. The route order (local first,
+cloud first) and its profiles are described in the addendum under `.claude/plans/orchestrator-v2/` and
+are built with the engine.
 
 ## Session-model caveat
 An agent left on `model: inherit` (or the lead itself) follows the user's `/model` session

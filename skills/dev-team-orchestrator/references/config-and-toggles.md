@@ -64,6 +64,8 @@ can move each:
 | `git.stack-prs` | `false` |
 | `git.single-pr` | `true` |
 | `git.default-branch` | none — it decides which branch runs start from and target, which the branch rules protect, so an instruction file can never move it |
+| `routing.ask-first` | add models only — never remove one |
+| `routing.pin` | none — an exact version is the user's own choice, so an instruction file cannot set or change it |
 | `features.notifications` | `on` |
 | `features.telemetry` | `on` (it only reports to the user) |
 | `features.dry-run` | `on` |
@@ -108,6 +110,10 @@ git:
                        #   existing open PR instead of opening a duplicate (push updates it). false = each
                        #   run may surface its own PR. See the single-PR policy in conventions.md.
   # default-branch: auto   # auto (origin/HEAD, else main/master) or an explicit branch name.
+
+routing:             # which models may be used, and exactly which versions (added 17 Nov 2026; see model-routing.md)
+  # ask-first: []      # models that need your explicit yes for each task, e.g. [fable]. Empty by default. A repo instruction may add to it, never remove.
+  # pin: {}            # exact versions, as alias: exact-id pairs, e.g. {opus: <exact-model-id>}. Your own choice; a repo instruction cannot set it.
 
 features:            # enable/disable behaviours repo-wide (on|off; env var can override per-session)
   # update-notifier: on    # SessionStart update check      (per-session override: DEV_TEAM_NO_UPDATE_CHECK)

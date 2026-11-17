@@ -883,14 +883,14 @@ $line" ;;
   # The starter schema is the first fenced block after the "## The schema (verbatim)" heading.
   schema="$(awk '/^## The schema \(verbatim\)/ { on = 1; next } on && /^```/ { if (inside) exit; inside = 1; next } inside { print }' "$toggles")"
   [ -n "$schema" ]
-  # 1. Every line that is not blank and not a comment must be one of the four top-level lines, with
+  # 1. Every line that is not blank and not a comment must be one of the five top-level lines, with
   #    nothing after it but an optional comment. Anything else — an indented "gates: hybrid", or a
   #    flow-style "defaults: {gates: autonomy-envelope}" on the header line itself (which the first
   #    version of this pattern let through) — is a setting written out explicitly.
   bad="$(printf '%s\n' "$schema" | awk '
     /^[[:space:]]*$/ { next }
     /^[[:space:]]*#/ { next }
-    /^version: 1[[:space:]]*(#.*)?$/ || /^(defaults|git|features):[[:space:]]*(#.*)?$/ { next }
+    /^version: 1[[:space:]]*(#.*)?$/ || /^(defaults|git|routing|features):[[:space:]]*(#.*)?$/ { next }
     { print }')"
   if [ -n "$bad" ]; then
     echo "the starter schema writes these settings out explicitly: $bad"
@@ -902,7 +902,7 @@ $line" ;;
             'stack-prs: false' 'single-pr: true' 'default-branch: auto' \
             'update-notifier: on' 'branch-notifier: on' 'guard: auto' 'notifications: on' \
             'telemetry: on' 'dry-run: off' 'auto-handoff: on' 'handoff-file: on' \
-            'auto-commit: on' 'pointer-sentence: ask'; do
+            'auto-commit: on' 'pointer-sentence: ask' 'ask-first: \[\]' 'pin: \{\}'; do
     if ! printf '%s\n' "$schema" | grep -qE "^  # ${kv}( |\$)"; then
       echo "the starter schema has no commented-out line showing: $kv"
       return 1
