@@ -79,6 +79,38 @@ The documentarian maintains this file at `.dev-team/PROJECT.md`. Every record fi
 - **`## Current status` is always overwritten, never appended.** It stays a tight "single next action + where to look" block: active stage, what's done, the one next step, open threads — nothing more. A fresh agent (possibly on a cheaper tier) must be able to resume correctly from this section alone; letting it accrete history defeats the point of having it.
 - **Ledger retention is light.** Closed backlog items, resolved open threads, and superseded decisions get folded into a one-line summary (or a "resolved" sub-list), not kept verbatim forever. Full history already lives in git and past commits; `.dev-team/PROJECT.md` only needs to carry what a fresh agent needs to resume, so rehydration stays cheap.
 
+## The shared project document set (added 17 November 2026)
+
+A project has one set of documents that any AI system, and any model within it, can read cold and
+carry on from. They are written in plain, tool-neutral language, kept current at every stage (not
+tidied at the end), and each fact lives in **one** place so that switching model or system costs few
+tokens and loses nothing. The set is:
+
+| Document | Where it lives | What it answers |
+|---|---|---|
+| Handover | `.dev-team/HANDOFF.md` (or `Current status`, when `handoff-file` is `off`) | What is the single next action, and where is the detail? |
+| Goals | `## Goal` and `## Definition of done` in `.dev-team/PROJECT.md` | What are we trying to achieve, and how will we know it is done? |
+| Requirements and prerequisites | `## Requirements and prerequisites` in `.dev-team/PROJECT.md`, placed straight after `## Constraints` | What must the result do, and what must exist, be installed, be approved or be paid for before the work can go ahead? |
+| Plan | `## Stage plan` in `.dev-team/PROJECT.md`, and `autopilot.json` under autopilot | Which steps, in which order, who does each, and what state is each in? |
+
+The new section is written like this, and the documentarian creates it on a project-start spawn and
+updates it whenever a requirement, an access need or a prerequisite changes:
+
+```markdown
+## Requirements and prerequisites
+### Must do
+- [R-1] [what the result must do, in plain words] — status: [open/met]
+### Before work can start or continue
+- [ ] [a tool, account, key, approval, data set, decision or purchase needed] — owner: [who] — status: [open/done]
+```
+
+Where the project is on a hosting service, these documents and the service's issues, boards and
+milestones must agree; if they do not, fix the difference in the same pass and say which one was
+right (standing rule 14 in `.claude/CLAUDE.md`).
+
+**Not only software.** Read "build", "test" and "repository" as "make", "check" and "the project's
+folder" when the work is writing, research, design or planning; the same four documents apply.
+
 ## Documentarian brief
 
 ```

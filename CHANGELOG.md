@@ -21,6 +21,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Other AI systems** (Copilot, Gemini, Kimi, Grok, DeepSeek, Ollama) are listed in `model-routing.md`
   with their intended roles, all marked unverified.
 
+- **Shared project document set**: `documentarian-protocol.md` now names the four documents any AI
+  system can resume from (handover, goals, requirements and prerequisites, plan) and adds a
+  `## Requirements and prerequisites` section to `PROJECT.md`. A short "Not only software" section in
+  `conventions.md` says how to read the suite's wording for work that is not code.
+
 ### Changed
 
 - **`deep-architect` now defaults to Opus, not Fable** (owner's decision, 17 November 2026). Fable is an

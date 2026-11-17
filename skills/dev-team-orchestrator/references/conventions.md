@@ -175,6 +175,16 @@ A review→security handoff carries the `V-`↔`F-` mapping so the regression pr
 
 When `issues=sync` or `issues=auto` (or `/dev-team-sync-issues`) is used, each item's prefix+id maps to a GitHub/GitLab issue (via the hidden `<!-- dev-team:<id> -->` marker), and the item stores the issue number in an `issue:` field for dedup — see `issue-sync-protocol.md`. Labels: `for consideration`, `security`, `enhancement`, `bug`.
 
+## Not only software (added 17 November 2026)
+
+The suite is described in software words, but nothing in it needs the work to be code. When a project
+is writing, research, design, data work or planning, read the words this way: *builder* = whoever makes
+the thing; *tests* and *checks* = whatever shows the work meets its requirement (a source check, a
+proofread, a calculation re-done by hand); *repository* = the project's folder or workspace;
+*commit* = save a recoverable version. The roles, the independent check, the plan, the handover and
+the approval rules apply unchanged. A skill that is only about code (security audit, Stripe, polish,
+CI repair) simply is not used. Any other AI system, not just Claude, follows the same reading.
+
 ## Repo config & feature toggles
 
 `.dev-team/config.yml`, when the user commits it in their project repo, is the **repo-scoped**
