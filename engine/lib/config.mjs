@@ -16,8 +16,9 @@ function scalar(s) {
   if (/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
   if (v.startsWith('[') && v.endsWith(']')) return v.slice(1, -1).split(',').map((x) => x.trim()).filter(Boolean).map(scalar);
   if (v.startsWith('{') && v.endsWith('}')) {
+    // Values in a one-line map are kept exactly as written (text), so a version such as 4.10 or 007 is never changed.
     const o = {};
-    for (const part of v.slice(1, -1).split(',')) { const i = part.indexOf(':'); if (i > 0) o[part.slice(0, i).trim()] = scalar(part.slice(i + 1)); }
+    for (const part of v.slice(1, -1).split(',')) { const i = part.indexOf(':'); if (i > 0) o[part.slice(0, i).trim()] = part.slice(i + 1).trim().replace(/^["']|["']$/g, ''); }
     return o;
   }
   return v.replace(/^["']|["']$/g, '');
@@ -26,16 +27,23 @@ function scalar(s) {
 /** Parse the YAML subset. Comment-only and blank lines are skipped; a trailing " # comment" is dropped. */
 export function parseYaml(text) {
   const root = {};
-  const stack = [{ indent: -1, obj: root }];
+  const stack = [{ indent: -1, obj: root, parent: null, key: '' }];
   for (const raw of String(text).split('\n')) {
     const line = raw.replace(/\s+#.*$/, '').replace(/\r$/, '');
     if (!line.trim() || line.trim().startsWith('#')) continue;
     const indent = line.length - line.trimStart().length;
+    if (line.trim().startsWith('- ')) {
+      // A list written one item per line turns the key above it into a list.
+      const top = stack[stack.length - 1];
+      if (top.parent && !Array.isArray(top.obj) && Object.keys(top.obj).length === 0) { top.obj = []; top.parent[top.key] = top.obj; }
+      if (Array.isArray(top.obj)) top.obj.push(scalar(line.trim().slice(2)));
+      continue;
+    }
     const m = /^([A-Za-z0-9_.-]+):\s*(.*)$/.exec(line.trim());
     if (!m) continue;
     while (stack.length > 1 && indent <= stack[stack.length - 1].indent) stack.pop();
     const parent = stack[stack.length - 1].obj;
-    if (m[2] === '') { parent[m[1]] = {}; stack.push({ indent, obj: parent[m[1]] }); } else parent[m[1]] = scalar(m[2]);
+    if (m[2] === '') { parent[m[1]] = {}; stack.push({ indent, obj: parent[m[1]], parent, key: m[1] }); } else parent[m[1]] = scalar(m[2]);
   }
   return root;
 }
@@ -63,6 +71,9 @@ export function loadRouting(opts = {}) {
   if (valid(project.routing?.order)) { order = project.routing.order; orderDecidedBy = 'the project\'s saved answer (.dev-team/config.yml)'; }
   if (valid(opts.sessionOrder)) { order = /** @type {string} */ (opts.sessionOrder); orderDecidedBy = 'this session\'s choice'; }
   const askedBefore = valid(project.routing?.order) || Boolean(PROFILE_ORDER[project.profile]);
+  // ask-first: an explicit list in the user's own .dev-team/config.yml replaces the built-in list (it is the
+  // user's own setting). A repository INSTRUCTION file may only add to it; that rule is applied by the lead,
+  // which passes the combined list on, because this reader never looks at instruction files.
   const askFirst = Array.isArray(project.routing?.['ask-first']) ? project.routing['ask-first'].map(String) : DEFAULT_ASK_FIRST;
   const pin = project.routing?.pin && typeof project.routing.pin === 'object' ? project.routing.pin : {};
   return { order, orderDecidedBy, askedBefore, askFirst, pin, profile: project.profile ?? null };

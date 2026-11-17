@@ -86,3 +86,42 @@ test('ollama list is parsed and local models are guessed by size, marked as gues
   assert.equal(guessLocalTier('qwen2.5-coder:32b'), 2); assert.equal(guessLocalTier('llama3.2:3b'), 1);
   assert.equal(ollamaEntries(['x:7b'])[0].tierSource, 'guess-from-name');
 });
+
+// ---- Fixes after the first independent review (17 Nov 2026) ----
+import { BadRequest } from '../lib/routing.mjs';
+test('approved, providers and exhausted must be lists; a string never counts as approval', () => {
+  for (const k of ['approved', 'providers', 'exhausted']) assert.throws(() => route({ role: 'architect', providers: ['claude'], [k]: 'not-fable-please' }, seed, cfg()), BadRequest);
+});
+test('ask-first names are matched ignoring capitals', () => {
+  const r = route({ role: 'architect', providers: ['gemini'] }, seed, cfg({ askFirst: ['Gemini-Top'] }));
+  assert.equal(r.code, 'NEEDS_APPROVAL');
+  assert.equal(route({ role: 'architect', providers: ['gemini'], approved: ['GEMINI-TOP'] }, seed, cfg({ askFirst: ['Gemini-Top'] })).ok, true);
+});
+test('a pinned model that fits the job but cannot be used stops the job, even when others qualify', () => {
+  const r = route({ role: 'reviewer', providers: ['claude', 'codex'], exhausted: ['claude'] }, seed, cfg({ pin: { opus: 'X' } }));
+  assert.equal(r.code, 'PIN_UNAVAILABLE');
+});
+test('a local model with the same name as a pinned cloud model does not take the pin', () => {
+  const clash = [{ ...local[0], id: 'opus', alias: 'opus', tier: 3, roles: ['architect'] }];
+  const r = route({ role: 'architect', providers: ['ollama'] }, clash, cfg({ pin: { opus: 'X' } }));
+  assert.equal(r.ok, true); assert.equal(r.decision.exactId, null);
+});
+test('a tier-4 model never beats a usable tier-3 model for checking work, even from a different provider', () => {
+  const r = route({ role: 'reviewer', providers: ['claude', 'gemini'], builtBy: 'claude', approved: ['gemini-top'] }, seed, cfg());
+  assert.equal(r.decision.tier, 3);
+});
+test('minTier raises the need, so an approved Fable can actually be reached', () => {
+  const r = route({ role: 'architect', providers: ['claude'], minTier: 4, approved: ['fable'] }, seed, cfg());
+  assert.equal(r.decision.model, 'fable');
+  assert.equal(route({ role: 'architect', providers: ['claude'], minTier: 4 }, seed, cfg()).code, 'NEEDS_APPROVAL');
+  assert.throws(() => route({ role: 'architect', minTier: 9 }, seed, cfg()), BadRequest);
+});
+test('risk is read ignoring capitals and an unknown risk is refused; role names are checked exactly', () => {
+  assert.equal(route({ role: 'builder', providers: ['claude'], risk: 'high' }, seed, cfg()).decision.tier, 3);
+  assert.throws(() => route({ role: 'builder', risk: 'severe' }, seed, cfg()), BadRequest);
+  assert.throws(() => route({ role: 'toString' }, seed, cfg()), BadRequest);
+});
+test('yaml: pin versions keep their exact text, and a list written one item per line is read', () => {
+  const y = parseYaml('routing:\n  pin: {opus: 4.10, sonnet: 007}\n  ask-first:\n    - opus\n    - fable\n');
+  assert.deepEqual(y.routing.pin, { opus: '4.10', sonnet: '007' }); assert.deepEqual(y.routing['ask-first'], ['opus', 'fable']);
+});

@@ -13,16 +13,29 @@
 //     the strength a job needs.
 
 const ROLE_FLOOR = { mechanical: 1, scout: 1, documentarian: 2, builder: 2, architect: 3, reviewer: 3 };
+const RISKS = ['LOW', 'NORMAL', 'HIGH'];
+
+/** A request the engine cannot make sense of. The command layer reports it as bad input (exit 2). */
+export class BadRequest extends Error {}
+
+const lc = (s) => String(s).toLowerCase();
+function strList(v, name) {
+  if (v === undefined) return [];
+  if (!Array.isArray(v) || v.some((x) => typeof x !== 'string')) throw new BadRequest(`"${name}" must be a list of text values`);
+  return v.map(lc);
+}
 
 /** The lowest tier the job needs. Higher risk or a complex change raises a builder's floor by one. */
 export function requiredTier(role, risk = 'NORMAL', complex = false) {
+  if (typeof role !== 'string' || !Object.hasOwn(ROLE_FLOOR, role)) throw new BadRequest(`unknown role "${String(role).slice(0, 30)}"`);
+  const rk = String(risk).toUpperCase();
+  if (!RISKS.includes(rk)) throw new BadRequest(`risk must be one of ${RISKS.join(', ')}`);
   let t = ROLE_FLOOR[role];
-  if (t === undefined) throw new Error(`unknown role "${role}"`);
-  if (role === 'builder' && (risk === 'HIGH' || complex)) t = 3;
+  if (role === 'builder' && (rk === 'HIGH' || complex === true)) t = 3;
   return t;
 }
 
-const isAskFirst = (m, list) => list.includes(m.alias) || list.includes(m.id) || m.classes.some((c) => list.includes(c)) || (!m.priced && list.includes('unpriced'));
+const isAskFirst = (m, list) => list.includes(lc(m.alias)) || list.includes(lc(m.id)) || m.classes.some((c) => list.includes(lc(c))) || (!m.priced && list.includes('unpriced'));
 
 /**
  * @param {{role: string, risk?: string, complex?: boolean, approved?: string[], exhausted?: string[], providers?: string[], builtBy?: string}} req
@@ -30,9 +43,16 @@ const isAskFirst = (m, list) => list.includes(m.alias) || list.includes(m.id) ||
  * @param {{order: string, orderDecidedBy: string, askedBefore: boolean, askFirst: string[], pin: Record<string,string>}} cfg
  */
 export function route(req, models, cfg) {
-  const need = requiredTier(req.role, req.risk, req.complex);
-  const approved = req.approved ?? [], exhausted = req.exhausted ?? [];
-  const providers = req.providers ?? ['claude'];
+  let need = requiredTier(req.role, req.risk, req.complex);
+  // minTier lets the lead ask for a stronger model than the role's floor (for example, to escalate to
+  // tier 4 after the user approved it). It can only raise the need, never lower it.
+  if (req.minTier !== undefined) {
+    if (!Number.isInteger(req.minTier) || req.minTier < 1 || req.minTier > 4) throw new BadRequest('minTier must be a whole number from 1 to 4');
+    need = Math.max(need, req.minTier);
+  }
+  const approved = strList(req.approved, 'approved'), exhausted = strList(req.exhausted, 'exhausted');
+  const providers = strList(req.providers ?? ['claude'], 'providers');
+  const askFirst = cfg.askFirst.map(lc);
   const reasons = [`The ${req.role} job needs tier ${need} or stronger${req.role === 'reviewer' ? ' (checking work never goes below tier 3)' : ''}.`];
   const questions = [];
   if (!cfg.askedBefore) questions.push({ id: 'route-order', ask: 'Should work start on free local models and move to paid cloud models for harder work, or start on cloud models and fall back to local ones? This is asked once per project and remembered in .dev-team/config.yml as routing.order.', suggested: 'local-first' });
@@ -41,33 +61,35 @@ export function route(req, models, cfg) {
   const heldBack = [];
   const dropped = [];
   let pool = models.filter((m) => m.roles.includes(req.role) && m.tier >= need);
-  const available = (m) => m.local ? providers.includes('ollama') || m.provider === 'ollama' : providers.includes(m.provider);
-  pool = pool.filter((m) => { if (!available(m)) { dropped.push(`${m.id}: provider ${m.provider} is not available`); return false; } if (exhausted.includes(m.provider)) { dropped.push(`${m.id}: ${m.provider}'s allowance is used up`); return false; } return true; });
+  const available = (m) => providers.includes(lc(m.provider));
+  pool = pool.filter((m) => { if (!available(m)) { dropped.push(`${m.id}: provider ${m.provider} is not available`); return false; } if (exhausted.includes(lc(m.provider))) { dropped.push(`${m.id}: ${m.provider}'s allowance is used up`); return false; } return true; });
 
-  // A pin names an exact version for one model. If its model cannot be used, stop and ask.
+  // A pin names an exact version for one cloud model (a local model that happens to share the name
+  // never takes a pin). If a pinned model fits this job but cannot be used right now, stop and ask:
+  // never carry on with another version or another model as if nothing had been pinned.
   const pins = Object.entries(cfg.pin);
   for (const [alias, exact] of pins) {
-    const want = models.find((m) => m.alias === alias);
-    if (!want) continue;
-    const inPool = pool.some((m) => m.alias === alias);
-    if (inPool) pool = pool.map((m) => (m.alias === alias ? { ...m, pinnedId: String(exact) } : m));
-  }
-  const pinMiss = pins.filter(([alias]) => models.some((m) => m.alias === alias) && !pool.some((m) => m.alias === alias) && models.find((m) => m.alias === alias).roles.includes(req.role));
-  if (pinMiss.length && pool.length === 0) {
-    return negative('PIN_UNAVAILABLE', `You pinned ${pinMiss[0][0]} to ${pinMiss[0][1]}, but it cannot be used for this job right now. I will not swap in another version without asking.`, reasons, dropped, questions);
+    const fits = models.filter((m) => !m.local && lc(m.alias) === lc(alias) && m.roles.includes(req.role) && m.tier >= need);
+    if (!fits.length) continue;
+    if (!pool.some((m) => !m.local && lc(m.alias) === lc(alias))) {
+      return negative('PIN_UNAVAILABLE', `You pinned ${alias} to ${exact}, but it cannot be used for this job right now. I will not swap in another version or model without asking.`, reasons, dropped, questions);
+    }
+    pool = pool.map((m) => (!m.local && lc(m.alias) === lc(alias) ? { ...m, pinnedId: String(exact) } : m));
   }
 
   // Ask-first: hold back anything that needs a yes this task has not been given.
   const usable = [];
   for (const m of pool) {
-    if (!m.local && isAskFirst(m, cfg.askFirst) && !approved.includes(m.alias) && !approved.includes(m.id)) heldBack.push({ model: m, why: !m.priced && !m.classes.length ? 'its price is not known' : 'it is on your ask-first list' });
+    if (!m.local && isAskFirst(m, askFirst) && !approved.includes(lc(m.alias)) && !approved.includes(lc(m.id))) heldBack.push({ model: m, why: !m.priced && !m.classes.length ? 'its price is not known' : 'it is on your ask-first list' });
     else usable.push(m);
   }
 
   // Order: local or cloud first, then cheapest, then the weakest that qualifies. For a check, prefer a different provider from the builder's.
   const group = (m) => (cfg.order === 'local-first' ? (m.local ? 0 : 1) : (m.local ? 1 : 0));
-  const other = (m) => (req.role === 'reviewer' && req.builtBy && m.provider === req.builtBy ? 1 : 0);
-  usable.sort((a, b) => other(a) - other(b) || group(a) - group(b) || a.costBand - b.costBand || a.tier - b.tier || a.id.localeCompare(b.id));
+  const other = (m) => (req.role === 'reviewer' && req.builtBy && lc(m.provider) === lc(req.builtBy) ? 1 : 0);
+  // Tier 4 is never the default: any usable model below it wins first. Only then the provider preference, the order, and cost.
+  const top = (m) => (m.tier >= 4 && need < 4 ? 1 : 0);
+  usable.sort((a, b) => top(a) - top(b) || other(a) - other(b) || group(a) - group(b) || a.costBand - b.costBand || a.tier - b.tier || a.id.localeCompare(b.id));
 
   if (!usable.length) {
     if (heldBack.length) {
@@ -85,7 +107,7 @@ export function route(req, models, cfg) {
   reasons.push(`Order was decided by ${cfg.orderDecidedBy}.`);
   reasons.push(`${pick.alias} was chosen as the cheapest qualifying model${other(pick) === 0 && req.role === 'reviewer' && req.builtBy ? ', from a different provider than the builder' : ''}.`);
   if (heldBack.length) reasons.push(`Held back until you approve: ${heldBack.map((x) => `${x.model.alias} (${x.why})`).join('; ')}.`);
-  const independence = req.role !== 'reviewer' ? null : !req.builtBy ? 'UNKNOWN' : pick.provider !== req.builtBy ? 'CROSS_PROVIDER' : 'SAME_PROVIDER_FRESH_AGENT';
+  const independence = req.role !== 'reviewer' ? null : !req.builtBy ? 'UNKNOWN' : lc(pick.provider) !== lc(req.builtBy) ? 'CROSS_PROVIDER' : 'SAME_PROVIDER_FRESH_AGENT';
   const warnings = [];
   if (pick.pinnedId) warnings.push('A pinned version is set. Some tools accept only a model alias when starting a worker; if this one does, say so and stop rather than use another version.');
   if (!pick.verified) warnings.push(`${pick.provider} has not been tried against a real account (unverified).`);

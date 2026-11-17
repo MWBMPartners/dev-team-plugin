@@ -13,7 +13,7 @@ import { execFile as execFileCb } from 'node:child_process';
 import { promisify } from 'node:util';
 import { loadRouting, saveDeviceOrder } from '../lib/config.mjs';
 import { discoverOllama } from '../lib/discover.mjs';
-import { route } from '../lib/routing.mjs';
+import { route, BadRequest } from '../lib/routing.mjs';
 const execFile = promisify(execFileCb);
 const seedPath = () => resolve(pluginRoot(), 'engine', 'data', 'catalogue.seed.json');
 const loadSeed = () => JSON.parse(readFileSync(seedPath(), 'utf8')).models;
@@ -64,8 +64,9 @@ export async function main(argv) {
     const out = await fn(a);
     code = out.code; env = envelope(a.command, code === 0, out.result, out.problems ?? []);
   } catch (e) {
-    code = e instanceof BadInput ? ExitCodes.BAD_INPUT : ExitCodes.BAD_INPUT;
-    env = envelope(a.command, false, null, [{ code: 'BAD_INPUT', message: e instanceof Error ? e.message : String(e) }]);
+    const bad = e instanceof BadInput || e instanceof BadRequest || e instanceof SyntaxError;
+    code = ExitCodes.BAD_INPUT;
+    env = envelope(a.command, false, null, [{ code: bad ? 'BAD_INPUT' : 'INTERNAL_ERROR', message: e instanceof Error ? e.message : String(e) }]);
   }
   const text = a.flags.format === 'text' ? renderText(env) : JSON.stringify(env, null, 2);
   process.stdout.write(redact(text) + '\n');

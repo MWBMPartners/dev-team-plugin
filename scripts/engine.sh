@@ -23,7 +23,8 @@ refuse() {
 
 # Find Node: the DEV_TEAM_NODE override first, then whatever is on the PATH.
 node_bin=""
-if [ -n "${DEV_TEAM_NODE:-}" ] && [ -x "${DEV_TEAM_NODE}" ]; then
+if [ -n "${DEV_TEAM_NODE:-}" ]; then
+  [ -x "${DEV_TEAM_NODE}" ] || refuse "DEV_TEAM_NODE is set to '${DEV_TEAM_NODE}', which is not a runnable program."
   node_bin="${DEV_TEAM_NODE}"
 else
   node_bin="$(command -v node 2>/dev/null || true)"

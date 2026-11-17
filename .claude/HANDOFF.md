@@ -35,7 +35,7 @@ session gave the owner; see below).
 | B | `deep-architect` to Opus (Q4); `routing.ask-first` (default list chosen by the owner) and `routing.pin`; other AI systems listed | **Done**, commits `9bb5b62`, `d0f5a1d` |
 | C | Shared project document set; "not only software" wording | **Done**, commit `c50b924`. Only a shared rule was added; each skill's own wording was not rewritten |
 | D | `profile: standard`, `local-first`, `cloud-first` (reserved until the engine lands); editor research (first pass, unverified) | **Done as documents**, see `profiles-and-presets.md` and `editor-research-2026-11-17.md`. The editor hand tests are not done |
-| E | Orchestrator engine (#46) | **Planned, not started.** New increments are in `plan.md` section 11. Next: owner approves locking the plan, then increment 0a |
+| E | Orchestrator engine (#46) | **Started 17 Nov.** Plan hand-locked (owner approved; `plan-contract.orchestrator-v2.v1.json`, hash checked by `hash-contract.mjs`). **Increment 0a done** (launcher, doctor, schema checker, safe store, redaction, CI job). **Increment 1 core done** (catalogue, `route`, config precedence, Ollama discovery). **Not built:** 0b (Claude/Codex discovery, simulator, event log), 1 rest (effort mapping, `explain`, `dry-run`), 2 to 12, increments 1a to 12a beyond the parts above, and hand tests HT-0 to HT-3 (need a real Claude Code session). See "Engine status" below |
 | Q8 | Ask-first list | **Answered:** Fable, Mythos, OpenAI's top flagship, Google's top Gemini, and any unpriced model |
 
 Checks run at `158f4bc`: both audits, smoke test, shellcheck, bats 211 of 211. To run bats here:
@@ -49,6 +49,25 @@ Checks run at `158f4bc`: both audits, smoke test, shellcheck, bats 211 of 211. T
 | Q7 route order | **Local first, cloud for hard work or when local is not available.** The plugin also asks once per project and remembers the answer; if never asked (already-running projects), ask the first time. Also create **two profiles**: cloud-first and local-first. A user can also set their **own default per dev device** (a device with local models can default to local first) | A built-in default of local first; a per-project remembered answer; two named profiles; a per-device user setting that sits between the user's general setting and the project's. The addendum's suggested "cloud first" was **not** taken |
 | Q8 ask-first models | **Not decided.** First research which high-quality, expensive models other platforms offer (ChatGPT/Codex, Kimi, Gemini, DeepSeek and the like) and let the owner choose from the list. Local models are never on it (free) | **To do (research):** build that list with current prices, then ask the owner. Until answered, no model is on the list by default |
 | Q9 Copilot | Reviewer first, worker later | As recommended |
+
+### Engine status (17 November 2026, end of session)
+
+- **Where:** `engine/` (code and tests), `scripts/engine.sh` (the launcher), `schemas/engine/` and
+  `schemas/manifest.json`, `docs/orchestrator/`, `tests/engine.bats`, CI job `engine`.
+- **Check it:** `node --test engine/test/*.test.mjs` (33 tests; note Node 22 wants the file glob, not the
+  folder), `bats tests/engine.bats` (9), plus the older checks in `CONTEXT.md`.
+- **How it decides** (`engine/lib/routing.mjs`): tier not name; checking never below tier 3; cheapest
+  qualifying wins; ask-first models held back until approved (local never); pins exact or stop;
+  local-first default, cloud-first on request, order only changes the order tried.
+- **Known departures from the plan** (to list in `docs/orchestrator/departures.md` at increment 12):
+  (1) routing settings (`routing:`, `profile:`) are read from `.dev-team/config.yml`, not only
+  `orchestrator.json`, because the owner asked for them as user-facing settings in Groups B and D;
+  (2) the engine parses a small YAML subset itself rather than using a library (no dependencies);
+  (3) non-Claude catalogue entries are role-level placeholders marked unverified, never real model ids.
+- **Review:** Codex not available. A fresh Opus agent reviewed the engine (result recorded below once it
+  arrives). Counts as **not fully reviewed** until Codex has looked.
+- **Next:** increment 0b, then the rest of increment 1 (`explain`, `dry-run`, effort mapping), then 2,
+  3, 4 in order (`plan.md` section 4). Hand tests HT-0 to HT-3 need the owner's real Claude Code session.
 
 ### Added later on 17 November — owner's new requirements (work branch `claude/busy-knuth-bc35ok`)
 

@@ -15,6 +15,14 @@ teardown() { rm -rf "$SCRATCH"; }
   run env PATH="$SCRATCH/empty" "$(command -v bash)" "$REPO_ROOT/scripts/engine.sh" doctor
   [ "$status" -eq 3 ]
   [[ "$output" == *"needs Node 22 or newer"* ]]
+  out="$(env PATH="$SCRATCH/empty" "$(command -v bash)" "$REPO_ROOT/scripts/engine.sh" doctor 2>/dev/null)" || true
+  [ -z "$out" ]
+}
+
+@test "engine.sh: a DEV_TEAM_NODE that is not runnable exits 3 and is not skipped quietly" {
+  run env DEV_TEAM_NODE="$SCRATCH/nope" bash "$REPO_ROOT/scripts/engine.sh" doctor
+  [ "$status" -eq 3 ]
+  [[ "$output" == *"DEV_TEAM_NODE"* ]]
 }
 
 @test "engine.sh: a Node older than 22 exits 3 and names the version found" {
