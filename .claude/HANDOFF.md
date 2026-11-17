@@ -80,17 +80,28 @@ Checks run at `158f4bc`: both audits, smoke test, shellcheck, bats 211 of 211. T
 
 ### Engine progress, second half of 17 November (autonomous run)
 
+Everything below is on `claude/busy-knuth-bc35ok`, pushed. **None of it has had a Codex review** (Codex is not
+installed in the cloud session); each part had 2 to 3 rounds of independent review by fresh Opus agents, every
+finding fixed with a test, so it counts as **not fully reviewed**.
+
 | Item | State |
 | --- | --- |
-| Increment 0b (adapters, discovery with cache, simulator, event log, schemas incl. `autopilot.json` for #43) | **Built and reviewed** (2 rounds; all findings fixed). Commits `5038f81`, `e89606f`, `b4751c2` |
-| Increment 1 rest (floors for 31 task types, effort, decision records, `explain`, `dry-run`, tier 0) | **Built.** First review round: 6 findings fixed (commit `a9edba5`); second round **pending** (a background reviewer was running when this was written; if its report is not in the next session, rerun the review of `git diff d57891e..HEAD -- engine`) |
-| 1a: Ollama, Copilot, DeepSeek adapters | Built (unverified); not yet committed when written, see `git status` |
-| 11a/12a: `docs check`, `docs check --api` | Built; not yet committed when written |
-| Increments 2 to 10, 11 (owner practice bundle), 12 (completion gate, 2.0.0) | **Not built.** Next in order: 2 (role-named agents), 3 (job state, plan lock, drift, evidence, checkpoints), 4 (leases, quota, snapshots), 5 (review independence) |
-| Still blocked on the owner | Codex review; editor hand tests; hand tests HT-0 to HT-3 (need a real Claude Code session) |
+| Increment 0a, 0b, 1 (routing core, floors, effort, decisions, explain, dry-run) | Built and reviewed (3 rounds for routing; 2 for 0b and for the rest of 1) |
+| 1a: Ollama, Copilot, DeepSeek adapters | Built (unverified) |
+| 6a: ask-first and pins enforced by `route` | Built (done within the 17 review rounds) |
+| 11a / 12a: `docs check`, `docs check --api` | Built; **not independently reviewed** |
+| Increment 3: plan lock/verify/diff, drift, evidence gate, attempts, job files, checkpoints, progress table | Built; plan/drift/evidence/attempts had 3 review rounds, jobs/checkpoints 2 (the last round's findings are fixed; a final re-review of `git diff 5099769..HEAD -- engine` is still owed) |
+| Increment 2 (role-named agent files with effort variants and deprecated aliases) | **Not built.** It means 11 new agent files, old names kept as aliases, and edits to the audit script and smoke test |
+| Increments 4 to 10 (leases, quota, snapshots, pause/resume, review independence, invariants and gates, budgets, learning, signed catalogue, decomposition) | **Not built** |
+| Increment 11 (owner practice bundle: push-after-task etc.) and 12 (completion gate, 2.0.0) | **Not built** |
+| Not done and blocked on the owner | Codex review; editor hand tests; hand tests HT-0 to HT-3 (need a real Claude Code session) |
 
-Tests at this point: 98 engine unit tests, 16 launcher tests, 211 older tests, both audits, smoke, shellcheck.
-Departures so far are listed in `docs/orchestrator/departures.md` (DEP-A to DEP-J).
+Tests: 121 engine unit tests (`node --test engine/test/*.test.mjs`), 19 launcher tests (`bats tests/engine.bats`),
+211 older tests, both audits, smoke test, shellcheck, schema manifest. Departures: `docs/orchestrator/departures.md`
+(DEP-A to DEP-J). Engine commands: `docs/orchestrator/engine-commands.md`.
+
+**Next, in order:** re-review the jobs fixes; increment 2; increment 4 (leases, quota observations, snapshots); then
+5 (review independence), 6 (gates and approvals), 11 (practice bundle, including `git.push-after-task`) and 12.
 
 ### Added later on 17 November — owner's new requirements (work branch `claude/busy-knuth-bc35ok`)
 

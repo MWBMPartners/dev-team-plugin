@@ -61,3 +61,25 @@ test('a repository with many untracked files still gets a checkpoint, and uncomm
   mkdirSync(join(d, 'junk')); for (let i = 0; i < 50; i++) writeFileSync(join(d, 'junk', `f${i}`), 'x');
   assert.equal(createCheckpoint(d, j.jobId, 'plan', 'planning').uncommittedChanges, true);
 });
+
+// ---- Fixes after the second review of jobs ----
+test('a clean repository gives a clean checkpoint even though the job file itself changes; a real uncommitted file does not', () => {
+  const d = repo(); const j = initJob(d, { template: 'normal', request: 'x' });
+  assert.equal(createCheckpoint(d, j.jobId, 'plan', 'planning').uncommittedChanges, false);
+  recordPhase(d, j.jobId, 'discover', 'IN_PROGRESS'); assert.equal(createCheckpoint(d, j.jobId, 'plan', 'planning').uncommittedChanges, false);
+  writeFileSync(join(d, 'new.txt'), 'x'); assert.equal(createCheckpoint(d, j.jobId, 'plan', 'planning').uncommittedChanges, true);
+});
+test('parallel edits to one job do not lose each other', async () => {
+  const { spawn } = await import('node:child_process');
+  const d = repo(); const j = initJob(d, { template: 'normal', request: 'x' });
+  const run = () => new Promise((res) => { const c = spawn(process.execPath, ['engine/bin/dev-team-engine.mjs', 'checkpoint', 'create', '--job', j.jobId, '--phase', 'plan', '--kind', 'planning', '--project', d], { cwd: process.cwd(), env: { ...process.env, DEV_TEAM_DATA_DIR_RESOLVED: d } }); c.on('close', res); });
+  await Promise.all(Array.from({ length: 6 }, run));
+  assert.equal(loadJob(d, j.jobId).checkpoints.length, 6);
+});
+test('uncommitted work inside a submodule is noticed', () => {
+  const d = repo(); const sub = repo();
+  g(d, '-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', sub, 'sub'); g(d, 'commit', '-q', '-m', 'add sub');
+  const j = initJob(d, { template: 'normal', request: 'x' });
+  assert.equal(createCheckpoint(d, j.jobId, 'plan', 'planning').uncommittedChanges, false);
+  writeFileSync(join(d, 'sub', 'newfile'), 'x'); assert.equal(createCheckpoint(d, j.jobId, 'plan', 'planning').uncommittedChanges, true);
+});

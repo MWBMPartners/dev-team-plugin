@@ -3,7 +3,7 @@
 // Purpose: A job is one piece of requested work with its phases, its state and its checkpoints, saved as a
 //          file in the project's .dev-team/jobs/<id>/ folder so any machine, assistant or model can resume it.
 //          Checkpoints are tied to git commits, so "where were we" is checkable, not remembered.
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, rmdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -53,30 +53,67 @@ export function recordPhase(projectDir, id, phaseId, status, note = '') {
   if (!PHASE_STATUS.includes(status)) throw new RangeError(`status must be one of ${PHASE_STATUS.join(', ')}`);
   if (typeof note !== 'string' || note.length > 500 || /[\x00-\x08\x0b-\x1f\x7f]/.test(note)) throw new RangeError('note must be plain text of at most 500 characters');
   if (looksLikeCredential(note)) throw new RangeError('the note looks like it contains a secret; leave it out');
-  const job = loadJob(projectDir, id);
-  const ph = job.phases.find((p) => p.id === phaseId);
-  if (!ph) throw new JobProblem(`job ${id} has no phase "${String(phaseId).slice(0, 30)}"`);
-  if (!NEXT[ph.status]?.includes(status)) throw new JobProblem(`phase ${ph.id} cannot go from ${ph.status} to ${status}`);
-  ph.status = status; ph.note = note;
-  writeMarked(jobPath(projectDir, id), 'job', job);
-  return job;
+  loadJob(projectDir, id); // fail early, before taking the lock, if there is no such job
+  return withLock(projectDir, id, () => {
+    const job = loadJob(projectDir, id);
+    const ph = job.phases.find((p) => p.id === phaseId);
+    if (!ph) throw new JobProblem(`job ${id} has no phase "${String(phaseId).slice(0, 30)}"`);
+    if (!NEXT[ph.status]?.includes(status)) throw new JobProblem(`phase ${ph.id} cannot go from ${ph.status} to ${status}`);
+    ph.status = status; ph.note = note;
+    writeMarked(jobPath(projectDir, id), 'job', job);
+    return job;
+  });
+}
+
+/**
+ * Run `fn` while holding a lock on a job, so two commands editing one job cannot lose each other's changes.
+ * The lock is a folder made with an exclusive mkdir; one older than 30 seconds is taken as left behind by a crash.
+ */
+function withLock(projectDir, id, fn) {
+  const lock = join(projectDir, '.dev-team', 'jobs', id, '.lock');
+  const deadline = Date.now() + 8000;
+  for (;;) {
+    try { mkdirSync(lock); break; } catch (e) {
+      if (/** @type {any} */ (e).code !== 'EEXIST') throw new JobProblem('the job folder cannot be locked');
+      try { if (Date.now() - statSync(lock).mtimeMs > 30000) { rmdirSync(lock); continue; } } catch { continue; }
+      if (Date.now() > deadline) throw new JobProblem('another command is changing this job; try again');
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+    }
+  }
+  try { return fn(); } finally { try { rmdirSync(lock); } catch { /* already gone */ } }
 }
 
 const git = (dir, args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 }).trim();
 
+/**
+ * Is anything uncommitted? Changes to tracked files, untracked files (the job's own folder under .dev-team/jobs
+ * is not counted, since it changes on every record), and, if there are submodules, work inside them.
+ */
+function hasUncommittedWork(dir) {
+  const skip = ['--', '.', ':(exclude).dev-team/jobs'];
+  try {
+    if (git(dir, ['status', '--porcelain', '--untracked-files=no', ...skip]) !== '') return true;
+    if (git(dir, ['ls-files', '--others', '--exclude-standard', ...skip]) !== '') return true;
+    if (existsSync(join(dir, '.gitmodules')) && git(dir, ['submodule', 'foreach', '--quiet', '--recursive', 'git status --porcelain']) !== '') return true;
+    return false;
+  } catch { return true; } // when unsure, say there may be uncommitted work
+}
+
 /** Tie a checkpoint to the commit the project is at now. Needs a git repository with at least one commit. */
 export function createCheckpoint(projectDir, id, phaseId, kind, now = new Date()) {
   if (!CHECKPOINT_KINDS.includes(kind)) throw new RangeError(`kind must be one of ${CHECKPOINT_KINDS.join(', ')}`);
-  const job = loadJob(projectDir, id);
-  if (!job.phases.some((p) => p.id === phaseId)) throw new JobProblem(`job ${id} has no phase "${String(phaseId).slice(0, 30)}"`);
+  loadJob(projectDir, id);
   let commit, dirty;
   try { commit = git(projectDir, ['rev-parse', 'HEAD']); } catch { throw new JobProblem('a checkpoint needs a git repository with at least one commit'); }
-  // Whether anything is uncommitted: tracked changes via diff, and untracked files via ls-files (stops at the first), neither of which can overflow a buffer.
-  try { dirty = git(projectDir, ['status', '--porcelain', '--untracked-files=no']) !== '' || git(projectDir, ['ls-files', '--others', '--exclude-standard', '--directory', '--no-empty-directory']).length > 0; } catch { dirty = true; }
+  dirty = hasUncommittedWork(projectDir);
   const cp = { id: `c-${randomBytes(4).toString('hex')}`, phase: phaseId, kind, commit, uncommittedChanges: dirty, at: now.toISOString() };
-  job.checkpoints.push(cp);
-  writeMarked(jobPath(projectDir, id), 'job', job);
-  return cp;
+  return withLock(projectDir, id, () => {
+    const job = loadJob(projectDir, id);
+    if (!job.phases.some((p) => p.id === phaseId)) throw new JobProblem(`job ${id} has no phase "${String(phaseId).slice(0, 30)}"`);
+    job.checkpoints.push(cp);
+    writeMarked(jobPath(projectDir, id), 'job', job);
+    return cp;
+  });
 }
 
 /** Does every checkpoint's commit still exist? A missing commit means history was rewritten or lost. */
