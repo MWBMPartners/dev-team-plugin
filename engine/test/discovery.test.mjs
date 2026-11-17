@@ -100,3 +100,37 @@ test('the new schemas catch mistakes: a bad autopilot state, a bad version, a ho
   assert.ok(!validate(schemaOf('schemas/plugin-manifest.schema.json'), { name: 'x', version: 'one', description: 'd' }).ok);
   assert.ok(!validate(schemaOf('schemas/hooks.schema.json'), { hooks: { SessionStart: [{ hooks: [{ type: 'command' }] }] } }).ok);
 });
+
+// ---- Fixes after the independent review of 0b ----
+test('a cache with the wrong shape is reported and ignored, never a crash; a future date is not "fresh"', async () => {
+  for (const bad of ['{}', '[]', '{"fetchedAt":"2026-11-17T00:00:00Z","ttlHours":24,"stale":false}', '{"fetchedAt":"2026-11-17T00:00:00Z","ttlHours":24,"stale":false,"profiles":[null]}']) {
+    const dir = tmp(); mkdirSync(join(dir, 'catalogue')); writeFileSync(join(dir, 'catalogue', 'codex.json'), bad);
+    const r = await discover({ adapters: [codex], dataDir: dir, run: async () => { throw new Error('x'); }, home: dir });
+    assert.ok(r.problems.some((p) => p.code === 'CACHE_UNREADABLE'), bad);
+  }
+  const dir = tmp(); mkdirSync(join(dir, 'catalogue')); writeFileSync(join(dir, 'catalogue', 'codex.json'), '{"fetchedAt":"2099-01-01T00:00:00Z","ttlHours":24,"stale":false,"profiles":[]}');
+  const r = await discover({ adapters: [codex], dataDir: dir, run: okRun(sample), home: dir }); assert.equal(r.profiles.length, 2);
+});
+test('codex: odd entries are dropped; a "not logged in" text is not a login', async () => {
+  const dir = tmp(); const messy = JSON.stringify([null, 'x', { slug: 5 }, { slug: '' }, { slug: 'good' }, { slug: 'good' }, { nope: 1 }]);
+  const r = await discover({ adapters: [codex], dataDir: dir, run: okRun(messy), home: dir });
+  assert.deepEqual(r.profiles.map((p) => p.providerModelId), ['good']);
+  const run = async (c, a) => (c === 'codex' && a[0] === 'login' ? { stdout: 'Not logged in' } : okRun(sample)(c, a));
+  const r2 = await discover({ adapters: [codex], dataDir: tmp(), run, home: dir });
+  assert.ok(r2.profiles.every((p) => p.availability === 'UNKNOWN'));
+});
+test('an older fallback file never retires a model; a retired model no longer says it is available; events are written', async () => {
+  const dir = tmp(); const ev = join(dir, 'ev'); let t = Date.parse('2026-11-17T00:00:00Z'); const now = () => t;
+  const two = JSON.parse(sample), one = { models: [two.models[0]] };
+  await discover({ adapters: [codex], dataDir: dir, run: okRun(JSON.stringify(two)), home: dir, now, eventDir: ev });
+  // live command fails; an older cache file in the home folder lacks the hidden model
+  const home = tmp(); mkdirSync(join(home, '.codex')); writeFileSync(join(home, '.codex', 'models_cache.json'), JSON.stringify(one));
+  const failLive = async (c, a) => { if (c === 'codex' && a[0] === 'debug') throw new Error('x'); return { stdout: 'Logged in' }; };
+  t += 1000; let r = await discover({ adapters: [codex], dataDir: dir, run: failLive, home, now, refresh: true, eventDir: ev });
+  assert.deepEqual(r.removed, []); assert.ok(r.problems.some((p) => p.code === 'NOT_LIVE_SOURCE'));
+  t += 1000; r = await discover({ adapters: [codex], dataDir: dir, run: okRun(JSON.stringify(one)), home: dir, now, refresh: true, eventDir: ev });
+  const gone = r.profiles.find((p) => p.providerModelId === 'codex-auto-review');
+  assert.equal(gone.lifecycleStatus, 'RETIRED?'); assert.equal(gone.availability, 'UNKNOWN'); assert.ok(!('availability' in gone.provenance));
+  const lines = readFileSync(join(ev, '2026-11-17.jsonl'), 'utf8');
+  assert.ok(lines.includes('DISCOVERY_COMPLETED') && lines.includes('MODEL_RETIRED_CANDIDATE'));
+});

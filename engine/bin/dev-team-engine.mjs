@@ -34,7 +34,7 @@ export const commands = {
       const found = await discoverOllama(execFile);
       return { code: ExitCodes.OK, result: { provider: 'ollama', found: found.length, models: found } };
     }
-    const r = await discoverAll({ adapters: listAdapters(), dataDir: dataDir(), run: execFile, home: homedir(), refresh: a.flags.refresh === true,
+    const r = await discoverAll({ adapters: listAdapters(), dataDir: dataDir(), eventDir: join(dataDir(), 'events'), run: execFile, home: homedir(), refresh: a.flags.refresh === true,
       providers: typeof a.flags.provider === 'string' ? [a.flags.provider] : undefined });
     return { code: ExitCodes.OK, result: r, problems: r.problems };
   },

@@ -13,7 +13,12 @@ import { makeProfile } from './base.mjs';
 const KEEP = ['slug', 'display_name', 'context_window', 'supported_reasoning_levels', 'default_reasoning_level', 'visibility', 'priority', 'upgrade', 'supported_in_api'];
 const families = () => JSON.parse(readFileSync(join(pluginRoot(), 'engine', 'data', 'compat', 'openai-families.json'), 'utf8')).families;
 const pick = (o) => Object.fromEntries(KEEP.filter((k) => o && Object.hasOwn(o, k)).map((k) => [k, o[k]]));
-const listOf = (j) => (Array.isArray(j) ? j : Array.isArray(j?.models) ? j.models : []);
+const listOf = (j) => {
+  const raw = Array.isArray(j) ? j : Array.isArray(j?.models) ? j.models : [];
+  const seen = new Set();
+  // Keep only real entries: an object with a non-empty text slug, once each.
+  return raw.filter((m) => m && typeof m === 'object' && typeof m.slug === 'string' && m.slug.trim() !== '' && !seen.has(m.slug) && seen.add(m.slug));
+};
 
 /** @type {import('./base.mjs').Adapter} */
 export const codex = {
@@ -21,7 +26,8 @@ export const codex = {
   supports: { filesystem: true, shell: true, git: true, tests: true, mcp: true, subagents: false, structuredOutput: true, reasoningControl: true, contextIsolation: true, sessionResume: true, checkpointResume: true, network: true, reviewMode: true },
   async discoverModels({ run, home }) {
     let loggedIn = false;
-    try { await run('codex', ['login', 'status'], { timeout: 5000 }); loggedIn = true; } catch { loggedIn = false; }
+    // Logged in only if the command succeeds AND its text says so; the text itself is not kept.
+    try { const { stdout } = await run('codex', ['login', 'status'], { timeout: 5000 }); const s = String(stdout ?? ''); loggedIn = /logged in/i.test(s) && !/not logged in/i.test(s); } catch { loggedIn = false; }
     let live = null, reason;
     try { const { stdout } = await run('codex', ['debug', 'models'], { timeout: 5000 }); live = listOf(JSON.parse(String(stdout))); } catch { reason = 'codex debug models failed'; }
     let source = 'live';
@@ -30,9 +36,10 @@ export const codex = {
       try { live = existsSync(cachePath) ? listOf(JSON.parse(readFileSync(cachePath, 'utf8'))) : []; source = 'cache-file'; } catch { live = []; }
       if (live.length === 0) return { models: [], reason: reason ?? 'no Codex model list found' };
     }
+    const isLive = source === 'live';
     let cfg = {};
     try { const p = join(home, '.codex', 'config.toml'); if (existsSync(p)) cfg = readSimpleToml(readFileSync(p, 'utf8')).values; } catch { /* ignore */ }
-    return { models: live.map((m) => ({ id: String(m.slug), facts: { ...pick(m), loggedIn, source, configEffort: cfg.model_reasoning_effort ?? null } })) };
+    return { live: isLive, models: live.map((m) => ({ id: String(m.slug), facts: { ...pick(m), loggedIn, source, configEffort: cfg.model_reasoning_effort ?? null } })) };
   },
   normaliseProfile(raw, ctx) {
     const f = /** @type {any} */ (raw.facts);
@@ -43,7 +50,8 @@ export const codex = {
     if (available === 'AVAILABLE') prov.availability = 'RUNTIME_DISCOVERY';
     if (typeof f.context_window === 'number') prov.contextWindow = 'RUNTIME_DISCOVERY';
     if (Array.isArray(f.supported_reasoning_levels)) prov.reasoningControls = 'RUNTIME_DISCOVERY';
-    if (fam) prov.capabilityTier = 'HEURISTIC';
+    if (fam) { prov.capabilityTier = 'HEURISTIC'; prov.canaryStage = 'COMPAT_DATA'; }
+    if (f.configEffort || f.default_reasoning_level) prov.defaultReasoning = 'RUNTIME_DISCOVERY';
     return makeProfile({
       provider: 'openai', runtime: 'codex', providerModelId: raw.id, availability: available, lifecycleStatus: lifecycle,
       contextWindow: typeof f.context_window === 'number' ? f.context_window : 'UNKNOWN',
