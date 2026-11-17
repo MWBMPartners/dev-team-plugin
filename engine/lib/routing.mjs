@@ -53,19 +53,20 @@ export function route(req, models, cfg) {
   // risk or above (invariant I1), whatever the table says.
   let preferred = need;
   let floorReasons = [];
+  let scriptJob = false;
   if (req.taskTypes !== undefined) {
     if (!Array.isArray(req.taskTypes) || req.taskTypes.some((x) => typeof x !== 'string')) throw new BadRequest('taskTypes must be a list of text values');
     let f;
     try { f = floorFor(req.taskTypes, String(req.risk ?? 'NORMAL').toUpperCase()); } catch (e) { throw new BadRequest(e instanceof Error ? e.message : 'bad taskTypes'); }
-    need = Math.max(f.minimumTier, 1); preferred = Math.max(f.preferredTier, 1); floorReasons = f.reasons;
+    // The task table can only RAISE what the role already needs, never lower it.
+    need = Math.max(need, f.minimumTier, 1); preferred = Math.max(preferred, f.preferredTier, need); floorReasons = f.reasons;
     const zero = f.preferredTier === 0;
     if (req.role === 'reviewer' && String(req.risk ?? 'NORMAL').toUpperCase() !== 'LOW') need = Math.max(need, 3);
     preferred = Math.max(preferred, need);
     // Tier 0 ('a tool does it') is only for work a script really can do. Anything else at tier 0 still needs the weakest model.
     const scriptOnly = req.taskTypes.every((x) => x === 'TEST_EXECUTION' || x === 'STATIC_ANALYSIS' || x === 'BUILD_VALIDATION');
-    if (zero && scriptOnly) {
-      return { ok: true, code: 'OK', decision: { deterministic: true, provider: null, model: null, exactId: null, tier: 0, local: true, costBand: 0, independence: null, spawn: null, effort: null }, reasons: [...floorReasons, 'No AI model is needed for this: a script or tool does it.'], dropped: [], heldBack: [], alternatives: [], warnings: [], questions: [] };
-    }
+    // A script job needs no model, but never when the job is a check by a reviewer, or when a stronger model was asked for.
+    scriptJob = zero && scriptOnly && req.role !== 'reviewer' && req.minTier === undefined;
   }
   // minTier lets the lead ask for a stronger model than the role's floor (for example, to escalate to
   // tier 4 after the user approved it). It can only raise the need, never lower it.
@@ -75,6 +76,9 @@ export function route(req, models, cfg) {
   }
   if (cfg.badSettings && cfg.badSettings.length) return negative('SETTINGS_INVALID', `A routing setting in .dev-team/config.yml is ambiguous (${cfg.badSettings.join('; ')}). I will not guess which one you meant; please correct it.`, [`The ${req.role} job needs tier ${need} or stronger.`], [], []);
   if (cfg.badPins && cfg.badPins.length) return negative('PIN_INVALID', `A pin in .dev-team/config.yml is not usable (${cfg.badPins.join(', ')}). I will not guess which version you meant; please correct it.`, [`The ${req.role} job needs tier ${need} or stronger.`], [], []);
+  if (scriptJob) {
+    return { ok: true, code: 'OK', decision: { deterministic: true, provider: null, model: null, exactId: null, tier: 0, local: true, costBand: 0, independence: null, spawn: null, effort: null }, reasons: [...floorReasons, 'No AI model is needed for this: a script or tool does it.'], dropped: [], heldBack: [], alternatives: [], warnings: [], questions: [] };
+  }
   if (req.builtBy !== undefined && typeof req.builtBy !== 'string') throw new BadRequest('builtBy must be text');
   const approved = strList(req.approved, 'approved'), exhausted = strList(req.exhausted, 'exhausted');
   const providers = strList(req.providers ?? ['claude'], 'providers');

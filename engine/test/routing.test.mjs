@@ -358,3 +358,30 @@ test('dry-run: one row per phase, the route-order question once with its reason,
   assert.ok(r.questions.every((q) => q.why)); assert.ok(r.questions.some((q) => q.id === 'uncertain-input'));
   assert.equal(r.rows[1].cost, 'available after increment 7');
 });
+
+// ---- Fixes after the independent review of increment 1 ----
+test('a reviewer never gets "no model"; minTier cancels tier 0; a script job still obeys bad settings', () => {
+  assert.ok(route({ role: 'reviewer', taskTypes: ['TEST_EXECUTION'], risk: 'NORMAL', providers: ['claude'] }, seed, cfg()).decision.tier >= 3);
+  assert.notEqual(route({ role: 'builder', taskTypes: ['TEST_EXECUTION'], minTier: 3, providers: ['claude'] }, seed, cfg()).decision.deterministic, true);
+  assert.equal(route({ role: 'mechanical', taskTypes: ['TEST_EXECUTION'] }, seed, cfg({ badSettings: ['routing.order'] })).code, 'SETTINGS_INVALID');
+  assert.equal(route({ role: 'mechanical', taskTypes: ['TEST_EXECUTION'] }, seed, cfg({ badPins: ['opus'] })).code, 'PIN_INVALID');
+});
+test('task types can only raise the role\'s need, never lower it', () => {
+  const plain = route({ role: 'builder', risk: 'HIGH', providers: ['claude'] }, seed, cfg()).decision.tier;
+  const typed = route({ role: 'builder', taskTypes: ['DOCUMENTATION'], risk: 'HIGH', providers: ['claude'] }, seed, cfg()).decision.tier;
+  assert.ok(typed >= plain);
+});
+test('dry-run keeps file-wide settings, rejects odd uncertain values', () => {
+  const seen = []; const spy = (q) => { seen.push(q); return route({ providers: ['codex'], ...q }, seed, cfg()); };
+  dryRun([{ name: 'a', role: 'builder' }], spy); assert.ok(!('providers' in seen[0]));
+  assert.throws(() => dryRun([{ name: 'a', role: 'builder', uncertain: [null] }], (q) => route({ providers: ['claude'], ...q }, seed, cfg())), RangeError);
+  assert.throws(() => dryRun([{ name: 'a', role: 'builder', uncertain: 'x' }], (q) => route({ providers: ['claude'], ...q }, seed, cfg())), RangeError);
+});
+test('decisions: extra request text is never saved; a damaged record is reported as unreadable', async () => {
+  const { DecisionUnreadable } = await import('../lib/decisions.mjs');
+  const dir = mkdtempSync(join(tmpdir(), 'dt-dec2-')); const req = { role: 'builder', providers: ['claude'], note: 'password=hunter2hunter2' };
+  const a = recordDecision(dir, req, cfg(), 's', route(req, seed, cfg()));
+  assert.ok(!readFileSync(join(dir, `${a.id}.json`), 'utf8').includes('hunter2'));
+  writeFileSync(join(dir, 'd-aaaaaaaaaaaa.json'), '{"id":"x"}'); assert.throws(() => getDecision(dir, 'd-aaaaaaaaaaaa'), DecisionUnreadable);
+  writeFileSync(join(dir, 'd-bbbbbbbbbbbb.json'), '{not json'); assert.throws(() => getDecision(dir, 'd-bbbbbbbbbbbb'), DecisionUnreadable);
+});

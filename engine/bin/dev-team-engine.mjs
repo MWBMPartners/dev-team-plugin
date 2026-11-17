@@ -20,7 +20,7 @@ import { listAdapters } from '../adapters/index.mjs';
 import { dataDir } from '../lib/paths.mjs';
 import { homedir } from 'node:os';
 import { route, BadRequest } from '../lib/routing.mjs';
-import { recordDecision, getDecision, explain } from '../lib/decisions.mjs';
+import { recordDecision, getDecision, explain, DecisionUnreadable } from '../lib/decisions.mjs';
 import { dryRun } from '../lib/dryrun.mjs';
 import { canonicalJson, sha256Hex } from '../lib/canonical.mjs';
 const execFile = promisify(execFileCb);
@@ -62,11 +62,12 @@ export const commands = {
     const out = route(req, models, cfg);
     const stamp = sha256Hex(canonicalJson(models.map((m) => [m.provider, m.id, m.tier, m.costBand, m.priced])));
     const rec = recordDecision(join(dataDir(), 'decisions'), req, cfg, stamp, out);
-    return { code: out.ok ? ExitCodes.OK : ExitCodes.NEGATIVE, result: { ...out, decisionId: rec.saved ? rec.id : null, inputsHash: rec.inputsHash }, problems: out.ok ? [] : [{ code: out.code, message: out.reasons[out.reasons.length - 1] }] };
+    return { code: out.ok ? ExitCodes.OK : ExitCodes.NEGATIVE, result: { ...out, warnings: [...(out.warnings ?? []), ...(rec.saved ? [] : ['The decision could not be saved, so `explain` will not find it.'])], decisionId: rec.saved ? rec.id : null, inputsHash: rec.inputsHash }, problems: out.ok ? [] : [{ code: out.code, message: out.reasons[out.reasons.length - 1] }] };
   },
   async explain(a) {
     if (typeof a.flags.decision !== 'string') throw new BadInput('usage: explain --decision <id>');
-    const rec = getDecision(join(dataDir(), 'decisions'), a.flags.decision);
+    let rec;
+    try { rec = getDecision(join(dataDir(), 'decisions'), a.flags.decision); } catch (e) { if (e instanceof DecisionUnreadable) return { code: ExitCodes.CONFLICT, result: null, problems: [{ code: 'DECISION_UNREADABLE', message: e.message }] }; throw e; }
     if (!rec) return { code: ExitCodes.CONFLICT, result: null, problems: [{ code: 'NOT_FOUND', message: 'no such decision' }] };
     return { code: ExitCodes.OK, result: { id: rec.id, recordedAt: rec.recordedAt, sentences: explain(rec) } };
   },

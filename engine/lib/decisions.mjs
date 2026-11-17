@@ -18,7 +18,11 @@ export function inputsHash(request, cfg, catalogueStamp) {
 
 /** Save a decision. Returns the record, with `saved: false` when it could not be written (never an error for the caller). */
 export function recordDecision(dir, request, cfg, catalogueStamp, result, now = new Date()) {
-  const record = { id: `d-${randomBytes(6).toString('hex')}`, recordedAt: now.toISOString(), inputsHash: inputsHash(request, cfg, catalogueStamp), request, result: stripNoise(result) };
+  // Only the fields the engine itself understands are saved; any extra text in a request is dropped, so a stray
+  // note can never carry a secret into a file.
+  const KNOWN = ['role', 'taskTypes', 'risk', 'providers', 'approved', 'exhausted', 'builtBy', 'order', 'minTier', 'complex', 'escalateEffort'];
+  const known = Object.fromEntries(KNOWN.filter((k) => request[k] !== undefined).map((k) => [k, request[k]]));
+  const record = { id: `d-${randomBytes(6).toString('hex')}`, recordedAt: now.toISOString(), inputsHash: inputsHash(known, cfg, catalogueStamp), request: known, result: stripNoise(result) };
   try { writeJsonAtomic(join(dir, `${record.id}.json`), record); return { ...record, saved: true }; } catch { return { ...record, saved: false }; }
 }
 const stripNoise = (r) => r;
@@ -28,8 +32,15 @@ export function getDecision(dir, id) {
   if (!ID.test(String(id))) throw new RangeError('a decision id looks like d-0123456789ab');
   const p = join(dir, `${id}.json`);
   if (!existsSync(p)) return null;
-  return JSON.parse(readFileSync(p, 'utf8'));
+  let rec;
+  try { rec = JSON.parse(readFileSync(p, 'utf8')); } catch { throw new DecisionUnreadable(); }
+  if (!rec || typeof rec !== 'object' || !rec.result || typeof rec.result !== 'object' || !Array.isArray(rec.result.reasons) || !Array.isArray(rec.result.heldBack ?? [])) throw new DecisionUnreadable();
+  rec.result.heldBack ??= [];
+  return rec;
 }
+
+/** A saved decision file that is damaged. Reported as a conflict, not as bad input. */
+export class DecisionUnreadable extends Error { constructor() { super('the saved decision is damaged and cannot be read'); } }
 
 /** Three plain sentences saying why. */
 export function explain(record) {
