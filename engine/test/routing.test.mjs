@@ -198,3 +198,19 @@ test('an unrelated key that merely starts with routing never blocks routing', ()
   assert.equal(c.badSettings.length, 0);
   assert.equal(route({ role: 'architect', providers: ['claude'] }, seed, c).ok, true);
 });
+
+// ---- Fixes after the eighth independent review: the reader fails closed ----
+test('quoted names are read; a line the reader cannot understand under routing stops routing', () => {
+  assert.deepEqual(loadYaml('routing:\n  pin: {"opus": "4.1"}\n').pin, { opus: '4.1' });
+  assert.deepEqual(loadYaml('routing:\n  pin:\n    "opus": 4.1\n').pin, { opus: '4.1' });
+  assert.equal(route({ role: 'architect', providers: ['claude'] }, seed, loadYaml('routing:\n  ask-first: [fable]\n  this is not valid\n')).code, 'SETTINGS_INVALID');
+});
+test('absurd nesting and a close-before-open are reported, never silently emptied', () => {
+  const deep = loadYaml('routing:\n  ask-first: ' + '['.repeat(20000) + '\n');
+  assert.ok(deep.badSettings.length > 0);
+  assert.ok(loadYaml('routing:\n  ask-first: [fable], [mythos]\n').badSettings.length > 0);
+});
+test('an apostrophe in plain text is just text and blocks nothing', () => {
+  const c = loadYaml("note: {a: it's}\nrouting:\n  order: cloud-first   # it's fine\n");
+  assert.equal(c.badSettings.length, 0); assert.equal(c.order, 'cloud-first');
+});

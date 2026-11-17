@@ -8,22 +8,26 @@ import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 
 /** Split on commas that are outside quotes and brackets, so "4.1, beta" stays whole. */
+const MAX_NESTING = 8;
 function splitTop(s) {
-  const parts = []; let cur = '', quote = '', depth = 0;
+  const parts = []; let cur = '', quote = '', depth = 0, maxDepth = 0, prev = ',', broken = false;
   for (const ch of s) {
     if (quote) { cur += ch; if (ch === quote) quote = ''; continue; }
-    if (ch === '"' || ch === "'") { quote = ch; cur += ch; continue; }
-    if (ch === '[' || ch === '{') depth++;
-    if (ch === ']' || ch === '}') depth--;
+    // A quote only opens at the start of a value (so an apostrophe inside plain text such as it's is just text).
+    if ((ch === '"' || ch === "'") && /[,:\[{]/.test(prev)) { quote = ch; cur += ch; prev = ch; continue; }
+    if (ch === '[' || ch === '{') { depth++; if (depth > maxDepth) maxDepth = depth; }
+    if (ch === ']' || ch === '}') { depth--; if (depth < 0) broken = true; }
     if (ch === ',' && depth === 0) { parts.push(cur); cur = ''; } else cur += ch;
+    if (!/\s/.test(ch)) prev = ch;
   }
   parts.push(cur);
-  return { parts, balanced: quote === '' && depth === 0 };
+  return { parts, balanced: quote === '' && depth === 0 && !broken, tooDeep: maxDepth > MAX_NESTING };
 }
 
 /** `report(message)` is called for anything ambiguous inside a one-line list or map. */
-function scalar(s, report = () => {}) {
+function scalar(s, report = () => {}, level = 0) {
   const v = s.trim();
+  if (level > MAX_NESTING) { report('nested too deeply'); return v; }
   if (v === '' ) return null;
   if (v === 'true' || v === 'on' || v === 'yes') return true;
   if (v === 'false' || v === 'off' || v === 'no') return false;
@@ -32,23 +36,26 @@ function scalar(s, report = () => {}) {
   if (v.startsWith('[') && v.endsWith(']')) {
     const sp = splitTop(v.slice(1, -1));
     if (!sp.balanced) report('unbalanced quotes or brackets');
-    return sp.parts.map((x) => x.trim()).filter(Boolean).map((x) => scalar(x, report));
+    if (sp.tooDeep) { report('nested too deeply'); return []; }
+    return sp.parts.map((x) => x.trim()).filter(Boolean).map((x) => scalar(x, report, level + 1));
   }
   if (v.startsWith('{') && v.endsWith('}')) {
     // Values in a one-line map are kept exactly as written (text), so a version such as 4.10 or 007 is never changed.
     const o = {};
     const sp = splitTop(v.slice(1, -1));
     if (!sp.balanced) report('unbalanced quotes or brackets');
+    if (sp.tooDeep) { report('nested too deeply'); return o; }
     for (const part of sp.parts) {
       const k = part.indexOf(':');
       if (k <= 0) { if (part.trim()) report(`"${part.trim().slice(0, 20)}" is not a name: value pair`); continue; }
-      const key = part.slice(0, k).trim();
+      const key = part.slice(0, k).trim().replace(/^["']|["']$/g, '');
       if (FORBIDDEN_KEYS.has(key)) { report(`the key name "${key}" is not allowed`); continue; }
       if (Object.hasOwn(o, key)) report(`"${key}" is written more than once`);
       o[key] = part.slice(k + 1).trim().replace(/^["']|["']$/g, '');
     }
     return o;
   }
+  if (/^[\[{]/.test(v)) report('a list or map that is not closed');
   return v.replace(/^["']|["']$/g, '');
 }
 
@@ -58,7 +65,7 @@ function stripComment(line) {
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
     if (quote) { if (ch === quote) quote = ''; }
-    else if (ch === '"' || ch === "'") quote = ch;
+    else if ((ch === '"' || ch === "'") && /^[\s:,\[{-]*$/.test(line.slice(Math.max(0, i - 1), i)) ) quote = ch;
     else if (ch === '#' && i > 0 && /\s/.test(line[i - 1])) return line.slice(0, i).trimEnd();
   }
   return line;
@@ -86,8 +93,9 @@ export function parseYamlChecked(text) {
       if (Array.isArray(top.obj)) top.obj.push(scalar(line.trim().slice(2), (msg) => problems.push({ path: top.path, message: msg })));
       continue;
     }
-    const m = /^([A-Za-z0-9_.-]+):\s*(.*)$/.exec(line.trim());
-    if (!m) continue;
+    const m0 = /^(?:"([^"]+)"|'([^']+)'|([A-Za-z0-9_.-]+)):\s*(.*)$/.exec(line.trim());
+    if (!m0) { const f = stack[stack.length - 1]; problems.push({ path: f.path || 'routing', message: `a line could not be understood: "${line.trim().slice(0, 30)}"` }); continue; }
+    const m = [m0[0], m0[1] ?? m0[2] ?? m0[3], m0[4]];
     while (stack.length > 1 && indent <= stack[stack.length - 1].indent) stack.pop();
     const parentFrame = stack[stack.length - 1];
     const parent = parentFrame.obj;
@@ -104,7 +112,11 @@ export function parseYamlChecked(text) {
 /** Parse the YAML subset (without the ambiguity report). */
 export function parseYaml(text) { return parseYamlChecked(text).value; }
 
-function readYamlChecked(path) { try { return existsSync(path) ? parseYamlChecked(readFileSync(path, 'utf8')) : { value: {}, problems: [] }; } catch { return { value: {}, problems: [] }; } }
+function readYamlChecked(path) {
+  if (!existsSync(path)) return { value: {}, problems: [] };
+  // A file that cannot be read at all must stop routing, never quietly become an empty config.
+  try { return parseYamlChecked(readFileSync(path, 'utf8')); } catch { return { value: {}, problems: [{ path: 'routing', message: 'the config file could not be read' }] }; }
+}
 function readYaml(path) { return readYamlChecked(path).value; }
 
 /** The file holding one computer's own defaults. It lives outside every project and is never committed. */
