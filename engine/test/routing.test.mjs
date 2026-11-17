@@ -169,3 +169,20 @@ test('a config file with Windows line endings and trailing comments is read the 
   const y = parseYaml('routing:\r\n  ask-first:\r\n    - mythos   # costly\r\n    - fable   # costly\r\n  pin:\r\n    opus: 4.1   # chosen\r\n');
   assert.deepEqual(y.routing['ask-first'], ['mythos', 'fable']); assert.deepEqual(y.routing.pin, { opus: '4.1' });
 });
+
+// ---- Fixes after the sixth independent review ----
+const loadYaml = (yaml) => { const proj = mkdtempSync(join(tmpdir(), 'dt-y-')); mkdirSync(join(proj, '.dev-team')); writeFileSync(join(proj, '.dev-team', 'config.yml'), yaml); return loadRouting({ home: proj, projectDir: proj }); };
+test('a setting or pin written twice is never resolved by guessing', () => {
+  const c = loadYaml('routing:\n  pin:\n    opus: 4.1\n    opus: 4.2\n');
+  assert.equal(route({ role: 'architect', providers: ['claude'] }, seed, c).code, 'PIN_INVALID');
+  const d = loadYaml('routing:\n  ask-first: [fable]\n  ask-first: []\n');
+  assert.equal(route({ role: 'architect', providers: ['claude'] }, seed, d).code, 'SETTINGS_INVALID');
+});
+test('a # inside quotes is kept; an unsafe key name is reported; a profile named after an object property is ignored', () => {
+  assert.deepEqual(parseYaml('routing:\n  pin:\n    opus: "4.1 #rc"\n').routing.pin, { opus: '4.1 #rc' });
+  assert.ok(loadYaml('routing:\n  pin:\n    __proto__: x\n').badPins.length > 0);
+  const c = loadYaml('profile: constructor\n'); assert.equal(c.order, 'local-first'); assert.equal(c.askedBefore, false);
+});
+test('a very long line of spaces is read quickly', () => {
+  const t0 = Date.now(); parseYaml('a: b' + ' '.repeat(200000) + '\n'); assert.ok(Date.now() - t0 < 1000);
+});
