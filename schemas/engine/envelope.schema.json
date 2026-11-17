@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/MWBMPartners/dev-team-plugin/schemas/engine/envelope.schema.json",
+  "title": "dev-team engine answer",
+  "description": "The one shape every engine command prints on standard output, so other programs can read it.",
+  "type": "object",
+  "required": ["engine", "ok", "result", "problems"],
+  "additionalProperties": false,
+  "properties": {
+    "engine": {
+      "description": "Which engine and which command produced this answer.",
+      "type": "object",
+      "required": ["version", "command"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "description": "The engine version.", "type": "string" },
+        "command": { "description": "The command that was run (empty when none was given).", "type": "string" }
+      }
+    },
+    "ok": { "description": "True only when the command finished with exit code 0.", "type": "boolean" },
+    "result": { "description": "The command's answer. Its shape depends on the command; null when the command failed.", "type": ["object", "array", "string", "number", "boolean", "null"] },
+    "problems": {
+      "description": "Why the command was not OK. Empty when it was.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "message"],
+        "additionalProperties": false,
+        "properties": {
+          "code": { "description": "A short stable name for the problem, such as BAD_INPUT or SCHEMA.", "type": "string" },
+          "message": { "description": "The problem in plain words.", "type": "string" }
+        }
+      }
+    }
+  }
+}

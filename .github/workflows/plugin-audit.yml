@@ -38,3 +38,16 @@ jobs:
         run: shellcheck scripts/*.sh hooks/*.sh tests/*.sh
       - name: Bats (script behavior contracts)
         run: bats tests/scripts.bats
+  engine:
+    name: engine
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install jq and bats
+        run: sudo apt-get update && sudo apt-get install -y jq bats
+      - name: Engine unit tests (Node 22 or newer, no outside libraries)
+        run: node --version && node --test engine/test/*.test.mjs
+      - name: Engine launcher tests
+        run: bats tests/engine.bats
+      - name: Every engine schema passes its sample file
+        run: bash scripts/engine.sh schema validate --all

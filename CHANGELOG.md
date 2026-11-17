@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Orchestrator engine, increment 0a** (plan `orchestrator-v2`, hand-locked 17 November 2026): the
+  launcher `scripts/engine.sh` (exit 3 means "carry on the 1.x way"), the engine's command layer, a
+  small JSON-schema checker, safe file writing with an ownership marker, secret redaction, the `doctor`
+  and `schema validate` commands, `/dev-team-doctor`, `schemas/manifest.json`, unit tests
+  (`engine/test`), launcher tests (`tests/engine.bats`) and an `engine` CI job. Needs Node 22; without
+  it nothing changes.
+
 - **`features.commit-security`** (default `off`, issue #42): the security findings file
   `.dev-team/SECURITY.md` is now kept out of git by default, because it records how each weakness was
   proven and a public repository would publish that. The security skill adds one line, `SECURITY.md`, to

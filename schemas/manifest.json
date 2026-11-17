@@ -1,0 +1,13 @@
+{
+  "dev-team": "ledger=schema-manifest schema=1.0",
+  "description": "Lists every engine schema with a sample file that must pass it. CI checks each pair (node engine/bin/dev-team-engine.mjs schema validate --all).",
+  "entries": [
+    { "schema": "schemas/engine/envelope.schema.json", "fixture": "tests/fixtures/envelope.sample.json" },
+    { "schema": "schemas/engine/doctor.output.schema.json", "fixture": "tests/fixtures/doctor.output.sample.json" }
+  ],
+  "exceptions": [
+    { "path": ".claude-plugin/plugin.json", "reason": "Claude Code's own manifest; its shape is owned by Claude Code and checked by scripts/audit-model-ids.sh." },
+    { "path": ".claude-plugin/marketplace.json", "reason": "Claude Code's own manifest; checked by scripts/audit-model-ids.sh." },
+    { "path": "schemas/verdict.schema.json", "reason": "Checked against its own fixtures in tests/scripts.bats (older mechanism, kept as it is)." }
+  ]
+}
