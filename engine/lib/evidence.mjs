@@ -10,14 +10,26 @@
  */
 export function checkEvidence(e) {
   const failing = [];
-  for (const r of e.results ?? []) {
-    if (r.required === false) continue;
+  const results = Array.isArray(e.results) ? e.results : [];
+  // Nothing proven is not the same as nothing wrong: at least one required check must have passed, and every
+  // kind named in requiredKinds (default: test) must have a passing, non-skipped result.
+  const requiredKinds = Array.isArray(e.requiredKinds) ? e.requiredKinds : ['test'];
+  if (!results.length) failing.push({ gate: 'NO_RESULTS', detail: 'No check results were given, so nothing shows the work is complete.' });
+  for (const k of requiredKinds) if (!results.some((r) => r && r.kind === k && r.status === 'PASS' && r.required !== false)) failing.push({ gate: 'RESULT_MISSING', detail: `No passing ${k} result was given.` });
+  for (const r of results) {
+    if (!r || r.required === false) continue;
     if (r.status === undefined || r.status === 'MISSING') failing.push({ gate: 'RESULT_MISSING', detail: `${r.kind} "${r.name}" has no result.` });
-    else if (r.status !== 'PASS') failing.push({ gate: 'RESULT_FAILED', detail: `${r.kind} "${r.name}" is ${r.status}.` });
+    else if (r.status !== 'PASS') failing.push({ gate: 'RESULT_FAILED', detail: `${r.kind} "${r.name}" is ${String(r.status).slice(0, 20)}.` });
   }
-  for (const f of e.findings ?? []) if (f.severity === 'BLOCKING' && !['FIXED', 'VERIFIED', 'REJECTED', 'ACCEPTED_RISK'].includes(f.status)) failing.push({ gate: 'BLOCKING_FINDING_OPEN', detail: `${f.id} is ${f.status}.` });
-  for (const c of e.criteria ?? []) if (!c.ref) failing.push({ gate: 'CRITERION_UNPROVEN', detail: `Acceptance criterion ${c.id} has no reference to proof.` });
+  const SEV = ['BLOCKING', 'HIGH', 'MEDIUM', 'LOW', 'INFO'], DONE = ['FIXED', 'VERIFIED', 'REJECTED', 'ACCEPTED_RISK'];
+  for (const f of Array.isArray(e.findings) ? e.findings : []) {
+    const sev = String(f?.severity ?? '').toUpperCase(), st = String(f?.status ?? '').toUpperCase();
+    if (!SEV.includes(sev)) failing.push({ gate: 'FINDING_UNKNOWN_SEVERITY', detail: `${f?.id ?? '?'} has an unknown severity.` });
+    else if (sev === 'BLOCKING' && !DONE.includes(st)) failing.push({ gate: 'BLOCKING_FINDING_OPEN', detail: `${f.id} is ${st || 'unknown'}.` });
+  }
+  for (const c of Array.isArray(e.criteria) ? e.criteria : []) if (!c || typeof c.ref !== 'string' || c.ref.trim() === '') failing.push({ gate: 'CRITERION_UNPROVEN', detail: `Acceptance criterion ${c?.id ?? '?'} has no reference to proof.` });
   if (e.lockedPlanVersion !== undefined && e.planVersion !== e.lockedPlanVersion) failing.push({ gate: 'PLAN_CHANGED', detail: `Work is on plan version ${e.planVersion}, but version ${e.lockedPlanVersion} is the one locked.` });
-  const ignored = e.selfReported && failing.length ? `Reported "${e.selfReported}" is ignored: checkable results decide.` : null;
+  if (e.lockedPlanHash !== undefined && e.planHash !== e.lockedPlanHash) failing.push({ gate: 'PLAN_CHANGED', detail: 'The plan\'s fingerprint differs from the locked one: it was edited without a new version.' });
+  const ignored = e.selfReported && failing.length ? `Reported "${String(e.selfReported).slice(0, 30)}" is ignored: checkable results decide.` : null;
   return { complete: failing.length === 0, failing, note: ignored };
 }

@@ -23,10 +23,10 @@ import { route, BadRequest } from '../lib/routing.mjs';
 import { recordDecision, getDecision, explain, DecisionUnreadable } from '../lib/decisions.mjs';
 import { dryRun } from '../lib/dryrun.mjs';
 import { checkProjectDocs, checkApiDocs } from '../lib/projectdocs.mjs';
-import { draftPlan, lockPlan, verifyPlan, diffPlans, Conflict } from '../lib/plan.mjs';
+import { draftPlan, lockPlan, verifyPlan, diffPlans, Conflict, StaleDraft } from '../lib/plan.mjs';
 import { classifyDrift } from '../lib/drift.mjs';
 import { checkEvidence } from '../lib/evidence.mjs';
-import { newTask, recordAttempt, recordEscalation } from '../lib/attempts.mjs';
+import { newTask, recordAttempt, recordEscalation, validateTask } from '../lib/attempts.mjs';
 import { writeJsonAtomic } from '../lib/store.mjs';
 import { canonicalJson, sha256Hex } from '../lib/canonical.mjs';
 const execFile = promisify(execFileCb);
@@ -114,7 +114,7 @@ export const commands = {
     if (a.sub === 'lock') {
       if (!file || typeof a.flags.approver !== 'string') throw new BadInput('usage: plan lock --file <plan.json> --approver <name>');
       try { const locked = lockPlan(read(file), { approver: a.flags.approver }); writeJsonAtomic(file, locked); return { code: ExitCodes.OK, result: { planId: locked.planId, planVersion: locked.planVersion, planHash: locked.planHash, status: locked.status } }; }
-      catch (e) { if (e instanceof Conflict) return { code: ExitCodes.CONFLICT, result: null, problems: [{ code: 'ALREADY_LOCKED', message: e.message }] }; throw e; }
+      catch (e) { if (e instanceof Conflict) return { code: ExitCodes.CONFLICT, result: null, problems: [{ code: 'ALREADY_LOCKED', message: e.message }] }; if (e instanceof StaleDraft) return { code: ExitCodes.VERIFY_FAILED, result: null, problems: [{ code: 'STALE_DRAFT', message: e.message }] }; throw e; }
     }
     if (a.sub === 'draft') {
       if (!file || typeof a.flags.id !== 'string' || typeof a.flags.out !== 'string') throw new BadInput('usage: plan draft --file <contract.json> --id <planId> --out <plan.json>');
@@ -144,7 +144,11 @@ export const commands = {
     if (a.sub !== 'record' || typeof a.flags['state-file'] !== 'string') throw new BadInput('usage: attempt record --state-file <json> --outcome SUCCESS|FAIL --progress-made true|false | attempt record --state-file <json> --escalated');
     const f = resolve(a.flags['state-file']);
     let task; try { task = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : newTask(); } catch { throw new BadInput('the state file is not valid JSON'); }
-    if (a.flags.escalated) { task = recordEscalation(task); writeJsonAtomic(f, task); return { code: ExitCodes.OK, result: { escalations: task.escalations } }; }
+    try { validateTask(task); } catch (e) { throw new BadInput(e instanceof Error ? e.message : 'the state file is not a valid attempt record'); }
+    if (a.flags.escalated) {
+      try { task = recordEscalation(task); } catch (e) { return { code: ExitCodes.CONFLICT, result: null, problems: [{ code: 'ESCALATION_NOT_ALLOWED', message: e instanceof Error ? e.message : 'not allowed' }] }; }
+      writeJsonAtomic(f, task); return { code: ExitCodes.OK, result: { escalations: task.escalations } };
+    }
     if (typeof a.flags.outcome !== 'string' || (a.flags['progress-made'] !== 'true' && a.flags['progress-made'] !== 'false')) throw new BadInput('--outcome and --progress-made true|false are needed');
     try { const r = recordAttempt(task, { outcome: a.flags.outcome, progressMade: a.flags['progress-made'] === 'true' }); writeJsonAtomic(f, r.task);
       return { code: r.capReached ? ExitCodes.NEGATIVE : ExitCodes.OK, result: { attempts: r.task.attempts.length, closed: r.task.closed, capReached: r.capReached }, problems: r.capReached ? [{ code: 'ATTEMPT_CAP_REACHED', message: r.reason }] : [] };

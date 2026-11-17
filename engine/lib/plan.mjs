@@ -9,6 +9,8 @@ import { markerFor } from './store.mjs';
 
 /** Raised when the state does not allow the action (for example locking a plan that is already locked). */
 export class Conflict extends Error {}
+/** The draft's contract was changed after its fingerprint was made, so locking it would approve text nobody saw. */
+export class StaleDraft extends Error {}
 
 export const planHash = (contract) => sha256Hex(canonicalJson(contract));
 
@@ -22,13 +24,21 @@ export function draftPlan({ planId, planVersion = 1, contract, supersedes = null
 /** Lock a draft with the owner's approval. A plan that is already locked cannot be locked again at the same version. */
 export function lockPlan(doc, { approver, now = new Date() }) {
   if (doc.status === 'LOCKED') throw new Conflict(`plan ${doc.planId} version ${doc.planVersion} is already locked; a change is a new version`);
+  if (doc.status !== 'DRAFT') throw new RangeError('only a plan whose status is exactly DRAFT can be locked');
+  // Lock only what was drafted: if the contract changed since its fingerprint was made, refuse.
+  if (planHash(doc.contract) !== doc.planHash) throw new StaleDraft('the contract was changed after the draft was made; draft it again so the fingerprint matches what the owner reads');
   if (typeof approver !== 'string' || approver.trim() === '') throw new RangeError('an approver is needed to lock a plan');
-  return { ...doc, planHash: planHash(doc.contract), status: 'LOCKED', approvedAt: now.toISOString().slice(0, 10), approvedBy: approver.trim() };
+  return { ...doc, status: 'LOCKED', approvedAt: now.toISOString().slice(0, 10), approvedBy: approver.trim() };
 }
 
 /** Does the plan's fingerprint still match its contract? A locked plan that does not match is a failure. */
 export function verifyPlan(doc) {
   if (!doc || typeof doc !== 'object' || typeof doc.planHash !== 'string' || !doc.contract) return { ok: false, status: 'INVALID', reason: 'not a plan contract' };
+  if (doc.status !== 'DRAFT' && doc.status !== 'LOCKED') return { ok: false, status: 'INVALID', reason: 'status must be exactly DRAFT or LOCKED' };
+  const filled = (x) => typeof x === 'string' && x.trim() !== '';
+  // A locked plan must say who approved it and when; a draft must not (so a locked plan cannot be quietly turned back into a draft).
+  if (doc.status === 'LOCKED' && !(filled(doc.approvedBy) && filled(doc.approvedAt))) return { ok: false, status: 'INVALID', reason: 'a locked plan must record who approved it and when' };
+  if (doc.status === 'DRAFT' && (doc.approvedBy != null || doc.approvedAt != null)) return { ok: false, status: 'INVALID', reason: 'a draft cannot carry an approval; this looks like a locked plan turned back into a draft' };
   const actual = planHash(doc.contract);
   const matches = actual === doc.planHash;
   if (doc.status === 'LOCKED' && !matches) return { ok: false, status: 'TAMPERED', reason: 'the contract no longer matches its locked fingerprint', expected: doc.planHash, actual };

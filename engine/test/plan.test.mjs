@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { draftPlan, lockPlan, verifyPlan, diffPlans, planHash, Conflict } from '../lib/plan.mjs';
+import { draftPlan, lockPlan, verifyPlan, diffPlans, planHash, Conflict, StaleDraft } from '../lib/plan.mjs';
 import { classifyDrift } from '../lib/drift.mjs';
 import { checkEvidence } from '../lib/evidence.mjs';
-import { newTask, recordAttempt, recordEscalation, canAttempt } from '../lib/attempts.mjs';
+import { newTask, recordAttempt, recordEscalation, canAttempt, validateTask } from '../lib/attempts.mjs';
 import { pluginRoot } from '../lib/paths.mjs';
 
 const lockedFile = join(pluginRoot(), '.claude/plans/orchestrator-v2/plan-contract.orchestrator-v2.v1.json');
@@ -55,7 +55,7 @@ test('evidence: a failed or missing required result, an open blocking finding, a
   assert.equal(checkEvidence({ ...ok, findings: [{ id: 'F2', severity: 'BLOCKING', status: 'OPEN' }] }).failing[0].gate, 'BLOCKING_FINDING_OPEN');
   assert.equal(checkEvidence({ ...ok, criteria: [{ id: 'AC2' }] }).failing[0].gate, 'CRITERION_UNPROVEN');
   assert.equal(checkEvidence({ ...ok, planVersion: 2 }).failing[0].gate, 'PLAN_CHANGED');
-  assert.equal(checkEvidence({ results: [{ name: 'lint', kind: 'lint', required: false }] }).complete, true);
+  assert.equal(checkEvidence({ requiredKinds: [], results: [{ name: 'lint', kind: 'lint', required: false }] }).complete, true);
 });
 test('attempts: three failures stop it; two no-progress failures stop it; a fourth needs an escalation; success closes the task', () => {
   let t = newTask(); let r;
@@ -67,4 +67,39 @@ test('attempts: three failures stop it; two no-progress failures stop it; a four
   let n = newTask(); n = recordAttempt(n, { outcome: 'FAIL', progressMade: false }).task; r = recordAttempt(n, { outcome: 'FAIL', progressMade: false }); assert.equal(r.capReached, true);
   assert.equal(canAttempt(recordEscalation(r.task)).ok, true); // escalation clears the no-progress stop
   assert.throws(() => newTask(0), RangeError); assert.throws(() => recordAttempt(newTask(), { outcome: 'MAYBE', progressMade: true }), RangeError);
+});
+
+// ---- Fixes after the independent review of increment 3 ----
+test('plan: a stale draft is never locked; odd statuses are invalid; a locked plan cannot be turned back into a draft', () => {
+  const d = draftPlan({ planId: 'p', contract: c1 });
+  assert.throws(() => lockPlan({ ...d, contract: { ...c1, requirements: ['R1'] } }, { approver: 'o' }), StaleDraft);
+  assert.throws(() => lockPlan({ ...d, status: 'locked' }, { approver: 'o' }), RangeError);
+  const l = lockPlan(d, { approver: 'owner' });
+  const tampered = { ...l, contract: { requirements: ['X'] } };
+  for (const s of ['DRAFT', 'locked', 'BOGUS']) assert.equal(verifyPlan({ ...tampered, status: s }).ok, false, s);
+  assert.equal(verifyPlan({ ...l, approvedBy: null }).ok, false);
+  assert.equal(verifyPlan({ ...tampered }).status, 'TAMPERED');
+});
+test('attempts: the saved record is validated; escalation only when stopped; exactly one more try per escalation', () => {
+  assert.throws(() => validateTask({ ...newTask(), escalations: 'x' }), RangeError);
+  assert.throws(() => validateTask({ ...newTask(), since: 99 }), RangeError);
+  assert.throws(() => validateTask({ ...newTask(), maxAttempts: 9999 }), RangeError);
+  assert.throws(() => validateTask({ ...newTask(), closed: true }), RangeError);
+  assert.throws(() => recordEscalation(newTask()), /not stopped/);
+  let t = newTask(); for (let i = 0; i < 3; i++) t = recordAttempt(t, { outcome: 'FAIL', progressMade: true }).task;
+  t = recordEscalation(t); let r = recordAttempt(t, { outcome: 'FAIL', progressMade: true }); assert.equal(r.capReached, true); // exactly one more
+  assert.throws(() => recordAttempt(r.task, { outcome: 'FAIL', progressMade: true }));
+  let n = newTask(); for (let i = 0; i < 2; i++) n = recordAttempt(n, { outcome: 'FAIL', progressMade: false }).task;
+  n = recordEscalation(n); r = recordAttempt(n, { outcome: 'FAIL', progressMade: false }); assert.equal(canAttempt(r.task).ok, false); // one try after the no-progress stop
+  assert.throws(() => recordEscalation(recordEscalation(n)), /not stopped/);
+});
+test('evidence: nothing given, lower-case or unknown severities, blank refs, and a changed fingerprint all block completion', () => {
+  const base = { results: [{ name: 'u', kind: 'test', status: 'PASS' }] };
+  assert.equal(checkEvidence({ selfReported: 'done' }).complete, false);
+  assert.equal(checkEvidence({ ...base, findings: [{ id: 'F', severity: 'blocking', status: 'open' }] }).complete, false);
+  assert.equal(checkEvidence({ ...base, findings: [{ id: 'F', severity: 'wat', status: 'FIXED' }] }).complete, false);
+  assert.equal(checkEvidence({ ...base, criteria: [{ id: 'A', ref: ' ' }] }).complete, false); assert.equal(checkEvidence({ ...base, criteria: [{ id: 'A', ref: {} }] }).complete, false);
+  assert.equal(checkEvidence({ ...base, planHash: 'a', lockedPlanHash: 'b' }).complete, false);
+  assert.equal(checkEvidence({ results: [{ name: 'b', kind: 'build', status: 'PASS' }] }).complete, false); // a test result is required by default
+  assert.equal(checkEvidence(base).complete, true);
 });
