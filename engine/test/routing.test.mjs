@@ -163,3 +163,9 @@ test('Ollama cloud-hosted models are not treated as free local models', () => {
   assert.equal(e.local, false); assert.equal(e.priced, false);
   assert.equal(route({ role: 'builder', providers: ['ollama'] }, [e], cfg()).code, 'NEEDS_APPROVAL');
 });
+
+// ---- Fix after the fifth independent review ----
+test('a config file with Windows line endings and trailing comments is read the same as one without', () => {
+  const y = parseYaml('routing:\r\n  ask-first:\r\n    - mythos   # costly\r\n    - fable   # costly\r\n  pin:\r\n    opus: 4.1   # chosen\r\n');
+  assert.deepEqual(y.routing['ask-first'], ['mythos', 'fable']); assert.deepEqual(y.routing.pin, { opus: '4.1' });
+});

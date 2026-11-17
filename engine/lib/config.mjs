@@ -29,7 +29,7 @@ export function parseYaml(text) {
   const root = {};
   const stack = [{ indent: -1, obj: root, parent: null, key: '' }];
   for (const raw of String(text).split('\n')) {
-    const line = raw.replace(/\s+#.*$/, '').replace(/\r$/, '');
+    const line = raw.replace(/\r$/, '').replace(/\s+#.*$/, ''); // drop the Windows line ending first, or a trailing comment survives
     if (!line.trim() || line.trim().startsWith('#')) continue;
     const indent = line.length - line.trimStart().length;
     if (line.trim().startsWith('- ')) {
