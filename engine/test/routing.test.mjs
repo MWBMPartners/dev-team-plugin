@@ -231,3 +231,14 @@ test('the real starter schema in config-and-toggles.md is read without any probl
   const block = md.slice(md.indexOf('## The schema (verbatim)')).split('```')[1];
   const c = loadYaml(block); assert.equal(c.badSettings.length, 0); assert.equal(c.badPins.length, 0);
 });
+
+// ---- Fixes after the tenth independent review ----
+test('a stray list item, a repeated profile, a malformed device file all stop routing', () => {
+  assert.ok(loadYaml('routing:\n  ask-first:\n    - fable\n  order: cloud-first\n    - opus\n').badSettings.length > 0);
+  assert.ok(loadYaml('profile: cloud-first\nprofile: local-first\n').badSettings.length > 0);
+  const home = mkdtempSync(join(tmpdir(), 'dt-dev-')); mkdirSync(join(home, '.dev-team')); writeFileSync(join(home, '.dev-team', 'device.yml'), 'routing:\n  order: sideways\n');
+  assert.ok(loadRouting({ home }).badSettings.length > 0);
+});
+test('free text that merely contains the word routing inside an unrelated block is not blocked', () => {
+  assert.equal(loadYaml('notes: |\n  this is about routing: how it works\n  and: more\nrouting:\n  order: cloud-first\n').badSettings.length, 0);
+});

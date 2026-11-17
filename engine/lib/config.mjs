@@ -91,11 +91,12 @@ export function parseYamlChecked(text) {
       const top = stack[stack.length - 1];
       if (top.parent && !Array.isArray(top.obj) && Object.keys(top.obj).length === 0) { top.obj = []; top.parent[top.key] = top.obj; }
       if (Array.isArray(top.obj)) top.obj.push(scalar(line.trim().slice(2), (msg) => problems.push({ path: top.path, message: msg })));
+      else problems.push({ path: top.path || '(top level)', message: 'a list item that does not belong to any list' });
       continue;
     }
     if (/^(---|\.\.\.)\s*$/.test(line.trim())) continue;
     const m0 = /^(?:"([^"]+)"|'([^']+)'|([A-Za-z0-9_.-]+)):\s*(.*)$/.exec(line.trim());
-    if (!m0) { const f = stack[stack.length - 1]; problems.push({ path: f.path || (/routing/i.test(line) ? 'routing' : '(top level)'), message: `a line could not be understood: "${line.trim().slice(0, 30)}"` }); continue; }
+    if (!m0) { const f = stack[stack.length - 1]; problems.push({ path: f.path || (/^\s*"?routing\b/i.test(line) ? 'routing' : '(top level)'), message: `a line could not be understood: "${line.trim().slice(0, 30)}"` }); continue; }
     const m = [m0[0], m0[1] ?? m0[2] ?? m0[3], m0[4]];
     while (stack.length > 1 && indent <= stack[stack.length - 1].indent) stack.pop();
     const parentFrame = stack[stack.length - 1];
@@ -135,7 +136,8 @@ export const DEFAULT_ASK_FIRST = ['fable', 'mythos', 'openai-top', 'gemini-top',
 export function loadRouting(opts = {}) {
   const checked = opts.projectDir ? readYamlChecked(join(opts.projectDir, '.dev-team', 'config.yml')) : { value: {}, problems: [] };
   const project = checked.value;
-  const device = readYaml(deviceFile(opts.home));
+  const deviceChecked = readYamlChecked(deviceFile(opts.home));
+  const device = deviceChecked.value;
   const valid = (v) => v === 'local-first' || v === 'cloud-first';
   let order = 'local-first', orderDecidedBy = 'built-in default';
   if (valid(device.routing?.order)) { order = device.routing.order; orderDecidedBy = 'this computer\'s device file'; }
@@ -171,7 +173,9 @@ export function loadRouting(opts = {}) {
     } else badPins.push(k);
   }
   // Anything ambiguous under routing: (a setting written twice, an unsafe key name) is reported, never resolved by guessing.
-  for (const pr of checked.problems) { if (/^routing\.pin\./.test(pr.path) || pr.path === 'routing.pin') badPins.push(`${pr.path} (${pr.message})`); else if (pr.path === 'routing' || pr.path.startsWith('routing.')) badSettings.push(`${pr.path} (${pr.message})`); }
+  for (const pr of checked.problems) { if (/^routing\.pin\./.test(pr.path) || pr.path === 'routing.pin') badPins.push(`${pr.path} (${pr.message})`); else if (pr.path === 'routing' || pr.path.startsWith('routing.') || pr.path === 'profile') badSettings.push(`${pr.path} (${pr.message})`); }
+  // The device file may only carry an order. A malformed or repeated entry is reported, not quietly skipped.
+  if (deviceChecked.problems.length || (device.routing?.order !== undefined && !valid(device.routing.order))) badSettings.push("the device file ~/.dev-team/device.yml (it may only hold routing: order: local-first or cloud-first)");
   return { order, orderDecidedBy, askedBefore, askFirst, pin, badPins, badSettings, profile: project.profile ?? null };
 }
 
