@@ -57,3 +57,4 @@
 
 - 17 Nov 2026: standing rules 12-15 added (many AI systems, shared project documents, tracker as source of truth, Swagger UI for projects with APIs). Requirements: .claude/plans/orchestrator-v2/owner-brief-addendum-2026-11-17.md.
 - 17 Nov 2026: Q6-Q9 answered (see HANDOFF). Built #44, #48, #42 on claude/busy-knuth-bc35ok. bats here needs: npm i -g bats; pip install shellcheck-py. Codex is not installed in the cloud session.
+- 17 Nov 2026: engine lesson: do not extend the hand-written YAML reader (engine/lib/config.mjs) any further; it fails closed on anything it cannot read. Node 22 needs `node --test engine/test/*.test.mjs` (a glob, not the folder).

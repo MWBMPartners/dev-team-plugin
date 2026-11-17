@@ -62,3 +62,5 @@ not on pushes to the working branch — so run them yourself.
 | #43 | Schema for `autopilot.json`. | Waits for #46. |
 
 > 17 Nov 2026 (end of session): groups A, B, C, D done on `claude/busy-knuth-bc35ok` (latest commit: see `git log`); E planned only. Details in `.claude/HANDOFF.md`.
+
+> 17 Nov 2026 (final): engine increments 0a and the core of 1 built on `claude/busy-knuth-bc35ok` (69 unit tests, 13 launcher tests, 211 older tests). 17 stand-in review rounds, last one clean on code; Codex still to review. Resume at increment 0b: see `.claude/HANDOFF.md` "Engine status".

@@ -150,7 +150,11 @@ model to use rather than reading the tables above by eye: write a small request 
 `engine.sh route --request-file <file>`. The answer says which model, why, what was held back for
 approval, and any question for the user (for example where work should start, asked once per project).
 Exit 1 means a "no" that is itself the answer: `NEEDS_APPROVAL` (ask the user, then ask again with
-`"approved": ["<model>"]`), `PIN_UNAVAILABLE` (stop and ask), or `NO_SUITABLE_AGENT_AVAILABLE`.
+`"approved": ["<model>"]`; naming the pinned exact version also works), `PIN_UNAVAILABLE` (stop and ask),
+`PIN_INVALID` or `SETTINGS_INVALID` (a setting in `.dev-team/config.yml` is malformed or ambiguous: show the
+user which one and ask them to correct it; never guess), or `NO_SUITABLE_AGENT_AVAILABLE`. To reach a
+tier-4 model the user has approved, add `"minTier": 4` to the request. When the answer's `exactId` is not
+null, pass it when starting the worker, or stop and say the tool cannot.
 `engine.sh config show` prints the effective settings and which source decided each. If the engine
 exits 3, follow the tables above as before. The engine only decides and records; the lead starts the
 worker. Details: `docs/orchestrator/engine-commands.md`.

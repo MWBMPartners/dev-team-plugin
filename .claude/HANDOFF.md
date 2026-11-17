@@ -54,8 +54,8 @@ Checks run at `158f4bc`: both audits, smoke test, shellcheck, bats 211 of 211. T
 
 - **Where:** `engine/` (code and tests), `scripts/engine.sh` (the launcher), `schemas/engine/` and
   `schemas/manifest.json`, `docs/orchestrator/`, `tests/engine.bats`, CI job `engine`.
-- **Check it:** `node --test engine/test/*.test.mjs` (33 tests; note Node 22 wants the file glob, not the
-  folder), `bats tests/engine.bats` (9), plus the older checks in `CONTEXT.md`.
+- **Check it:** `node --test engine/test/*.test.mjs` (69 tests; note Node 22 wants the file glob, not the
+  folder), `bats tests/engine.bats` (13), plus the older checks in `CONTEXT.md`.
 - **How it decides** (`engine/lib/routing.mjs`): tier not name; checking never below tier 3; cheapest
   qualifying wins; ask-first models held back until approved (local never); pins exact or stop;
   local-first default, cloud-first on request, order only changes the order tried.
@@ -64,8 +64,17 @@ Checks run at `158f4bc`: both audits, smoke test, shellcheck, bats 211 of 211. T
   `orchestrator.json`, because the owner asked for them as user-facing settings in Groups B and D;
   (2) the engine parses a small YAML subset itself rather than using a library (no dependencies);
   (3) non-Claude catalogue entries are role-level placeholders marked unverified, never real model ids.
-- **Review:** Codex not available. A fresh Opus agent reviewed the engine (result recorded below once it
-  arrives). Counts as **not fully reviewed** until Codex has looked.
+- **Review:** Codex was not available. Under rule 5 the stand-in was fresh Opus agents that did not write
+  the code, one after another: **17 rounds** (each fix was re-reviewed). Rounds 1 to 16 each found real
+  bugs, all fixed with a test (the last real code bugs were: a pin dropped for a tier-4 model, ask-first
+  not matching a pinned version). Round 17 found **no code bugs**, only two documentation gaps, now fixed.
+  One finding was declined with a reason (round 1, #3: an explicit `ask-first` in the user's own
+  `config.yml` replaces the default; only repository instruction files may add). The config reader was
+  made to **fail closed**: anything it cannot understand under `routing:` stops routing
+  (`SETTINGS_INVALID` / `PIN_INVALID`). The lesson: a hand-written YAML reader is a long tail; if the
+  engine ever needs more of YAML, use a real parser instead of extending this one. Still counts as
+  **not fully reviewed** until Codex has looked. Brief for Codex: review `git diff 87c0f70..HEAD -- engine
+  scripts tests/engine.bats`.
 - **Next:** increment 0b, then the rest of increment 1 (`explain`, `dry-run`, effort mapping), then 2,
   3, 4 in order (`plan.md` section 4). Hand tests HT-0 to HT-3 need the owner's real Claude Code session.
 

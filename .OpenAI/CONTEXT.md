@@ -51,3 +51,5 @@ work it does is then reviewed by Claude Code when Claude Code is back.
 > reviewed by Codex**. Review them with `git diff 87c0f70..HEAD` against `alpha`'s history.
 
 > 17 Nov 2026 (end of session): groups A-D built on `claude/busy-knuth-bc35ok`; none yet reviewed by Codex. See `.claude/HANDOFF.md`.
+
+> 17 Nov 2026 (final): engine increments 0a and the core of 1 built on `claude/busy-knuth-bc35ok` (69 unit tests, 13 launcher tests, 211 older tests). 17 stand-in review rounds, last one clean on code; Codex still to review. Resume at increment 0b: see `.claude/HANDOFF.md` "Engine status".
