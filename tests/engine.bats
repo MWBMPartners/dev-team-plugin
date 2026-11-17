@@ -352,3 +352,20 @@ teardown() { rm -rf "$SCRATCH"; }
   run bash "$REPO_ROOT/scripts/engine.sh" push check --branch autopilot/x --confident --deterministic-pass --project "$SCRATCH/p"
   [ "$status" -eq 1 ]
 }
+
+@test "engine.sh: learn record refuses code and paths, query gives no score with too few results, purge empties it, and DEV_TEAM_NO_LEARNING switches it off" {
+  printf '{"taskType":"ROUTINE_IMPLEMENTATION","provider":"claude","model":"sonnet","tier":2,"risk":"NORMAL","accepted":true,"at":"2026-11-17T10:00:00Z"}' > "$SCRATCH/r.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" learn record --input "$SCRATCH/r.json"
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r .result.recorded)" = "true" ]
+  printf '{"taskType":"ROUTINE_IMPLEMENTATION","provider":"claude","model":"sonnet","tier":2,"risk":"NORMAL","accepted":true,"at":"2026-11-17T10:00:00Z","code":"x=1"}' > "$SCRATCH/bad.json"
+  run bash "$REPO_ROOT/scripts/engine.sh" learn record --input "$SCRATCH/bad.json"
+  [ "$status" -eq 2 ]
+  run bash "$REPO_ROOT/scripts/engine.sh" learn query --provider claude --model sonnet --task-type ROUTINE_IMPLEMENTATION
+  [ "$(printf '%s' "$output" | jq -r .result.score)" = "null" ]
+  run env DEV_TEAM_NO_LEARNING=1 bash "$REPO_ROOT/scripts/engine.sh" learn record --input "$SCRATCH/r.json"
+  [ "$(printf '%s' "$output" | jq -r .result.recorded)" = "false" ]
+  run bash "$REPO_ROOT/scripts/engine.sh" learn purge
+  [ "$status" -eq 0 ]
+  [ ! -d "$DEV_TEAM_DATA_DIR/learning" ]
+}

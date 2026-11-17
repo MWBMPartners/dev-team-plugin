@@ -31,6 +31,7 @@ import { writeJsonAtomic } from '../lib/store.mjs';
 import { loadPacks, rollbackRequired } from '../lib/packs.mjs';
 import { continuityCommands } from '../lib/continuity-commands.mjs';
 import { reviewCommands } from '../lib/review-commands.mjs';
+import { learningCommands } from '../lib/learning-commands.mjs';
 import { policyCommands } from '../lib/policy-commands.mjs';
 import { initJob, loadJob, recordPhase, createCheckpoint, verifyCheckpoints, progressRows, JobProblem } from '../lib/job.mjs';
 import { canonicalJson, sha256Hex } from '../lib/canonical.mjs';
@@ -51,6 +52,7 @@ export const commands = {
   ...continuityCommands,
   ...reviewCommands,
   ...policyCommands,
+  ...learningCommands,
   async discover(a) {
     // `discover --local` lists models a local Ollama install has. Plain `discover` asks the adapters
     // (Claude Code, Codex and the unverified ones) and keeps a cache per runtime in the data folder.

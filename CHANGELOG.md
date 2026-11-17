@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Orchestrator engine, increment 8 (core)**: local-only learning records that cannot hold code, prompts or paths
+  (`learn record|query|purge`, off with `DEV_TEAM_NO_LEARNING=1`), competency scores that need enough results,
+  canary promotion and demotion, and provider health states. Not yet wired into `route`.
+
 - **Orchestrator engine, increment 11 (practice bundle, part)**: `git.push-after-task` (off by default) and
   `engine.sh push check` (run branch only, only a checker-cleared commit, never the default branch, never a force);
   the named-issue and end-of-run-report rules in the issue-sync protocol.
