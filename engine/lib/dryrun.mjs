@@ -13,7 +13,7 @@ export function dryRun(phases, routeFn) {
   for (const ph of phases) {
     // Pass only the keys this phase really sets, so file-wide settings are never overwritten by undefined.
     const req = { role: ph.role };
-    for (const k of ['taskTypes', 'risk', 'providers', 'approved', 'exhausted', 'builtBy', 'minTier', 'complex']) if (ph[k] !== undefined) req[k] = ph[k];
+    for (const k of ['taskTypes', 'risk', 'providers', 'approved', 'exhausted', 'builtBy', 'minTier', 'complex', 'escalateEffort']) if (ph[k] !== undefined) req[k] = ph[k];
     const r = routeFn(req);
     const d = r.decision;
     rows.push({ phase: ph.name, role: ph.role, tier: d ? d.tier : null, model: d ? d.model : null, provider: d ? d.provider : null, effort: d?.effort?.level ?? null, code: r.code, heldBack: r.heldBack.map((h) => h.model), cost: 'available after increment 7', quota: 'available after increment 7' });

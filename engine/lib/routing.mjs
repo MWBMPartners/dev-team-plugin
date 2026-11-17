@@ -61,7 +61,7 @@ export function route(req, models, cfg) {
     // The task table can only RAISE what the role already needs, never lower it.
     need = Math.max(need, f.minimumTier, 1); preferred = Math.max(preferred, f.preferredTier, need); floorReasons = f.reasons;
     const zero = f.preferredTier === 0;
-    if (req.role === 'reviewer' && String(req.risk ?? 'NORMAL').toUpperCase() !== 'LOW') need = Math.max(need, 3);
+    // (A reviewer's own role floor is already tier 3 at every risk, and the table can only raise it.)
     preferred = Math.max(preferred, need);
     // Tier 0 ('a tool does it') is only for work a script really can do. Anything else at tier 0 still needs the weakest model.
     const scriptOnly = req.taskTypes.every((x) => x === 'TEST_EXECUTION' || x === 'STATIC_ANALYSIS' || x === 'BUILD_VALIDATION');
@@ -76,12 +76,13 @@ export function route(req, models, cfg) {
   }
   if (cfg.badSettings && cfg.badSettings.length) return negative('SETTINGS_INVALID', `A routing setting in .dev-team/config.yml is ambiguous (${cfg.badSettings.join('; ')}). I will not guess which one you meant; please correct it.`, [`The ${req.role} job needs tier ${need} or stronger.`], [], []);
   if (cfg.badPins && cfg.badPins.length) return negative('PIN_INVALID', `A pin in .dev-team/config.yml is not usable (${cfg.badPins.join(', ')}). I will not guess which version you meant; please correct it.`, [`The ${req.role} job needs tier ${need} or stronger.`], [], []);
-  if (scriptJob) {
-    return { ok: true, code: 'OK', decision: { deterministic: true, provider: null, model: null, exactId: null, tier: 0, local: true, costBand: 0, independence: null, spawn: null, effort: null }, reasons: [...floorReasons, 'No AI model is needed for this: a script or tool does it.'], dropped: [], heldBack: [], alternatives: [], warnings: [], questions: [] };
-  }
   if (req.builtBy !== undefined && typeof req.builtBy !== 'string') throw new BadRequest('builtBy must be text');
   const approved = strList(req.approved, 'approved'), exhausted = strList(req.exhausted, 'exhausted');
   const providers = strList(req.providers ?? ['claude'], 'providers');
+  if (req.escalateEffort !== undefined && typeof req.escalateEffort !== 'boolean') throw new BadRequest('escalateEffort must be true or false');
+  if (scriptJob) {
+    return { ok: true, code: 'OK', decision: { deterministic: true, provider: null, model: null, exactId: null, tier: 0, local: true, costBand: 0, independence: null, spawn: null, effort: null }, reasons: [...floorReasons, 'No AI model is needed for this: a script or tool does it.'], dropped: [], heldBack: [], alternatives: [], warnings: [], questions: [] };
+  }
   const askFirst = cfg.askFirst.map(lc);
   const reasons = [...floorReasons, `The ${req.role} job needs tier ${need} or stronger${req.role === 'reviewer' ? ' (checking work never goes below tier 3 at normal risk or above)' : ''}.`];
   const questions = [];

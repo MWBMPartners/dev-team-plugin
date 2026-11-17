@@ -34,7 +34,7 @@ export function getDecision(dir, id) {
   if (!existsSync(p)) return null;
   let rec;
   try { rec = JSON.parse(readFileSync(p, 'utf8')); } catch { throw new DecisionUnreadable(); }
-  if (!rec || typeof rec !== 'object' || !rec.result || typeof rec.result !== 'object' || !Array.isArray(rec.result.reasons) || !Array.isArray(rec.result.heldBack ?? [])) throw new DecisionUnreadable();
+  if (!rec || typeof rec !== 'object' || !rec.result || typeof rec.result !== 'object' || !Array.isArray(rec.result.reasons) || rec.result.reasons.some((x) => typeof x !== 'string') || !Array.isArray(rec.result.heldBack ?? []) || (rec.result.heldBack ?? []).some((h) => !h || typeof h !== 'object' || typeof h.model !== 'string') || (rec.result.decision && typeof rec.result.decision !== 'object')) throw new DecisionUnreadable();
   rec.result.heldBack ??= [];
   return rec;
 }

@@ -385,3 +385,19 @@ test('decisions: extra request text is never saved; a damaged record is reported
   writeFileSync(join(dir, 'd-aaaaaaaaaaaa.json'), '{"id":"x"}'); assert.throws(() => getDecision(dir, 'd-aaaaaaaaaaaa'), DecisionUnreadable);
   writeFileSync(join(dir, 'd-bbbbbbbbbbbb.json'), '{not json'); assert.throws(() => getDecision(dir, 'd-bbbbbbbbbbbb'), DecisionUnreadable);
 });
+
+// ---- Fixes after the second independent review of increment 1 ----
+test('script jobs still validate the request; escalateEffort must be a boolean; dry-run carries it', () => {
+  assert.throws(() => route({ role: 'builder', taskTypes: ['TEST_EXECUTION'], providers: 'x' }, seed, cfg()), BadRequest);
+  assert.throws(() => route({ role: 'builder', taskTypes: ['TEST_EXECUTION'], escalateEffort: 'yes' }, seed, cfg()), BadRequest);
+  const seen = []; dryRun([{ name: 'a', role: 'architect', taskTypes: ['DEEP_PLANNING'], escalateEffort: true }], (q) => { seen.push(q); return route({ providers: ['claude'], ...q }, seed, cfg()); });
+  assert.equal(seen[0].escalateEffort, true);
+});
+test('a damaged decision with non-object held-back entries is reported as unreadable', async () => {
+  const { DecisionUnreadable } = await import('../lib/decisions.mjs');
+  const dir = mkdtempSync(join(tmpdir(), 'dt-dec3-'));
+  writeFileSync(join(dir, 'd-cccccccccccc.json'), JSON.stringify({ id: 'x', result: { reasons: ['ok'], heldBack: [null], decision: null, code: 'OK' } }));
+  assert.throws(() => getDecision(dir, 'd-cccccccccccc'), DecisionUnreadable);
+  writeFileSync(join(dir, 'd-dddddddddddd.json'), JSON.stringify({ id: 'x', result: { reasons: [5], heldBack: [] } }));
+  assert.throws(() => getDecision(dir, 'd-dddddddddddd'), DecisionUnreadable);
+});
