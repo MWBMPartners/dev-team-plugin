@@ -24,3 +24,11 @@ test('odd branch names are refused as bad input', () => {
   for (const b of ['', '-f', 'a b', 'a..b', 'a:b', 'x~1']) assert.throws(() => pushPolicy({ projectDir: d, branch: b, ...ok }), RangeError, b);
   assert.equal(pushAfterTaskSetting(d).on, true);
 });
+
+test('forced, current-branch and remote spellings of the default branch are refused; odd default-branch spellings still match', () => {
+  const d = proj('git:\n  push-after-task: on\n');
+  for (const b of ['+main', 'HEAD', '@', '@{u}', '+trunk']) assert.throws(() => pushPolicy({ projectDir: d, branch: b, defaultBranch: 'trunk', ...ok }), RangeError, b);
+  for (const b of ['heads/main', 'origin/main', 'refs/remotes/origin/main', 'refs/heads/trunk', 'origin/trunk', 'feature/main']) assert.equal(pushPolicy({ projectDir: d, branch: b, defaultBranch: 'trunk', ...ok }).allowed, false, b);
+  for (const dflt of [' trunk', 'refs/heads/trunk ', 'origin/trunk']) assert.equal(pushPolicy({ projectDir: d, branch: 'trunk', defaultBranch: dflt, ...ok }).allowed, false, dflt);
+  assert.equal(pushPolicy({ projectDir: d, branch: 'autopilot/2026-11-17', defaultBranch: 'trunk', ...ok }).allowed, true);
+});

@@ -32,7 +32,8 @@ if need bats "launcher and older script tests"; then
   item "launcher tests (tests/engine.bats)" env TMPDIR="$tmp/dt-gate" bats tests/engine.bats
   item "older script and hook tests (tests/scripts.bats)" env TMPDIR="$tmp/dt-gate" bats tests/scripts.bats
 fi
-item "no private key anywhere in the repository" bash -c '! git grep -I -n "BEGIN [A-Z ]*PRIVATE KEY" -- . ":(exclude)tests" ":(exclude)engine/test" >/dev/null 2>&1'
+# shellcheck disable=SC2016
+item "no private key anywhere in the repository" bash -c 'git grep -I -q "BEGIN [A-Z ]*PRIVATE KEY" -- . ; [ "$?" -eq 1 ]'
 item "version in plugin.json is plain numbers" bash -c 'jq -e ".version | test(\"^[0-9]+\\\\.[0-9]+\\\\.[0-9]+\")" .claude-plugin/plugin.json >/dev/null'
 
 echo

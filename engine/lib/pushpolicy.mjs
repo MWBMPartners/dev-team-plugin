@@ -20,20 +20,29 @@ export function pushAfterTaskSetting(projectDir) {
 }
 
 const DEFAULTS = new Set(['main', 'master']);
+const PREFIXES = /^(refs\/heads\/|heads\/|refs\/remotes\/|remotes\/|origin\/|upstream\/)+/i;
+/** A branch name as the engine understands it: spaces trimmed, remote and heads/ prefixes removed. */
+const shortName = (s) => String(s).trim().replace(PREFIXES, '');
+const PLAIN = /^[A-Za-z0-9][A-Za-z0-9._\/-]{0,200}$/; // no leading + @ { - and nothing exotic
+
 /**
  * @param {{projectDir: string, branch: string, defaultBranch?: string, checkerCleared: boolean, confident?: boolean, deterministicPass?: boolean, force?: boolean}} i
  */
 export function pushPolicy(i) {
   const s = pushAfterTaskSetting(i.projectDir);
   const refuse = (why) => ({ allowed: false, reason: why, setting: s });
-  if (typeof i.branch !== 'string' || i.branch.trim() === '' || /[\s~^:?*\[\\]/.test(i.branch) || i.branch.startsWith('-') || i.branch.includes('..')) throw new RangeError('branch must be a plain branch name');
-  const b = i.branch.trim();
-  const short = b.replace(/^refs\/heads\//i, '').toLowerCase(); // refs/heads/main is main
+  if (typeof i.branch !== 'string' || i.branch.trim() === '') throw new RangeError('branch must be a plain branch name');
+  const raw = i.branch.trim();
+  // Only a plain name is accepted: nothing that means "the current branch" (HEAD, @), a forced push (+name), a remote ref or a refspec.
+  if (!PLAIN.test(raw) || raw.includes('..') || raw.includes('//') || raw.endsWith('/') || raw.endsWith('.lock') || /^(HEAD|@)$/i.test(raw)) throw new RangeError('branch must be a plain branch name (letters, numbers, dots, dashes, underscores and slashes; not HEAD, @, +name or a refspec)');
+  if (i.defaultBranch !== undefined && (typeof i.defaultBranch !== 'string' || !PLAIN.test(shortName(i.defaultBranch)))) throw new RangeError('defaultBranch must be a plain branch name');
   if (i.force === true) return refuse('A forced push is never allowed.');
-  if (DEFAULTS.has(short) || (i.defaultBranch && short === String(i.defaultBranch).replace(/^refs\/heads\//i, '').toLowerCase())) return refuse('The default branch is never pushed to by the plugin.');
+  const b = shortName(raw).toLowerCase(), last = b.split('/').pop();
+  const def = i.defaultBranch ? shortName(i.defaultBranch).toLowerCase() : null;
+  if (DEFAULTS.has(b) || DEFAULTS.has(last) || (def && (b === def || last === def))) return refuse('The default branch is never pushed to by the plugin.');
   if (!s.on) return refuse(`Not pushing: ${s.reason}.`);
   if (i.checkerCleared !== true) return refuse('Not pushing: no checker has cleared this commit.');
   const g = gateCheck('PUSH_RUN_BRANCH', { confident: i.confident === true, deterministicPass: i.deterministicPass === true });
   if (!g.allowed) return refuse(`Not pushing: ${g.needs.join(' and ')} is needed first.`);
-  return { allowed: true, reason: `Push the run branch ${b} only.`, setting: s };
+  return { allowed: true, reason: `Push the run branch ${raw} only.`, setting: s };
 }

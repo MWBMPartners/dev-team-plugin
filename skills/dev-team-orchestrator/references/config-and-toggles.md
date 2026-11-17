@@ -110,7 +110,7 @@ git:
   # single-pr: true    # true (default) = converge on ONE open PR per line of work: reuse the run branch's
                        #   existing open PR instead of opening a duplicate (push updates it). false = each
                        #   run may surface its own PR. See the single-PR policy in conventions.md.
-  # push-after-task: off  # off (default) = the plugin never pushes on its own. on = after each task a checker has cleared, push the RUN branch only (never the default branch; the Bash guard still blocks that). Added 17 Nov 2026; the `profile: standard` preset offers it. A repository instruction may move it only toward off.
+  # push-after-task: off  # off (default) = the plugin never pushes on its own. on = after each task a checker has cleared, push the RUN branch only (never the default branch; `engine.sh push check` refuses it, and the Bash guard blocks main and master). Decision check only so far: no skill is wired to it yet. Added 17 Nov 2026; the `profile: standard` preset offers it. A repository instruction may move it only toward off.
   # default-branch: auto   # auto (origin/HEAD, else main/master) or an explicit branch name.
 
 # profile: standard   # a named bundle of settings: standard | local-first | cloud-first (reserved until the engine lands; see profiles-and-presets.md)
@@ -170,7 +170,7 @@ which a per-run argument or plain language can still override for one run:
 | Key | Purpose | Values | Built-in default |
 |---|---|---|---|
 | `stack-prs` | Whether a run may target another feature branch instead of the default branch | `true`, `false` | `false` |
-| `push-after-task` | After each checker-cleared task, push the run branch (never the default branch, never force). Off by default: without it the plugin never pushes on its own. When on, this one setting is the only thing that lets a skill push, and only the run branch. | `on`, `off` | `off` |
+| `push-after-task` | After each checker-cleared task, push the run branch (never the default branch, never force). Off by default: without it the plugin never pushes on its own. This is a decision check only so far (`engine.sh push check`): no skill calls it yet, so nothing pushes on its own, and the skills' own "never push" wording still applies until they are wired to it. Accepted values: `on` (also `true` or `yes`) and `off`; anything else is off. | `on`, `off` | `off` |
 | `single-pr` | Reuse the run branch's existing open PR instead of opening a duplicate — one open PR per line of work | `true`, `false` | `true` |
 | `default-branch` | Which branch runs branch FROM/target | `auto` (origin/HEAD, else `main`/`master`), or an explicit branch name | `auto` |
 
