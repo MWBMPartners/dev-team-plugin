@@ -36,7 +36,7 @@ export function requiredTier(role, risk = 'NORMAL', complex = false) {
   return t;
 }
 
-const isAskFirst = (m, list) => list.includes(lc(m.alias)) || list.includes(lc(m.id)) || m.classes.some((c) => list.includes(lc(c))) || (!m.priced && list.includes('unpriced'));
+const isAskFirst = (m, list) => (m.pinnedId && list.includes(lc(m.pinnedId))) || list.includes(lc(m.alias)) || list.includes(lc(m.id)) || m.classes.some((c) => list.includes(lc(c))) || (!m.priced && list.includes('unpriced'));
 
 /**
  * @param {{role: string, risk?: string, complex?: boolean, approved?: string[], exhausted?: string[], providers?: string[], builtBy?: string}} req
@@ -87,7 +87,7 @@ export function route(req, models, cfg) {
   // Ask-first: hold back anything that needs a yes this task has not been given.
   const usable = [];
   for (const m of pool) {
-    if (!m.local && isAskFirst(m, askFirst) && !approved.includes(lc(m.alias)) && !approved.includes(lc(m.id))) heldBack.push({ model: m, why: !m.priced && !m.classes.length ? 'its price is not known' : 'it is on your ask-first list' });
+    if (!m.local && isAskFirst(m, askFirst) && !approved.includes(lc(m.alias)) && !approved.includes(lc(m.id)) && !(m.pinnedId && approved.includes(lc(m.pinnedId)))) heldBack.push({ model: m, why: !m.priced && !m.classes.length ? 'its price is not known' : 'it is on your ask-first list' });
     else usable.push(m);
   }
 
@@ -121,7 +121,7 @@ export function route(req, models, cfg) {
   return {
     ok: true, code: 'OK',
     decision: { provider: pick.provider, model: pick.alias, exactId: pick.pinnedId ?? null, tier: pick.tier, local: pick.local, costBand: pick.costBand, independence, spawn: { provider: pick.provider, model: pick.alias, exactId: pick.pinnedId ?? null } },
-    reasons, dropped, heldBack: heldBack.map(brief), alternatives: usable.slice(1, 4).map((m) => m.alias), warnings, questions,
+    reasons, dropped, heldBack: heldBack.map(brief), alternatives: usable.slice(1, 4).map((m) => ({ model: m.alias, provider: m.provider, exactId: m.pinnedId ?? null })), warnings, questions,
   };
 }
 const brief = (h) => ({ model: h.model.alias, provider: h.model.provider, why: h.why });

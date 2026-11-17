@@ -282,3 +282,16 @@ test('a pinned tier-4 model that ends up chosen always carries its exact version
   const r = route({ role: 'reviewer', providers: ['claude'], approved: ['fable'] }, only, cfg({ askFirst: ['opus'], pin: { fable: 'fable-exact-1' } }));
   assert.equal(r.decision.model, 'fable'); assert.equal(r.decision.exactId, 'fable-exact-1');
 });
+
+// ---- Fixes after the sixteenth independent review ----
+test('an ask-first entry that names the pinned exact version holds the model back; approving that version releases it', () => {
+  const c = cfg({ askFirst: ['claude-opus-x'], pin: { opus: 'claude-opus-x' } });
+  const held = route({ role: 'architect', providers: ['claude'] }, seed, c);
+  assert.notEqual(held.decision?.model, 'opus'); assert.ok(held.heldBack.some((h) => h.model === 'opus'));
+  assert.equal(route({ role: 'architect', providers: ['claude'], approved: ['claude-opus-x'] }, seed, c).decision.model, 'opus');
+});
+test('alternatives carry their pinned versions', () => {
+  const r = route({ role: 'reviewer', providers: ['claude', 'codex'] }, seed, cfg({ pin: { opus: 'o-1' } }));
+  const all = [r.decision, ...r.alternatives.map((a) => ({ model: a.model, exactId: a.exactId }))];
+  for (const a of all) if (a.model === 'opus') assert.equal(a.exactId, 'o-1');
+});
