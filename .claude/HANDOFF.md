@@ -84,8 +84,18 @@ working branch, merged into `alpha` by one pull request**, opened when the owner
 | Q4 | `deep-architect` default model | **Change the default to Opus now** (not the recommended "leave it") | **To do:** change the default in `agents/deep-architect.md` and anything that describes it (model-routing reference, README, CHANGELOG, `.claude/` and `.OpenAI/` notes), then run the model-id audit and bats. This also needs a version/CHANGELOG entry. Do it on the new working branch, not before. |
 | Q5 | Device-wide rules on the owner's computer | **Yes, ask a local session** | The wording is in `.claude/device-wide-rules.md`. It needs a session running on the owner's own computer, because a cloud session cannot reach `~/.claude/CLAUDE.md` or `~/.codex/AGENTS.md`. Not done; the owner runs it. |
 
-Still waiting on the owner: the four #45 sub-choices above, and the decision on issues #42, #43 and
-#44 (filed, not started).
+Still waiting on the owner: the four #45 sub-choices above.
+
+### Follow-up issues #42, #43, #44 — answered 17 November 2026 (recorded only; none of this has been built yet)
+
+| Issue | Question | Owner's answer | What it means for the next session |
+| --- | --- | --- | --- |
+| #42 | Security findings committed under `.dev-team/` are public in a public repository. What should the default be? | **Keep them out of git by default; committing is an opt-in** | **To do:** the security skill writes `.dev-team/SECURITY.md` locally and keeps it out of git unless a project turns committing on (a new setting; add it to `config-and-toggles.md`, with the default "off"). Decide how it is kept out of git (for example by adding it to a `.gitignore` the plugin manages, or by warning) — not yet chosen. Update the security skill, its references, the README, the CHANGELOG and the tests. Check that existing projects that already commit the file are told, not surprised. |
+| #43 | Add a schema for `.dev-team/autopilot.json` and make its documented example valid JSON | **Yes, but later, together with #46** | Do **not** build it now. Write the schema once, when the orchestrator work (#46) settles what the file contains, so it is not written twice. Until then the example in `skills/dev-team-autopilot/references/loop-runtime.md` stays as it is (it contains `//` comments and so cannot be validated). |
+| #44 | What should "a run is in progress" mean for the Bash guard? | **The folder `.dev-team/loop.lock/` exists** | **To do:** change `hooks/guard-dev-team.sh` (line 21 checks `autopilot.json` today) to look for the lock folder instead; update its tests and the `guard` row in `config-and-toggles.md`. The lock folder exists only while a cycle runs and is never committed. Note the ledger guard's Rule 2 already uses this signal. Related: #48 (wording about which guard fails open) touches the same hook text, so do them together. |
+
+Order suggested for the next session: #44 and #48 together (small, one hook and its wording), then #42,
+alongside the `deep-architect` change from Q4. #43 waits for #46.
 
 ### Facts that are easy to get wrong
 
