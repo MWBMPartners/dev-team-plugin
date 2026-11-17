@@ -515,6 +515,10 @@ An optional profile layered on top of routing ([orchestration-profiles.md][orche
 
 **Optional GPT-5.5 / Codex offload.** With the `openai/codex-plugin-cc` plugin and the `codex` CLI on PATH, token-hungry clear-spec work — implementation, multi-file refactors, migrations, data analysis, bulk codebase reading — can be routed to GPT-5.5/Codex via the plugin's native commands (`/codex:rescue`, `/codex:review`, `/codex:adversarial-review`, `/codex:status`/`/codex:result`/`/codex:cancel`) to keep delegation observable. Detection-first and fail-silent: if Codex is absent, it falls back to Sonnet/Haiku. Codex may **add** an adversarial perspective but **never replaces** the Claude verifier; all primary verification and user-facing work stay on Claude.
 
+### Models that need approval first, and exact versions
+
+Two settings under `routing:` in `.dev-team/config.yml`. `ask-first` lists models the plugin must never use without your yes for that task; by default it holds Claude Fable, Claude Mythos, OpenAI's and Google's top models, and any model whose price is unknown (local models are never on it). `pin` names the exact version of a model you want; the plugin stops and asks rather than quietly using another. Full rules: [model-routing.md][model-routing]. Other AI systems (Copilot, Gemini, Kimi, Grok, DeepSeek, Ollama) are listed there with intended roles, all marked unverified.
+
 ### Escalation
 
 Start a mechanical-looking workstream on `quick-edits` (Haiku); on a genuine **capability** failure (not a bad-brief failure), escalate one tier at a time — **Haiku → Sonnet → Opus**, then Fable only with your approval. The two-strike rule applies: strike one may be a bad brief (re-brief, same tier); a second, capability-bound failure escalates the tier. Never escalate verification below Opus. "Judge the output, not the price tag" — tiers are defaults, not limits.

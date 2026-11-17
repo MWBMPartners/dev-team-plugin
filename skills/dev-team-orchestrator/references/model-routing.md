@@ -102,7 +102,7 @@ Two settings under `routing:` in `.dev-team/config.yml` (see `config-and-toggles
 plain words for one session ("don't use Fable without asking", "use exactly this version"):
 
 - **`routing.ask-first`** — a list of models that must never be used silently, because they cost a lot.
-  The list is **empty by default**. Before the lead spawns any agent on a listed model (this includes
+  **By default (owner's choice, 17 Nov 2026) it holds:** Claude Fable, Claude Mythos, the top flagship model from OpenAI and the top Gemini model from Google (named by role, so a newer version takes its place), and **any model whose price the plugin cannot find** until the cost is known. Local models are never on it, because they are free. Setting the list yourself replaces this default. Before the lead spawns any agent on a listed model (this includes
   the Fable rung of the escalation chain, and a per-spawn model override), it asks the user, in plain
   words: which model, for which task, why the cheaper default is not enough, and what the cheaper
   choice would be and cost relative to it. One yes covers that one task only. Without a yes — and in

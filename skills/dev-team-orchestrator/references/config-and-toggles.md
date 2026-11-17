@@ -112,7 +112,7 @@ git:
   # default-branch: auto   # auto (origin/HEAD, else main/master) or an explicit branch name.
 
 routing:             # which models may be used, and exactly which versions (added 17 Nov 2026; see model-routing.md)
-  # ask-first: []      # models that need your explicit yes for each task, e.g. [fable]. Empty by default. A repo instruction may add to it, never remove.
+  # ask-first: [fable, mythos, openai-top, gemini-top, unpriced]   # models that need your explicit yes for each task (this is the default; local models are never listed). A repo instruction may add to it, never remove.
   # pin: {}            # exact versions, as alias: exact-id pairs, e.g. {opus: <exact-model-id>}. Your own choice; a repo instruction cannot set it.
 
 features:            # enable/disable behaviours repo-wide (on|off; env var can override per-session)

@@ -16,7 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   it. `commit-security: on` allows committing, for private repositories.
 
 - **Models that need approval first, and exact versions** (documented; applied by the lead's
-  instructions now, enforced by the engine later): new `routing.ask-first` (default empty) and
+  instructions now, enforced by the engine later): new `routing.ask-first` (default: Fable, Mythos, OpenAI's and Google's top models, and any model with no known price) and
   `routing.pin` settings in `.dev-team/config.yml`; see `model-routing.md`.
 - **Other AI systems** (Copilot, Gemini, Kimi, Grok, DeepSeek, Ollama) are listed in `model-routing.md`
   with their intended roles, all marked unverified.

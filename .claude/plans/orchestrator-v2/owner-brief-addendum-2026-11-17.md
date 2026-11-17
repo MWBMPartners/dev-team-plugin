@@ -81,3 +81,5 @@ pricing page before relying on a figure. Prices are US dollars per million token
 Sources: [aitoolsreview](https://aitoolsreview.co.uk/insights/ai-api-pricing-comparison),
 [respan](https://www.respan.ai/articles/ai-token-cost), [Nadir](https://getnadir.com/blog/llm-api-pricing-june-2026-complete-comparison/),
 [BenchLM](https://benchlm.ai/llm-pricing-trends), [TechJack](https://techjacksolutions.com/ai-tools/rankings/cheapest-frontier-ai-apis/).
+
+**Owner's answer (17 Nov):** ask-first by default = Claude Fable, Claude Mythos, OpenAI's top flagship, Google's top Gemini, and any model whose price is unknown. Local models never.

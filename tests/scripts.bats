@@ -902,7 +902,7 @@ $line" ;;
             'stack-prs: false' 'single-pr: true' 'default-branch: auto' \
             'update-notifier: on' 'branch-notifier: on' 'guard: auto' 'notifications: on' \
             'telemetry: on' 'dry-run: off' 'auto-handoff: on' 'handoff-file: on' \
-            'auto-commit: on' 'pointer-sentence: ask' 'ask-first: \[\]' 'pin: \{\}'; do
+            'auto-commit: on' 'pointer-sentence: ask' 'ask-first: \[fable, mythos, openai-top, gemini-top, unpriced\]' 'pin: \{\}'; do
     if ! printf '%s\n' "$schema" | grep -qE "^  # ${kv}( |\$)"; then
       echo "the starter schema has no commented-out line showing: $kv"
       return 1
