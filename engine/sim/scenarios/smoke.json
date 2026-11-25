@@ -1,0 +1,9 @@
+{
+  "name": "smoke: two pretend providers are discovered",
+  "providers": [ { "id": "a", "models": [ { "id": "a-big", "tier": 3 }, { "id": "a-small", "tier": 1 } ] }, { "id": "b", "models": [ { "id": "b-mid", "tier": 2 } ] } ],
+  "steps": [ { "do": "discover" } ],
+  "expect": [
+    { "name": "a-big is active", "provider": "a", "model": "a-big", "lifecycle": "ACTIVE" },
+    { "name": "b-mid is active", "provider": "b", "model": "b-mid", "lifecycle": "ACTIVE" }
+  ]
+}

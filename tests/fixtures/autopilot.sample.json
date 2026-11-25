@@ -1,0 +1,83 @@
+{
+  "schema": "1.0",
+  "mission": "production-ready + feature-complete (in scope)",
+  "aim": "A small tool that imports files.",
+  "definition_of_done": [
+    "builds+runs from clean checkout",
+    "core task works e2e"
+  ],
+  "plan": [
+    {
+      "phase": "DISCOVER",
+      "mode": "featurefind+iterate-audit",
+      "exit": "work queue seeded",
+      "status": "done"
+    },
+    {
+      "phase": "STABILIZE",
+      "mode": "iterate",
+      "exit": "no High correctness/test gap",
+      "status": "in-progress"
+    }
+  ],
+  "phase_cursor": 1,
+  "state": "RUNNING",
+  "cursor": "B-014",
+  "next_action": "STABILIZE: run a cycle fixing B-014",
+  "queue": {
+    "backlog": ".dev-team/PROJECT.md#Backlog",
+    "feature_gaps": ".dev-team/FEATURES.md",
+    "findings": ".dev-team/SECURITY.md#Findings"
+  },
+  "gate_ledger": [
+    {
+      "id": "G-001",
+      "kind": "feature",
+      "title": "bulk import",
+      "spec_ref": ".dev-team/PROJECT.md#spec-G-001",
+      "status": "awaiting-user"
+    }
+  ],
+  "blocked": {
+    "is": false,
+    "reason": null,
+    "since": null
+  },
+  "cycle": 7,
+  "cap": 30,
+  "verify": {
+    "commit": null,
+    "claim_groups": [],
+    "integration": "pending",
+    "completeness_critic": "pending"
+  },
+  "verified_at_commit": null,
+  "budget": {
+    "posture": "balanced",
+    "autotighten": true,
+    "threshold_per_cycle": 6,
+    "spawns_by_tier": {
+      "fable": 0,
+      "opus": 0,
+      "sonnet": 0,
+      "haiku": 0
+    },
+    "cycles": 0,
+    "spend_posture": "nominal",
+    "note": "spawns, not credits"
+  },
+  "lock": {
+    "holder": null,
+    "ts": null,
+    "stale_after_min": 90
+  },
+  "branch": "autopilot/2026-06-22",
+  "last_commit": "a1b2c3d",
+  "trajectory_ref": ".dev-team/PROJECT.md#Trajectory-ledger",
+  "instructions_snapshot": {
+    "run_id": "myapp-20260622T090000Z-4b1c",
+    "folder": "~/.dev-team/runs/myapp-20260622T090000Z-4b1c/snapshot/"
+  },
+  "terminal": false,
+  "updated": "2026-06-22T14:05:00Z"
+}

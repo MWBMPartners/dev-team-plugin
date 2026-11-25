@@ -1,0 +1,102 @@
+{
+  "dev-team": "ledger=job-templates schema=1.0",
+  "description": "Starting lists of phases for a job. A normal job plans, builds and checks; a small task skips the heavy planning; a critical job adds a security check and a human approval before it is called done.",
+  "templates": {
+    "normal": [
+      {
+        "id": "discover",
+        "name": "Discover",
+        "role": "scout",
+        "taskTypes": [
+          "REPOSITORY_DISCOVERY"
+        ]
+      },
+      {
+        "id": "plan",
+        "name": "Plan",
+        "role": "architect",
+        "taskTypes": [
+          "DEEP_PLANNING"
+        ]
+      },
+      {
+        "id": "build",
+        "name": "Build",
+        "role": "builder",
+        "taskTypes": [
+          "ROUTINE_IMPLEMENTATION"
+        ]
+      },
+      {
+        "id": "verify",
+        "name": "Verify",
+        "role": "reviewer",
+        "taskTypes": [
+          "CODE_REVIEW"
+        ]
+      }
+    ],
+    "small-task": [
+      {
+        "id": "build",
+        "name": "Build",
+        "role": "builder",
+        "taskTypes": [
+          "ROUTINE_IMPLEMENTATION"
+        ]
+      },
+      {
+        "id": "verify",
+        "name": "Verify",
+        "role": "reviewer",
+        "taskTypes": [
+          "CODE_REVIEW"
+        ]
+      }
+    ],
+    "critical": [
+      {
+        "id": "discover",
+        "name": "Discover",
+        "role": "scout",
+        "taskTypes": [
+          "REPOSITORY_DISCOVERY"
+        ]
+      },
+      {
+        "id": "plan",
+        "name": "Plan",
+        "role": "architect",
+        "taskTypes": [
+          "DEEP_PLANNING",
+          "ARCHITECTURE"
+        ]
+      },
+      {
+        "id": "build",
+        "name": "Build",
+        "role": "builder",
+        "taskTypes": [
+          "COMPLEX_IMPLEMENTATION"
+        ]
+      },
+      {
+        "id": "verify",
+        "name": "Verify",
+        "role": "reviewer",
+        "taskTypes": [
+          "CODE_REVIEW",
+          "SECURITY_REVIEW"
+        ]
+      },
+      {
+        "id": "approve",
+        "name": "Owner approval",
+        "role": "reviewer",
+        "taskTypes": [
+          "FINAL_AUDIT"
+        ]
+      }
+    ]
+  }
+}

@@ -6,6 +6,128 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- Draft wiki pages (`docs/wiki-drafts/`) and a milestone and project-board setup guide (`.claude/plans/tracker-setup.md`), because the milestones, board and wiki could not be created with the tools available. Ten tracking issues (#50 to #59) were opened under #46.
+
+
+### Added
+
+- **Orchestrator engine, increment 8 (core)**: local-only learning records that cannot hold code, prompts or paths
+  (`learn record|query|purge`, off with `DEV_TEAM_NO_LEARNING=1`), competency scores that need enough results,
+  canary promotion and demotion, and provider health states. Not yet wired into `route`.
+
+- **Orchestrator engine, increment 11 (practice bundle, part)**: `git.push-after-task` (off by default) and
+  `engine.sh push check` (run branch only, only a checker-cleared commit, never the default branch, never a force);
+  the named-issue and end-of-run-report rules in the issue-sync protocol.
+
+- **Orchestrator engine, increment 9 (plugin side)**: signed remote catalogue. Ed25519 over canonical JSON with a
+  pinned public key (a placeholder until the service exists); a payload that cannot carry floors, gates or
+  approvals; expiry, future-date, wrong-key and tamper checks; `catalogue verify` and `catalogue fetch`; a verified
+  hint only fills a field still UNKNOWN. No private key is committed; tests make keys at run time.
+
+- **Orchestrator engine, increment 7**: reserves that keep the strongest models for planning, security, hard
+  debugging and final review when an allowance is known and low; phase budgets (`budget check`); LOW/LIKELY/HIGH
+  relative cost estimates (`estimate`, and in `dry-run`) that always say they are not a bill. An unknown allowance
+  never produces a number.
+
+- **Orchestrator engine, increment 6**: five action levels mapped to the autopilot's three buckets (`gate check`),
+  ten policy packs that can only make things stricter, rules collected from a project's instruction files
+  (`invariants collect`), a rollback requirement for high-risk plans, and `scripts/check-no-lang-ext-urls.sh`
+  (the owner's rule that web addresses should not end in a language extension).
+
+- **Orchestrator engine, increment 5**: review independence (`review plan`): the checker is never the builder, a
+  different provider is preferred more the riskier the work (required for critical work where possible), the
+  independence level is recorded and never overstated, ask-first models are never used for review unasked;
+  the finding lifecycle (`findings add|update|precision`); `schemas/verdict.schema.json` gains optional
+  `reviewer`, `independence`, `review_contract` and per-claim `status`, `reviewer`, `resolution`.
+
+- **Orchestrator engine, increment 4**: quota-message reading with times that are never invented (and tested
+  across the London clock change), leases that tell a paused phase from a crashed one, work snapshots that save
+  new files too and refuse secrets, pause and resume by the same agent, fallback and takeover ladders, failure
+  recovery table. **Autopilot's recovery rule** (`loop-runtime.md`) now snapshots before any reset when the engine
+  is present, and never resets a paused run; without the engine the old rule stays.
+
+- **Orchestrator engine, increment 2: role-named agents.** Eleven new agent files named after the job (`scout`,
+  `scribe`, `engineer`, `engineer-high`, `architect-high`, `architect`, `architect-max`, `principal-xhigh`,
+  `principal`, `reviewer`, `reviewer-xhigh`), each with a default model and an `effort:` line; reviewers and the
+  scout are read-only. The old five names remain as deprecated aliases, removed in 2.1.0. `route` names the agent
+  file for Claude workers. The `effort:` line is unconfirmed until hand test HT-2b.
+
+- **Orchestrator engine, rest of increment 3**: job files from templates (`job init|status|record`),
+  git-backed checkpoints (`checkpoint create|verify`) and the progress table (`report --progress`).
+
+- **Orchestrator engine, increment 3 (part)**: plan contracts locked by a fingerprint (`plan draft|lock|verify|diff`,
+  and the engine verifies this project's own hand-locked plan), drift detection with STOP, the completion
+  evidence gate, bounded attempts, job templates and schemas (`plan-contract`, `job-templates`). Not yet
+  built: job files, git-backed checkpoints and the progress table.
+
+- **Orchestrator engine, queued items from the owner's requirements**: adapters for Ollama (local models,
+  found by asking what is installed), Copilot and DeepSeek (unverified); `docs check` (do the goals,
+  requirements and plan sections exist) and `docs check --api` (an OpenAPI file needs a Swagger UI page).
+
+- **Orchestrator engine, rest of increment 1**: floors for 31 kinds of task at four risk levels (from the
+  locked plan), six reasoning-effort levels with nearest-level mapping per tool, saved decision records
+  with a repeatable inputs fingerprint, `explain` and `/dev-team-explain`, `dry-run`, tier 0 for work a
+  script can do. Docs: `docs/orchestrator/{routing,tiers-and-floors,reasoning-effort}.md`.
+
+- **Orchestrator engine, increment 0b**: adapters for Claude Code and Codex (verified) and Gemini CLI, Kimi
+  and Grok Build (unverified, no models found), complete model profiles with UNKNOWN and provenance, a
+  per-runtime saved list that survives failures and marks vanished models RETIRED? then RETIRED, a local
+  event log, a simulator with pretend providers and a clock, canonical JSON, a TOML reader, and new
+  schemas, including `schemas/autopilot.schema.json` (issue #43, with a comment-free sample file) and
+  schemas for the plugin's own manifests and hooks. Docs in `docs/orchestrator/`.
+
+- **Orchestrator engine, first part of increment 1**: `route` (picks a model for one job and says why),
+  `discover` (finds local Ollama models), `config show` / `config device-set`, the starting model
+  catalogue and its schema. Implements local-first (the default) and cloud-first order, the ask-first
+  list, exact-version pins, the checking floor and cross-provider review preference. 33 unit tests.
+
+- **Orchestrator engine, increment 0a** (plan `orchestrator-v2`, hand-locked 17 November 2026): the
+  launcher `scripts/engine.sh` (exit 3 means "carry on the 1.x way"), the engine's command layer, a
+  small JSON-schema checker, safe file writing with an ownership marker, secret redaction, the `doctor`
+  and `schema validate` commands, `/dev-team-doctor`, `schemas/manifest.json`, unit tests
+  (`engine/test`), launcher tests (`tests/engine.bats`) and an `engine` CI job. Needs Node 22; without
+  it nothing changes.
+
+- **`features.commit-security`** (default `off`, issue #42): the security findings file
+  `.dev-team/SECURITY.md` is now kept out of git by default, because it records how each weakness was
+  proven and a public repository would publish that. The security skill adds one line, `SECURITY.md`, to
+  the plugin's own `.dev-team/.gitignore` before its first write (never the project's own `.gitignore`),
+  and, if git already tracks the file, says so and gives the command to stop tracking it without running
+  it. `commit-security: on` allows committing, for private repositories.
+
+- **Models that need approval first, and exact versions** (documented; applied by the lead's
+  instructions now, enforced by the engine later): new `routing.ask-first` (default: Fable, Mythos, OpenAI's and Google's top models, and any model with no known price) and
+  `routing.pin` settings in `.dev-team/config.yml`; see `model-routing.md`.
+- **Other AI systems** (Copilot, Gemini, Kimi, Grok, DeepSeek, Ollama) are listed in `model-routing.md`
+  with their intended roles, all marked unverified.
+
+- **Shared project document set**: `documentarian-protocol.md` now names the four documents any AI
+  system can resume from (handover, goals, requirements and prerequisites, plan) and adds a
+  `## Requirements and prerequisites` section to `PROJECT.md`. A short "Not only software" section in
+  `conventions.md` says how to read the suite's wording for work that is not code.
+
+- **Profiles and presets** (reserved until the engine lands): `profiles-and-presets.md` defines
+  `profile: standard` (the owner's working practices), `local-first` and `cloud-first`, the built-in
+  default of local first, the ask-once-per-project rule and a per-device default in
+  `~/.dev-team/device.yml`.
+
+### Changed
+
+- **`deep-architect` now defaults to Opus, not Fable** (owner's decision, 17 November 2026). Fable is an
+  optional top rung of the escalation chain, used only with the user's approval. The model-routing
+  reference, README and cost-posture table are updated.
+
+- **The Bash guard now treats "a run is in progress" as "the folder `.dev-team/loop.lock/` exists"**
+  (issue #44). It used to check for `.dev-team/autopilot.json`, but several projects keep that file in
+  git, so the guard was on permanently there. The lock folder exists only while one cycle runs and is
+  never committed. The ledger guard's second rule already used it. `DEV_TEAM_GUARD` and `guard: on` still
+  force the guard on; `guard: off` still turns it off.
+- **Wording fix (issue #48):** the text that said both guard hooks "fail open" was out of date. The ledger
+  guard fails open; the Bash guard fails open too, except that it refuses a command it cannot finish
+  checking (more than 10 pushes, or past its time limit). Fixed in `conventions.md`, the README and the
+  pinned copy the tests compare against.
+
 ## [1.7.0] - <unreleased>
 
 Adds the `dev-team-polish` skill. It was built on its own branch against 1.4.0, where it was numbered 1.5.0;

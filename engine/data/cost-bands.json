@@ -1,0 +1,162 @@
+{
+  "dev-team": "ledger=cost-bands schema=1.0",
+  "description": "Rough relative size of a job by kind of task, in 'work units'. Multiplied by a model's price band this gives a relative cost, never a bill. low, likely and high are an honest spread, not a promise.",
+  "caveat": "An estimate, not a bill. Real cost depends on the model, the code and how many tries it takes.",
+  "bands": {
+    "REPOSITORY_DISCOVERY": {
+      "low": 1,
+      "likely": 2,
+      "high": 4
+    },
+    "REQUIREMENTS_ANALYSIS": {
+      "low": 3,
+      "likely": 6,
+      "high": 12
+    },
+    "NORMAL_ANALYSIS": {
+      "low": 3,
+      "likely": 6,
+      "high": 12
+    },
+    "DEEP_ANALYSIS": {
+      "low": 6,
+      "likely": 12,
+      "high": 24
+    },
+    "ARCHITECTURE": {
+      "low": 6,
+      "likely": 12,
+      "high": 24
+    },
+    "DEEP_PLANNING": {
+      "low": 6,
+      "likely": 12,
+      "high": 24
+    },
+    "MECHANICAL_IMPLEMENTATION": {
+      "low": 1,
+      "likely": 2,
+      "high": 4
+    },
+    "ROUTINE_IMPLEMENTATION": {
+      "low": 3,
+      "likely": 6,
+      "high": 12
+    },
+    "COMPLEX_IMPLEMENTATION": {
+      "low": 6,
+      "likely": 12,
+      "high": 24
+    },
+    "REFACTOR": {
+      "low": 3,
+      "likely": 6,
+      "high": 12
+    },
+    "MIGRATION": {
+      "low": 6,
+      "likely": 12,
+      "high": 24
+    },
+    "TEST_AUTHORING": {
+      "low": 3,
+      "likely": 6,
+      "high": 12
+    },
+    "TEST_EXECUTION": {
+      "low": 1,
+      "likely": 2,
+      "high": 4
+    },
+    "STATIC_ANALYSIS": {
+      "low": 1,
+      "likely": 2,
+      "high": 4
+    },
+    "BUILD_VALIDATION": {
+      "low": 1,
+      "likely": 2,
+      "high": 4
+    },
+    "ROUTINE_DEBUGGING": {
+      "low": 3,
+      "likely": 6,
+      "high": 12
+    },
+    "COMPLEX_DEBUGGING": {
+      "low": 6,
+      "likely": 12,
+      "high": 24
+    },
+    "ROOT_CAUSE_ANALYSIS": {
+      "low": 6,
+      "likely": 12,
+      "high": 24
+    },
+    "CODE_REVIEW": {
+      "low": 3,
+      "likely": 6,
+      "high": 12
+    },
+    "SECURITY_REVIEW": {
+      "low": 6,
+      "likely": 12,
+      "high": 24
+    },
+    "ARCHITECTURE_REVIEW": {
+      "low": 6,
+      "likely": 12,
+      "high": 24
+    },
+    "CONCURRENCY_REVIEW": {
+      "low": 6,
+      "likely": 12,
+      "high": 24
+    },
+    "FINAL_AUDIT": {
+      "low": 6,
+      "likely": 12,
+      "high": 24
+    },
+    "DATABASE_REVIEW": {
+      "low": 3,
+      "likely": 6,
+      "high": 12
+    },
+    "API_COMPATIBILITY_REVIEW": {
+      "low": 3,
+      "likely": 6,
+      "high": 12
+    },
+    "RELEASE_REVIEW": {
+      "low": 3,
+      "likely": 6,
+      "high": 12
+    },
+    "ACCESSIBILITY_REVIEW": {
+      "low": 3,
+      "likely": 6,
+      "high": 12
+    },
+    "DOCUMENTATION": {
+      "low": 1,
+      "likely": 2,
+      "high": 4
+    },
+    "HOUSEKEEPING": {
+      "low": 1,
+      "likely": 2,
+      "high": 4
+    },
+    "CI_CD": {
+      "low": 3,
+      "likely": 6,
+      "high": 12
+    },
+    "RELEASE_ENGINEERING": {
+      "low": 3,
+      "likely": 6,
+      "high": 12
+    }
+  }
+}

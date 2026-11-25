@@ -1,0 +1,564 @@
+{
+  "dev-team": "ledger=floors schema=1.0",
+  "description": "Preferred and minimum model tier for each kind of task at each level of risk, from the locked plan (orchestrator-v2, increment 1). Several task types on one job take the larger value of each. A pack or the user may raise a floor, never lower it below the minimum here.",
+  "floors": {
+    "REPOSITORY_DISCOVERY": {
+      "LOW": {
+        "preferredTier": 1,
+        "minimumTier": 0
+      },
+      "NORMAL": {
+        "preferredTier": 1,
+        "minimumTier": 1
+      },
+      "HIGH": {
+        "preferredTier": 2,
+        "minimumTier": 1
+      },
+      "CRITICAL": {
+        "preferredTier": 2,
+        "minimumTier": 1
+      }
+    },
+    "REQUIREMENTS_ANALYSIS": {
+      "LOW": {
+        "preferredTier": 2,
+        "minimumTier": 1
+      },
+      "NORMAL": {
+        "preferredTier": 2,
+        "minimumTier": 2
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      },
+      "CRITICAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      }
+    },
+    "NORMAL_ANALYSIS": {
+      "LOW": {
+        "preferredTier": 2,
+        "minimumTier": 1
+      },
+      "NORMAL": {
+        "preferredTier": 2,
+        "minimumTier": 2
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      },
+      "CRITICAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      }
+    },
+    "DEEP_ANALYSIS": {
+      "LOW": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      },
+      "NORMAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "CRITICAL": {
+        "preferredTier": 4,
+        "minimumTier": 3
+      }
+    },
+    "ARCHITECTURE": {
+      "LOW": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      },
+      "NORMAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "CRITICAL": {
+        "preferredTier": 4,
+        "minimumTier": 3
+      }
+    },
+    "DEEP_PLANNING": {
+      "LOW": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      },
+      "NORMAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "CRITICAL": {
+        "preferredTier": 4,
+        "minimumTier": 3
+      }
+    },
+    "MECHANICAL_IMPLEMENTATION": {
+      "LOW": {
+        "preferredTier": 0,
+        "minimumTier": 0
+      },
+      "NORMAL": {
+        "preferredTier": 1,
+        "minimumTier": 0
+      },
+      "HIGH": {
+        "preferredTier": 2,
+        "minimumTier": 1
+      },
+      "CRITICAL": {
+        "preferredTier": 2,
+        "minimumTier": 2
+      }
+    },
+    "ROUTINE_IMPLEMENTATION": {
+      "LOW": {
+        "preferredTier": 1,
+        "minimumTier": 1
+      },
+      "NORMAL": {
+        "preferredTier": 2,
+        "minimumTier": 1
+      },
+      "HIGH": {
+        "preferredTier": 2,
+        "minimumTier": 2
+      },
+      "CRITICAL": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      }
+    },
+    "COMPLEX_IMPLEMENTATION": {
+      "LOW": {
+        "preferredTier": 2,
+        "minimumTier": 2
+      },
+      "NORMAL": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "CRITICAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      }
+    },
+    "REFACTOR": {
+      "LOW": {
+        "preferredTier": 1,
+        "minimumTier": 1
+      },
+      "NORMAL": {
+        "preferredTier": 2,
+        "minimumTier": 1
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      },
+      "CRITICAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      }
+    },
+    "MIGRATION": {
+      "LOW": {
+        "preferredTier": 2,
+        "minimumTier": 2
+      },
+      "NORMAL": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "CRITICAL": {
+        "preferredTier": 4,
+        "minimumTier": 3
+      }
+    },
+    "TEST_AUTHORING": {
+      "LOW": {
+        "preferredTier": 1,
+        "minimumTier": 1
+      },
+      "NORMAL": {
+        "preferredTier": 2,
+        "minimumTier": 1
+      },
+      "HIGH": {
+        "preferredTier": 2,
+        "minimumTier": 2
+      },
+      "CRITICAL": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      }
+    },
+    "TEST_EXECUTION": {
+      "LOW": {
+        "preferredTier": 0,
+        "minimumTier": 0
+      },
+      "NORMAL": {
+        "preferredTier": 0,
+        "minimumTier": 0
+      },
+      "HIGH": {
+        "preferredTier": 1,
+        "minimumTier": 0
+      },
+      "CRITICAL": {
+        "preferredTier": 1,
+        "minimumTier": 0
+      }
+    },
+    "STATIC_ANALYSIS": {
+      "LOW": {
+        "preferredTier": 0,
+        "minimumTier": 0
+      },
+      "NORMAL": {
+        "preferredTier": 0,
+        "minimumTier": 0
+      },
+      "HIGH": {
+        "preferredTier": 1,
+        "minimumTier": 0
+      },
+      "CRITICAL": {
+        "preferredTier": 1,
+        "minimumTier": 0
+      }
+    },
+    "BUILD_VALIDATION": {
+      "LOW": {
+        "preferredTier": 0,
+        "minimumTier": 0
+      },
+      "NORMAL": {
+        "preferredTier": 0,
+        "minimumTier": 0
+      },
+      "HIGH": {
+        "preferredTier": 1,
+        "minimumTier": 0
+      },
+      "CRITICAL": {
+        "preferredTier": 1,
+        "minimumTier": 0
+      }
+    },
+    "ROUTINE_DEBUGGING": {
+      "LOW": {
+        "preferredTier": 2,
+        "minimumTier": 1
+      },
+      "NORMAL": {
+        "preferredTier": 2,
+        "minimumTier": 2
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      },
+      "CRITICAL": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      }
+    },
+    "COMPLEX_DEBUGGING": {
+      "LOW": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      },
+      "NORMAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "CRITICAL": {
+        "preferredTier": 4,
+        "minimumTier": 3
+      }
+    },
+    "ROOT_CAUSE_ANALYSIS": {
+      "LOW": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      },
+      "NORMAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "CRITICAL": {
+        "preferredTier": 4,
+        "minimumTier": 3
+      }
+    },
+    "CODE_REVIEW": {
+      "LOW": {
+        "preferredTier": 2,
+        "minimumTier": 2
+      },
+      "NORMAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "CRITICAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      }
+    },
+    "SECURITY_REVIEW": {
+      "LOW": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "NORMAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "CRITICAL": {
+        "preferredTier": 4,
+        "minimumTier": 3
+      }
+    },
+    "ARCHITECTURE_REVIEW": {
+      "LOW": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "NORMAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "CRITICAL": {
+        "preferredTier": 4,
+        "minimumTier": 3
+      }
+    },
+    "CONCURRENCY_REVIEW": {
+      "LOW": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "NORMAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "CRITICAL": {
+        "preferredTier": 4,
+        "minimumTier": 3
+      }
+    },
+    "FINAL_AUDIT": {
+      "LOW": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "NORMAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "CRITICAL": {
+        "preferredTier": 4,
+        "minimumTier": 3
+      }
+    },
+    "DATABASE_REVIEW": {
+      "LOW": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      },
+      "NORMAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "CRITICAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      }
+    },
+    "API_COMPATIBILITY_REVIEW": {
+      "LOW": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      },
+      "NORMAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "CRITICAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      }
+    },
+    "RELEASE_REVIEW": {
+      "LOW": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      },
+      "NORMAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "CRITICAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      }
+    },
+    "ACCESSIBILITY_REVIEW": {
+      "LOW": {
+        "preferredTier": 2,
+        "minimumTier": 2
+      },
+      "NORMAL": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      },
+      "CRITICAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      }
+    },
+    "DOCUMENTATION": {
+      "LOW": {
+        "preferredTier": 1,
+        "minimumTier": 0
+      },
+      "NORMAL": {
+        "preferredTier": 1,
+        "minimumTier": 1
+      },
+      "HIGH": {
+        "preferredTier": 2,
+        "minimumTier": 1
+      },
+      "CRITICAL": {
+        "preferredTier": 2,
+        "minimumTier": 2
+      }
+    },
+    "HOUSEKEEPING": {
+      "LOW": {
+        "preferredTier": 0,
+        "minimumTier": 0
+      },
+      "NORMAL": {
+        "preferredTier": 1,
+        "minimumTier": 0
+      },
+      "HIGH": {
+        "preferredTier": 1,
+        "minimumTier": 1
+      },
+      "CRITICAL": {
+        "preferredTier": 2,
+        "minimumTier": 1
+      }
+    },
+    "CI_CD": {
+      "LOW": {
+        "preferredTier": 1,
+        "minimumTier": 1
+      },
+      "NORMAL": {
+        "preferredTier": 2,
+        "minimumTier": 1
+      },
+      "HIGH": {
+        "preferredTier": 2,
+        "minimumTier": 2
+      },
+      "CRITICAL": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      }
+    },
+    "RELEASE_ENGINEERING": {
+      "LOW": {
+        "preferredTier": 2,
+        "minimumTier": 1
+      },
+      "NORMAL": {
+        "preferredTier": 2,
+        "minimumTier": 2
+      },
+      "HIGH": {
+        "preferredTier": 3,
+        "minimumTier": 2
+      },
+      "CRITICAL": {
+        "preferredTier": 3,
+        "minimumTier": 3
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dev-team unverified runtime notes",
+  "description": "What the public documentation of a not-yet-tried tool is believed to say.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "dev-team",
+    "id",
+    "verified",
+    "description",
+    "supports"
+  ],
+  "properties": {
+    "dev-team": {
+      "description": "Ownership marker.",
+      "type": [
+        "string"
+      ]
+    },
+    "id": {
+      "description": "The runtime name.",
+      "type": [
+        "string"
+      ]
+    },
+    "verified": {
+      "description": "Always false until a hand test confirms it.",
+      "type": [
+        "boolean"
+      ]
+    },
+    "description": {
+      "description": "Plain-words caveat.",
+      "type": [
+        "string"
+      ]
+    },
+    "supports": {
+      "description": "What it can do; UNKNOWN when not known.",
+      "type": [
+        "object"
+      ]
+    }
+  }
+}

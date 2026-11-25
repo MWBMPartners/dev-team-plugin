@@ -14,9 +14,14 @@ note() { echo "SMOKE FAIL: $*" >&2; fail=1; }
 # delimiter lines) of a markdown file with a leading frontmatter block.
 frontmatter() { awk '/^---$/{n++; next} n==1' "$1" 2>/dev/null; }
 
+# Engine (2.0.0 work in progress): the launcher must be executable and the entry point present.
+[ -x scripts/engine.sh ] || note "scripts/engine.sh is missing or not executable"
+[ -f engine/bin/dev-team-engine.mjs ] || note "engine/bin/dev-team-engine.mjs is missing"
+[ -f schemas/manifest.json ] || note "schemas/manifest.json is missing"
+
 # 1) agents/ exists at the plugin root with the 5 endpoint files; each has frontmatter with
 #    name:, description:, model:, tools: (same roster as scripts/audit-model-ids.sh).
-for a in deep-architect opus-builder sonnet-scribe quick-edits sonnet-builder; do
+for a in deep-architect opus-builder sonnet-scribe quick-edits sonnet-builder scout scribe engineer engineer-high architect architect-high architect-max principal principal-xhigh reviewer reviewer-xhigh; do
   f="agents/$a.md"
   if [ ! -f "$f" ]; then
     note "missing agent file: $f"

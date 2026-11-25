@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "shape of `codex debug models` output (test input)",
+  "description": "The part of Codex's model list the engine reads. A synthetic sample is used in tests because the real dump carries long prompt text.",
+  "type": "object",
+  "required": [
+    "models"
+  ],
+  "properties": {
+    "models": {
+      "description": "The models.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "slug",
+          "visibility"
+        ],
+        "properties": {
+          "slug": {
+            "description": "Model name.",
+            "type": [
+              "string"
+            ]
+          },
+          "display_name": {
+            "description": "Display name.",
+            "type": [
+              "string"
+            ]
+          },
+          "context_window": {
+            "description": "Tokens.",
+            "type": [
+              "integer"
+            ]
+          },
+          "supported_reasoning_levels": {
+            "description": "Effort levels.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "default_reasoning_level": {
+            "description": "Default effort.",
+            "type": [
+              "string"
+            ]
+          },
+          "visibility": {
+            "description": "list or hide.",
+            "type": [
+              "string"
+            ]
+          },
+          "priority": {
+            "description": "Order.",
+            "type": [
+              "integer"
+            ]
+          },
+          "upgrade": {
+            "description": "A successor, or null.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "supported_in_api": {
+            "description": "Whether the API offers it.",
+            "type": [
+              "boolean"
+            ]
+          },
+          "model_messages": {
+            "description": "Long prompt text; never kept.",
+            "type": [
+              "string"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

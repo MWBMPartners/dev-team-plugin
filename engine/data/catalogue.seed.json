@@ -1,0 +1,269 @@
+{
+  "dev-team": "ledger=catalogue schema=1.0",
+  "description": "The starting list of models the engine knows about. Claude entries follow skills/dev-team-orchestrator/references/model-routing.md. Every other provider is a role-level placeholder marked unverified: it has not been tried against a real account. Exact model ids are never kept here; they come from discovery or from a pin.",
+  "models": [
+    {
+      "provider": "claude",
+      "id": "haiku",
+      "alias": "haiku",
+      "tier": 1,
+      "tierSource": "model-routing.md",
+      "local": false,
+      "costBand": 1,
+      "priced": true,
+      "roles": [
+        "scout",
+        "mechanical",
+        "documentarian"
+      ],
+      "classes": [],
+      "verified": true,
+      "source": "seed",
+      "effortLevels": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    {
+      "provider": "claude",
+      "id": "sonnet",
+      "alias": "sonnet",
+      "tier": 2,
+      "tierSource": "model-routing.md",
+      "local": false,
+      "costBand": 3,
+      "priced": true,
+      "roles": [
+        "scout",
+        "builder",
+        "mechanical",
+        "documentarian"
+      ],
+      "classes": [],
+      "verified": true,
+      "source": "seed",
+      "effortLevels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "provider": "claude",
+      "id": "opus",
+      "alias": "opus",
+      "tier": 3,
+      "tierSource": "model-routing.md",
+      "local": false,
+      "costBand": 5,
+      "priced": true,
+      "roles": [
+        "scout",
+        "builder",
+        "architect",
+        "reviewer",
+        "documentarian"
+      ],
+      "classes": [],
+      "verified": true,
+      "source": "seed",
+      "effortLevels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "provider": "claude",
+      "id": "fable",
+      "alias": "fable",
+      "tier": 4,
+      "tierSource": "model-routing.md",
+      "local": false,
+      "costBand": 10,
+      "priced": true,
+      "roles": [
+        "architect",
+        "reviewer",
+        "builder"
+      ],
+      "classes": [
+        "fable"
+      ],
+      "verified": true,
+      "source": "seed",
+      "effortLevels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "provider": "claude",
+      "id": "mythos",
+      "alias": "mythos",
+      "tier": 4,
+      "tierSource": "owner",
+      "local": false,
+      "costBand": 10,
+      "priced": false,
+      "roles": [
+        "architect",
+        "reviewer"
+      ],
+      "classes": [
+        "mythos"
+      ],
+      "verified": false,
+      "source": "seed"
+    },
+    {
+      "provider": "codex",
+      "id": "openai-standard",
+      "alias": "openai-standard",
+      "tier": 3,
+      "tierSource": "placeholder",
+      "local": false,
+      "costBand": 4,
+      "priced": true,
+      "roles": [
+        "builder",
+        "reviewer"
+      ],
+      "classes": [],
+      "verified": true,
+      "source": "seed"
+    },
+    {
+      "provider": "codex",
+      "id": "openai-top",
+      "alias": "openai-top",
+      "tier": 4,
+      "tierSource": "placeholder",
+      "local": false,
+      "costBand": 10,
+      "priced": true,
+      "roles": [
+        "architect",
+        "reviewer"
+      ],
+      "classes": [
+        "openai-top"
+      ],
+      "verified": false,
+      "source": "seed"
+    },
+    {
+      "provider": "gemini",
+      "id": "gemini-standard",
+      "alias": "gemini-standard",
+      "tier": 2,
+      "tierSource": "placeholder",
+      "local": false,
+      "costBand": 3,
+      "priced": true,
+      "roles": [
+        "scout",
+        "builder",
+        "reviewer"
+      ],
+      "classes": [],
+      "verified": false,
+      "source": "seed"
+    },
+    {
+      "provider": "gemini",
+      "id": "gemini-top",
+      "alias": "gemini-top",
+      "tier": 4,
+      "tierSource": "placeholder",
+      "local": false,
+      "costBand": 8,
+      "priced": true,
+      "roles": [
+        "architect",
+        "reviewer"
+      ],
+      "classes": [
+        "gemini-top"
+      ],
+      "verified": false,
+      "source": "seed"
+    },
+    {
+      "provider": "copilot",
+      "id": "copilot-review",
+      "alias": "copilot-review",
+      "tier": 3,
+      "tierSource": "placeholder",
+      "local": false,
+      "costBand": 3,
+      "priced": true,
+      "roles": [
+        "reviewer"
+      ],
+      "classes": [],
+      "verified": false,
+      "source": "seed"
+    },
+    {
+      "provider": "deepseek",
+      "id": "deepseek-standard",
+      "alias": "deepseek-standard",
+      "tier": 2,
+      "tierSource": "placeholder",
+      "local": false,
+      "costBand": 1,
+      "priced": true,
+      "roles": [
+        "scout",
+        "builder",
+        "mechanical"
+      ],
+      "classes": [],
+      "verified": false,
+      "source": "seed"
+    },
+    {
+      "provider": "kimi",
+      "id": "kimi-standard",
+      "alias": "kimi-standard",
+      "tier": 2,
+      "tierSource": "placeholder",
+      "local": false,
+      "costBand": 1,
+      "priced": false,
+      "roles": [
+        "scout",
+        "builder"
+      ],
+      "classes": [],
+      "verified": false,
+      "source": "seed"
+    },
+    {
+      "provider": "grok",
+      "id": "grok-standard",
+      "alias": "grok-standard",
+      "tier": 2,
+      "tierSource": "placeholder",
+      "local": false,
+      "costBand": 2,
+      "priced": false,
+      "roles": [
+        "reviewer",
+        "scout"
+      ],
+      "classes": [],
+      "verified": false,
+      "source": "seed"
+    }
+  ]
+}

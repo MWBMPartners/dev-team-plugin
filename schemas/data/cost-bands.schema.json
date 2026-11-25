@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dev-team cost bands",
+  "description": "Relative job size by kind of task.",
+  "type": "object",
+  "required": [
+    "dev-team",
+    "description",
+    "caveat",
+    "bands"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "dev-team": {
+      "description": "Ownership marker.",
+      "type": "string"
+    },
+    "description": {
+      "description": "What the file is.",
+      "type": "string"
+    },
+    "caveat": {
+      "description": "The reminder that this is an estimate, not a bill.",
+      "type": "string"
+    },
+    "bands": {
+      "description": "Task type to its three sizes.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "low",
+          "likely",
+          "high"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "low": {
+            "description": "A small outcome, in work units.",
+            "type": "number",
+            "minimum": 0
+          },
+          "likely": {
+            "description": "The expected outcome.",
+            "type": "number",
+            "minimum": 0
+          },
+          "high": {
+            "description": "A large outcome.",
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

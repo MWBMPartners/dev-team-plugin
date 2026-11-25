@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dev-team autopilot state (.dev-team/autopilot.json)",
+  "description": "The autopilot's single source of truth, read first and written last on every cycle. This schema describes today's 1.x shape. The example in skills/dev-team-autopilot/references/loop-runtime.md has explanatory // comments, which JSON does not allow, so the sample file that is checked against this schema is a comment-free copy.",
+  "type": "object",
+  "required": [
+    "schema",
+    "mission",
+    "plan",
+    "phase_cursor",
+    "state",
+    "next_action",
+    "blocked",
+    "cycle",
+    "cap",
+    "terminal",
+    "updated"
+  ],
+  "properties": {
+    "schema": {
+      "description": "State-format version. A matching major version is safe to resume.",
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "mission": {
+      "description": "The mission, in words.",
+      "type": [
+        "string"
+      ]
+    },
+    "aim": {
+      "description": "The confirmed purpose of the product.",
+      "type": [
+        "string"
+      ]
+    },
+    "definition_of_done": {
+      "description": "Checkable criteria for being finished.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "plan": {
+      "description": "The phases, in order.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "phase",
+          "mode",
+          "exit",
+          "status"
+        ],
+        "properties": {
+          "phase": {
+            "description": "Phase name.",
+            "type": [
+              "string"
+            ]
+          },
+          "mode": {
+            "description": "Which skill mode runs it.",
+            "type": [
+              "string"
+            ]
+          },
+          "exit": {
+            "description": "When the phase is done.",
+            "type": [
+              "string"
+            ]
+          },
+          "status": {
+            "description": "Where it stands.",
+            "type": "string",
+            "enum": [
+              "pending",
+              "in-progress",
+              "done"
+            ]
+          }
+        }
+      }
+    },
+    "phase_cursor": {
+      "description": "Index of the current phase.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "state": {
+      "description": "RUNNING, BLOCKED or DONE.",
+      "type": "string",
+      "enum": [
+        "RUNNING",
+        "BLOCKED",
+        "DONE"
+      ]
+    },
+    "cursor": {
+      "description": "The work item in flight, or null.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "next_action": {
+      "description": "The single next thing to do.",
+      "type": [
+        "string"
+      ]
+    },
+    "queue": {
+      "description": "Where the backlog, feature gaps and findings live.",
+      "type": [
+        "object"
+      ]
+    },
+    "gate_ledger": {
+      "description": "Items waiting for, or past, approval.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "description": "Item id such as G-001.",
+            "type": [
+              "string"
+            ]
+          },
+          "kind": {
+            "description": "What sort of item.",
+            "type": [
+              "string"
+            ]
+          },
+          "title": {
+            "description": "Short title.",
+            "type": [
+              "string"
+            ]
+          },
+          "spec_ref": {
+            "description": "Where its spec is.",
+            "type": [
+              "string"
+            ]
+          },
+          "status": {
+            "description": "Approval state.",
+            "type": "string",
+            "enum": [
+              "awaiting-user",
+              "approved",
+              "auto-cleared",
+              "built",
+              "dropped"
+            ]
+          }
+        }
+      }
+    },
+    "blocked": {
+      "description": "Whether the run is blocked, and why.",
+      "type": "object",
+      "required": [
+        "is",
+        "reason",
+        "since"
+      ],
+      "properties": {
+        "is": {
+          "description": "True when blocked.",
+          "type": [
+            "boolean"
+          ]
+        },
+        "reason": {
+          "description": "Why, or null.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "since": {
+          "description": "Since when, or null.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "cycle": {
+      "description": "The cycle number.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "cap": {
+      "description": "Convergence backstop: stops a loop that cannot finish. Not cost control.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "verify": {
+      "description": "Progress of the verification phase.",
+      "type": [
+        "object"
+      ]
+    },
+    "verified_at_commit": {
+      "description": "Last commit at which verification passed, or null.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "budget": {
+      "description": "Spawn counts by tier. A trend, never a bill.",
+      "type": [
+        "object"
+      ]
+    },
+    "lock": {
+      "description": "Who holds the run, and when it goes stale.",
+      "type": [
+        "object"
+      ]
+    },
+    "branch": {
+      "description": "The run branch.",
+      "type": [
+        "string"
+      ]
+    },
+    "last_commit": {
+      "description": "The last commit.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "trajectory_ref": {
+      "description": "Where the trajectory table lives.",
+      "type": [
+        "string"
+      ]
+    },
+    "instructions_snapshot": {
+      "description": "Run id and folder of the instruction snapshot; written once at bootstrap.",
+      "type": [
+        "object"
+      ]
+    },
+    "terminal": {
+      "description": "True when the loop has finished.",
+      "type": [
+        "boolean"
+      ]
+    },
+    "updated": {
+      "description": "When the file was last written.",
+      "type": [
+        "string"
+      ]
+    }
+  }
+}

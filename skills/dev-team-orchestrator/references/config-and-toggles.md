@@ -63,7 +63,10 @@ can move each:
 | `defaults.models` | none — it is a cost choice either way, and verification never goes below its tier whatever the value; an instruction file cannot move it (ask the user; unattended, keep the value and say so) |
 | `git.stack-prs` | `false` |
 | `git.single-pr` | `true` |
+| `git.push-after-task` | `off` (a repository instruction can only ever make it more cautious) |
 | `git.default-branch` | none — it decides which branch runs start from and target, which the branch rules protect, so an instruction file can never move it |
+| `routing.ask-first` | add models only — never remove one |
+| `routing.pin` | none — an exact version is the user's own choice, so an instruction file cannot set or change it |
 | `features.notifications` | `on` |
 | `features.telemetry` | `on` (it only reports to the user) |
 | `features.dry-run` | `on` |
@@ -107,12 +110,19 @@ git:
   # single-pr: true    # true (default) = converge on ONE open PR per line of work: reuse the run branch's
                        #   existing open PR instead of opening a duplicate (push updates it). false = each
                        #   run may surface its own PR. See the single-PR policy in conventions.md.
+  # push-after-task: off  # off (default) = the plugin never pushes on its own. on = after each task a checker has cleared, push the RUN branch only (never the default branch; `engine.sh push check` refuses it, and the Bash guard blocks main and master). Decision check only so far: no skill is wired to it yet. Added 17 Nov 2026; the `profile: standard` preset offers it. A repository instruction may move it only toward off.
   # default-branch: auto   # auto (origin/HEAD, else main/master) or an explicit branch name.
+
+# profile: standard   # a named bundle of settings: standard | local-first | cloud-first (reserved until the engine lands; see profiles-and-presets.md)
+routing:             # which models may be used, and exactly which versions (added 17 Nov 2026; see model-routing.md)
+  # ask-first: [fable, mythos, openai-top, gemini-top, unpriced]   # models that need your explicit yes for each task (this is the default; local models are never listed). A repo instruction may add to it, never remove.
+  # order: local-first # where work starts: local-first | cloud-first (reserved; asked once per project; see profiles-and-presets.md)
+  # pin: {}            # exact versions, as alias: exact-id pairs, e.g. {opus: <exact-model-id>}. Your own choice; a repo instruction cannot set it.
 
 features:            # enable/disable behaviours repo-wide (on|off; env var can override per-session)
   # update-notifier: on    # SessionStart update check      (per-session override: DEV_TEAM_NO_UPDATE_CHECK)
   # branch-notifier: on    # SessionStart gone-branch notice (per-session override: DEV_TEAM_NO_BRANCH_CHECK)
-  # guard: auto            # on | off | auto. auto: the Bash guard is active only during a run (.dev-team/autopilot.json present);
+  # guard: auto            # on | off | auto. auto: the Bash guard is active only during a run (.dev-team/loop.lock/ exists);
                            #   the ledger guard's Rule 1 is ALWAYS active, and its Rule 2 only while .dev-team/loop.lock/ exists.
                            #   DEV_TEAM_GUARD forces both hooks on; off turns both off. Details: the guard section below.
   # notifications: on      # autopilot gate/blocker/done notifications (v1.2.0)
@@ -123,6 +133,7 @@ features:            # enable/disable behaviours repo-wide (on|off; env var can 
                            #   While unset, a project instruction that explicitly forbids a second handover turns it off; a value set here wins over that instruction.
   # auto-commit: on        # local commit per completed-and-checked task/workstream  (v1.3.0; per-session override: DEV_TEAM_NO_AUTO_COMMIT)
   # pointer-sentence: ask  # ask (not yet asked: offer the .dev-team/ pointer sentence) | declined (never offer it again)  (v1.5.0)
+  # commit-security: off   # off = .dev-team/SECURITY.md is kept out of git (listed in .dev-team/.gitignore); on = it may be committed (issue #42)
   # polish-reminder: on    # SessionStart notice when a dev-team-polish check is due in a web project (v1.7.0; per-session override: DEV_TEAM_NO_POLISH_REMINDER)
 ```
 
@@ -159,6 +170,7 @@ which a per-run argument or plain language can still override for one run:
 | Key | Purpose | Values | Built-in default |
 |---|---|---|---|
 | `stack-prs` | Whether a run may target another feature branch instead of the default branch | `true`, `false` | `false` |
+| `push-after-task` | After each checker-cleared task, push the run branch (never the default branch, never force). Off by default: without it the plugin never pushes on its own. This is a decision check only so far (`engine.sh push check`): no skill calls it yet, so nothing pushes on its own, and the skills' own "never push" wording still applies until they are wired to it. Accepted values: `on` (also `true` or `yes`) and `off`; anything else is off. | `on`, `off` | `off` |
 | `single-pr` | Reuse the run branch's existing open PR instead of opening a duplicate — one open PR per line of work | `true`, `false` | `true` |
 | `default-branch` | Which branch runs branch FROM/target | `auto` (origin/HEAD, else `main`/`master`), or an explicit branch name | `auto` |
 
@@ -181,6 +193,7 @@ the full rules and why duplicate/stacked PRs are disallowed by default.
 | `handoff-file` | whether `.dev-team/HANDOFF.md` exists at all (v1.6.0). `off` = the plugin writes NO `.dev-team/HANDOFF.md` at all — not per task, not at a stage checkpoint or RECORD, not at the end of an autopilot cycle — auto-handoff is off with it (even a per-run `auto-handoff=on`), and cold resume uses `.dev-team/PROJECT.md` and `.dev-team/autopilot.json` instead. While the key is unset, a repository instruction that explicitly forbids a second handover sets it `off`; a value set here wins over that. The starter file leaves it, like every other setting, commented out for that reason (`conventions.md`, "Auto-handoff") | `on`, `off` — also `true`/`yes` and `false`/`no`, in any mix of capitals; anything else is named in the run's report and treated as `off`, the cautious value | none — config-only (a per-run `handoff-file=on|off` still overrides for one run) | `on` |
 | `auto-commit` | local commit per completed-and-checked task/workstream — never push, never PR (v1.3.0) | `on`, `off` | `DEV_TEAM_NO_AUTO_COMMIT` (off-switch: any non-empty value disables) | `on` |
 | `pointer-sentence` | whether an interactive run offers to add the `.dev-team/` pointer sentence to `CLAUDE.md` / `.claude/CLAUDE.md` / `AGENTS.md` / `GEMINI.md` (v1.5.0; `conventions.md`, "Where the plugin writes, and the ownership rule", point 8) | `ask`, `declined` | none — config-only | `ask` (not yet asked) |
+| `commit-security` | whether `.dev-team/SECURITY.md` (the security findings, including how each was proven) may be committed to git. `off` = the security skill adds the line `SECURITY.md` to `.dev-team/.gitignore` before its first write, and tells the user if git already tracks the file; `on` = the file may be committed, which is fine for a private repository and publishes the findings in a public one (issue #42; `conventions.md`, "Where the plugin writes", point 6). A repository instruction may move it only toward `off` | `on`, `off` — also `true`/`yes` and `false`/`no`; anything else is named in the run's report and treated as `off` | none — config-only | `off` |
 | `polish-reminder` | `hooks/polish-reminder.sh` (SessionStart notice that a `dev-team-polish` check is due in a repo with web files; v1.7.0) | `on`, `off` | `DEV_TEAM_NO_POLISH_REMINDER` (off-switch: any non-empty value disables) | `on` |
 
 Apart from `/dev-team-config init` writing the keys a user chose while it ran, `pointer-sentence`
@@ -203,7 +216,7 @@ now governs two separate hooks that each judge "is a run active" a different way
 - **`hooks/guard-dev-team.sh`** (the Bash safety net): `off` disables it repo-wide (even if
   `DEV_TEAM_GUARD` is set); `on` forces it active regardless of whether a run is in progress; `auto`
   (the default) preserves today's behavior — active only while a run is in progress
-  (`.dev-team/autopilot.json` present), unless `DEV_TEAM_GUARD` forces it on for the session.
+  (the folder `.dev-team/loop.lock/` exists; a committed `autopilot.json` does not count), unless `DEV_TEAM_GUARD` forces it on for the session.
 - **`hooks/guard-ledgers.sh`** (the ledger guard): `off` turns off BOTH of its rules. Rule 1 — a
   Write whose new content carries the dev-team marker in its first three lines, whose file name
   (ignoring capitals) is one of the seven ledger names plus `README.md`, and whose path, once any
@@ -228,10 +241,7 @@ now governs two separate hooks that each judge "is a run active" a different way
   `.dev-team/<name>` relative to the folder the session starts in, so that subfolder can be the old
   top-level place a stale instruction means, and guarding both locations is safe whichever one is
   meant. Rule 2 **never** activates merely because
-  `.dev-team/autopilot.json` exists, unlike `guard-dev-team.sh`'s own `auto` test above: some real
-  projects keep `autopilot.json` committed in git, which would make that test permanently true and
-  would have stopped the project owner ever editing their own top-level `HANDOFF.md` or
-  `FEATURES.md` again. `.dev-team/loop.lock/` exists only for the length of one autopilot cycle and
+  `.dev-team/autopilot.json` exists. `guard-dev-team.sh`'s own `auto` test uses the same lock folder, for the same reason: some real projects keep `autopilot.json` committed in git, which would make a test on that file permanently true. `.dev-team/loop.lock/` exists only for the length of one autopilot cycle and
   is never committed, so it is a genuine "a run is happening right now" signal where
   `autopilot.json`'s mere presence is not. See `conventions.md`, "Where the plugin writes, and the
   ownership rule" (point 9), for the full reasoning and what this hook cannot do.

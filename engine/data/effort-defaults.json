@@ -1,0 +1,138 @@
+{
+  "dev-team": "ledger=effort-defaults schema=1.0",
+  "description": "How hard a model should think, by kind of task. Each entry has a level for LOW or NORMAL risk and one for HIGH or CRITICAL. Levels: MINIMAL, LOW, MEDIUM, HIGH, VERY_HIGH, MAXIMUM. MAXIMUM is used only at CRITICAL risk.",
+  "levels": [
+    "MINIMAL",
+    "LOW",
+    "MEDIUM",
+    "HIGH",
+    "VERY_HIGH",
+    "MAXIMUM"
+  ],
+  "defaults": {
+    "REPOSITORY_DISCOVERY": [
+      "LOW",
+      "LOW"
+    ],
+    "REQUIREMENTS_ANALYSIS": [
+      "MEDIUM",
+      "MEDIUM"
+    ],
+    "NORMAL_ANALYSIS": [
+      "MEDIUM",
+      "MEDIUM"
+    ],
+    "DEEP_ANALYSIS": [
+      "HIGH",
+      "VERY_HIGH"
+    ],
+    "ARCHITECTURE": [
+      "HIGH",
+      "VERY_HIGH"
+    ],
+    "DEEP_PLANNING": [
+      "VERY_HIGH",
+      "VERY_HIGH"
+    ],
+    "MECHANICAL_IMPLEMENTATION": [
+      "LOW",
+      "MEDIUM"
+    ],
+    "ROUTINE_IMPLEMENTATION": [
+      "MEDIUM",
+      "MEDIUM"
+    ],
+    "COMPLEX_IMPLEMENTATION": [
+      "HIGH",
+      "HIGH"
+    ],
+    "REFACTOR": [
+      "MEDIUM",
+      "HIGH"
+    ],
+    "MIGRATION": [
+      "HIGH",
+      "VERY_HIGH"
+    ],
+    "TEST_AUTHORING": [
+      "MEDIUM",
+      "MEDIUM"
+    ],
+    "TEST_EXECUTION": [
+      "MINIMAL",
+      "LOW"
+    ],
+    "STATIC_ANALYSIS": [
+      "MINIMAL",
+      "LOW"
+    ],
+    "BUILD_VALIDATION": [
+      "MINIMAL",
+      "LOW"
+    ],
+    "ROUTINE_DEBUGGING": [
+      "MEDIUM",
+      "HIGH"
+    ],
+    "COMPLEX_DEBUGGING": [
+      "HIGH",
+      "VERY_HIGH"
+    ],
+    "ROOT_CAUSE_ANALYSIS": [
+      "HIGH",
+      "VERY_HIGH"
+    ],
+    "CODE_REVIEW": [
+      "HIGH",
+      "VERY_HIGH"
+    ],
+    "SECURITY_REVIEW": [
+      "HIGH",
+      "VERY_HIGH"
+    ],
+    "ARCHITECTURE_REVIEW": [
+      "HIGH",
+      "VERY_HIGH"
+    ],
+    "CONCURRENCY_REVIEW": [
+      "HIGH",
+      "VERY_HIGH"
+    ],
+    "FINAL_AUDIT": [
+      "HIGH",
+      "VERY_HIGH"
+    ],
+    "DATABASE_REVIEW": [
+      "HIGH",
+      "VERY_HIGH"
+    ],
+    "API_COMPATIBILITY_REVIEW": [
+      "HIGH",
+      "VERY_HIGH"
+    ],
+    "RELEASE_REVIEW": [
+      "HIGH",
+      "VERY_HIGH"
+    ],
+    "ACCESSIBILITY_REVIEW": [
+      "HIGH",
+      "VERY_HIGH"
+    ],
+    "DOCUMENTATION": [
+      "LOW",
+      "MEDIUM"
+    ],
+    "HOUSEKEEPING": [
+      "LOW",
+      "MEDIUM"
+    ],
+    "CI_CD": [
+      "MEDIUM",
+      "MEDIUM"
+    ],
+    "RELEASE_ENGINEERING": [
+      "MEDIUM",
+      "HIGH"
+    ]
+  }
+}

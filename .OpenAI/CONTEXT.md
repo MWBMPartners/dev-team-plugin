@@ -33,6 +33,8 @@ work it does is then reviewed by Claude Code when Claude Code is back.
   high or medium problems, and low findings, wording points and older faults become GitHub issues
   rather than new rounds. The whole #47 change is compared with `claude/ledger-file-clashes`
   (where it was cut, at `413d570`), not with `main`, so #41's changes are not reported as #47's.
+  **Out of date since 9 November 2026:** both are now merged into `main` and that branch is deleted;
+  a new review compares the new working branch with `alpha`.
   To run the bats tests, set `TMPDIR` to a writable folder (the sandbox's default was not).
 - Earlier Codex review results: `.claude/plans/ledger-file-clashes/codex-review-3.md` and
   `codex-review-3-verification.md`.
@@ -41,3 +43,19 @@ work it does is then reviewed by Claude Code when Claude Code is back.
 
 - Inside the read-only sandbox, Codex could not run the `bats` tests. Say so in the review rather
   than guessing at test results; Claude Code runs them.
+
+> 17 Nov 2026: new standing rules 12-15 and a requirements addendum for #46 exist; see .claude/HANDOFF.md.
+
+> 17 Nov 2026 (later): built on `claude/busy-knuth-bc35ok`: #44 and #48 (commit `ae2b909`) and #42
+> (`158f4bc`). Codex is not installed in the cloud session that built them, so they are **not yet
+> reviewed by Codex**. Review them with `git diff 87c0f70..HEAD` against `alpha`'s history.
+
+> 17 Nov 2026 (end of session): groups A-D built on `claude/busy-knuth-bc35ok`; none yet reviewed by Codex. See `.claude/HANDOFF.md`.
+
+> 17 Nov 2026 (final): engine increments 0a and the core of 1 built on `claude/busy-knuth-bc35ok` (69 unit tests, 13 launcher tests, 211 older tests). 17 stand-in review rounds, last one clean on code; Codex still to review. Resume at increment 0b: see `.claude/HANDOFF.md` "Engine status".
+
+> 17 Nov 2026 (very end): engine increments 0a to 9 and parts of 8, 11, 12 built on `claude/busy-knuth-bc35ok`; 10 not built; version left at 1.7.0. Run `bash scripts/completion-gate.sh`. Details: `.claude/HANDOFF.md` "Engine progress".
+
+## Update — 17 November 2026 (end of day)
+
+Full queue and how to resume: `.claude/HANDOFF.md`, "START HERE". Tracking issues #50 to #59 are sub-issues of #46. Milestones, the Projects board and wiki pages could not be made with the cloud session's tools; ready-to-apply drafts are in `.claude/plans/tracker-setup.md` and `docs/wiki-drafts/`. Branch: `claude/busy-knuth-bc35ok`; no pull request yet; version still 1.7.0; nothing has had a Codex review.

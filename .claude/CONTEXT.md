@@ -43,18 +43,30 @@ not on pushes to the working branch — so run them yourself.
 
 ## Branches
 
-- `main` is the released line; `alpha` is fully contained in `main`.
-- Current working branch: `claude/ledger-file-clashes`. It will go to `alpha` in one pull request,
-  opened later by the owner's say-so.
-- Also in flight: `feature/bcp47-language-policy` (issue #47), cut from `claude/ledger-file-clashes`
-  and waiting on it.
+- `main` is the released line (version 1.7.0). `alpha` and `beta` were set equal to `main` on
+  9 November 2026 (`00e0b67`).
+- No working branch is in flight. `claude/ledger-file-clashes`, `feature/bcp47-language-policy` and
+  `claude/gifted-wright-y3ze25` were merged into `main` by pull request #49 and then deleted. Start
+  new work from `alpha`; it goes back to `alpha` in one pull request, opened by the owner's say-so.
+  (Merging straight to `main` on 9 November was a one-off.)
 
 ## Live work (details in `.claude/HANDOFF.md`)
 
 | Issue | What | State |
 | --- | --- | --- |
-| [#41](https://github.com/MWBMPartners/dev-team-plugin/issues/41) | Move all the plugin's record files into `.dev-team/` so they stop clashing with a project's own `FEATURES.md`, `SECURITY.md` and similar. Version 1.5.0. | Built and fixed over five rounds; waiting for a clean Codex review. |
-| [#46](https://github.com/MWBMPartners/dev-team-plugin/issues/46) | A smarter orchestrator that works across AI providers. | Analysis and plan done; waiting on owner decisions D1–D4. |
-| [#45](https://github.com/MWBMPartners/dev-team-plugin/issues/45) | Build the owner's standard working practices into the plugin. | Mapped; waiting for the owner to pick which to build. |
-| [#47](https://github.com/MWBMPartners/dev-team-plugin/issues/47) | Agents follow a project's own instruction files and the standards they name — only as copied when the run starts (into a uniquely named `~/.dev-team/runs/<run-id>/snapshot/`, outside the project: the copies in its `files/` folder, the manifest beside it; the checkout the user starts on is treated as the user's own; a resumed run checks and reuses its recorded snapshot), and only to add checks or choose style, never to remove or loosen a check, gate, confirmation or safety rule. The limits are stated plainly: start from your own branch; this is not an enforcement boundary; only the plugin's two guard hooks enforce anything, and their descriptions say what each covers and the limits known. Version 1.6.0, on `feature/bcp47-language-policy`. | Built in six rounds. Reviews so far: Codex reviewed `413d570..748e87c` (10 findings) and `748e87c..42bd45e` (6); stand-ins (fresh Opus agents) reviewed `748e87c..a9fb292` and `42bd45e..b39f40d`; the fifth round (`b39f40d..2f91439`) had no review of its own; Codex's catch-up review of `748e87c..2f91439` (rounds 2 to 5) was not clean — 8 findings — and the sixth round acts on them (the Bash guard: a zero byte in `$'…'`, a remote set up as a mirror, a time limit that covers reading the input and stops what ignores the request to stop, `git … push` looked for inside one command, tests that prove the reading reaches the end; ci-medic finds a `/loop`'s run from its run record instead of starting a new one; these notes). Commits after `2f91439` are not yet reviewed. Next: see the #47 section of `.claude/HANDOFF.md`. Waits on #41. |
-| #42, #43, #44 | Follow-ups found during #41. | Not started. |
+| [#41](https://github.com/MWBMPartners/dev-team-plugin/issues/41) | Plugin record files moved into `.dev-team/` (1.5.0). | Merged to `main` on 9 Nov (PR #49). Waiting for a clean Codex review; issue left open. |
+| [#47](https://github.com/MWBMPartners/dev-team-plugin/issues/47) | Agents follow a project's own instructions and the standards they name (1.6.0). | Merged to `main` on 9 Nov (PR #49). Waiting for a clean Codex review; issue left open. |
+| [#46](https://github.com/MWBMPartners/dev-team-plugin/issues/46) | A smarter orchestrator that works across AI providers. | Plan done; owner answered D1–D4 on 17 Nov, and added new requirements (see `.claude/plans/orchestrator-v2/owner-brief-addendum-2026-11-17.md`). Not yet built. |
+| [#45](https://github.com/MWBMPartners/dev-team-plugin/issues/45) | The owner's standard working practices as features. | All choices answered on 17 Nov; the `profile: standard` preset is not yet built. |
+| #44, #48, #42 | Guard keyed on `loop.lock/`; guard wording; security findings out of git by default. | **Built on `claude/busy-knuth-bc35ok`** on 17 Nov (commits `ae2b909`, `158f4bc`); not yet reviewed by Codex. |
+| #43 | Schema for `autopilot.json`. | Waits for #46. |
+
+> 17 Nov 2026 (end of session): groups A, B, C, D done on `claude/busy-knuth-bc35ok` (latest commit: see `git log`); E planned only. Details in `.claude/HANDOFF.md`.
+
+> 17 Nov 2026 (final): engine increments 0a and the core of 1 built on `claude/busy-knuth-bc35ok` (69 unit tests, 13 launcher tests, 211 older tests). 17 stand-in review rounds, last one clean on code; Codex still to review. Resume at increment 0b: see `.claude/HANDOFF.md` "Engine status".
+
+> 17 Nov 2026 (very end): engine increments 0a to 9 and parts of 8, 11, 12 built on `claude/busy-knuth-bc35ok`; 10 not built; version left at 1.7.0. Run `bash scripts/completion-gate.sh`. Details: `.claude/HANDOFF.md` "Engine progress".
+
+## Update — 17 November 2026 (end of day)
+
+Full queue and how to resume: `.claude/HANDOFF.md`, "START HERE". Tracking issues #50 to #59 are sub-issues of #46. Milestones, the Projects board and wiki pages could not be made with the cloud session's tools; ready-to-apply drafts are in `.claude/plans/tracker-setup.md` and `docs/wiki-drafts/`. Branch: `claude/busy-knuth-bc35ok`; no pull request yet; version still 1.7.0; nothing has had a Codex review.

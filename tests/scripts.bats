@@ -883,14 +883,14 @@ $line" ;;
   # The starter schema is the first fenced block after the "## The schema (verbatim)" heading.
   schema="$(awk '/^## The schema \(verbatim\)/ { on = 1; next } on && /^```/ { if (inside) exit; inside = 1; next } inside { print }' "$toggles")"
   [ -n "$schema" ]
-  # 1. Every line that is not blank and not a comment must be one of the four top-level lines, with
+  # 1. Every line that is not blank and not a comment must be one of the five top-level lines, with
   #    nothing after it but an optional comment. Anything else — an indented "gates: hybrid", or a
   #    flow-style "defaults: {gates: autonomy-envelope}" on the header line itself (which the first
   #    version of this pattern let through) — is a setting written out explicitly.
   bad="$(printf '%s\n' "$schema" | awk '
     /^[[:space:]]*$/ { next }
     /^[[:space:]]*#/ { next }
-    /^version: 1[[:space:]]*(#.*)?$/ || /^(defaults|git|features):[[:space:]]*(#.*)?$/ { next }
+    /^version: 1[[:space:]]*(#.*)?$/ || /^(defaults|git|routing|features):[[:space:]]*(#.*)?$/ { next }
     { print }')"
   if [ -n "$bad" ]; then
     echo "the starter schema writes these settings out explicitly: $bad"
@@ -902,7 +902,7 @@ $line" ;;
             'stack-prs: false' 'single-pr: true' 'default-branch: auto' \
             'update-notifier: on' 'branch-notifier: on' 'guard: auto' 'notifications: on' \
             'telemetry: on' 'dry-run: off' 'auto-handoff: on' 'handoff-file: on' \
-            'auto-commit: on' 'pointer-sentence: ask'; do
+            'auto-commit: on' 'pointer-sentence: ask' 'ask-first: \[fable, mythos, openai-top, gemini-top, unpriced\]' 'pin: \{\}'; do
     if ! printf '%s\n' "$schema" | grep -qE "^  # ${kv}( |\$)"; then
       echo "the starter schema has no commented-out line showing: $kv"
       return 1
@@ -980,6 +980,45 @@ $line" ;;
   printf 'features:\n  guard: auto\n' > "$SCRATCH/.dev-team/config.yml"
   unset DEV_TEAM_GUARD
   run run_guard "$SCRATCH" '{"tool_input":{"command":"git push origin main"}}'
+  [ "$status" -eq 0 ]
+}
+
+# Issue #44: "a run is in progress" means the folder .dev-team/loop.lock/ exists. A committed
+# .dev-team/autopilot.json (several real projects keep one) must not switch the guard on.
+@test "guard: a committed autopilot.json alone does not switch the guard on (issue #44)" {
+  mkdir -p "$SCRATCH/.dev-team"
+  : > "$SCRATCH/.dev-team/autopilot.json"
+  unset DEV_TEAM_GUARD
+  run run_guard "$SCRATCH" '{"tool_input":{"command":"git push origin main"}}'
+  [ "$status" -eq 0 ]
+}
+
+@test "guard: the folder .dev-team/loop.lock/ switches the guard on (issue #44)" {
+  mkdir -p "$SCRATCH/.dev-team/loop.lock"
+  unset DEV_TEAM_GUARD
+  run run_guard "$SCRATCH" '{"tool_input":{"command":"git push origin main"}}'
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"loop.lock"* ]]
+}
+
+@test "guard: loop.lock with guard: off in the config still allows (issue #44)" {
+  mkdir -p "$SCRATCH/.dev-team/loop.lock"
+  printf 'features:\n  guard: off\n' > "$SCRATCH/.dev-team/config.yml"
+  unset DEV_TEAM_GUARD
+  run run_guard "$SCRATCH" '{"tool_input":{"command":"git push origin main"}}'
+  [ "$status" -eq 0 ]
+}
+
+# Issue #42: the security findings file stays out of git unless commit-security is on. The behaviour is
+# carried by instructions, so these tests check that every place that has to say it, does.
+@test "commit-security: documented in the config reference, the conventions, the security skill and the README (issue #42)" {
+  run grep -F 'commit-security' "$REPO_ROOT/skills/dev-team-orchestrator/references/config-and-toggles.md"
+  [ "$status" -eq 0 ]
+  run grep -F 'Findings stay out of git by default' "$REPO_ROOT/skills/dev-team-orchestrator/references/conventions.md"
+  [ "$status" -eq 0 ]
+  run grep -F -- '--cached .dev-team/SECURITY.md' "$REPO_ROOT/skills/dev-team-security/SKILL.md"
+  [ "$status" -eq 0 ]
+  run grep -F '`commit-security`' "$REPO_ROOT/README.md"
   [ "$status" -eq 0 ]
 }
 

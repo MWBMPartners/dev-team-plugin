@@ -6,19 +6,289 @@
             Rewritten as work happens, not tidied at the end. See .claude/CLAUDE.md section 2.
 -->
 
-**Last updated:** 5 October 2026 — issue #47's sixth round, acting on Codex's catch-up review of
-`748e87c..2f91439`; the #47 section straight below says where its review stands and what is next.
-The "START HERE" section dates from 23 September; everything below "Detailed history" is the
-older, fuller record.
-**Working branch:** `claude/ledger-file-clashes` (made from `main`; `alpha` is fully contained in
-`main`, so this branch can later go to `alpha` in one pull request).
-**28 September 2026:** a second branch, `feature/bcp47-language-policy` (issue #47), is in flight —
-see the section straight below.
-**Issues:** [#41](https://github.com/MWBMPartners/dev-team-plugin/issues/41) (the main work),
+## START HERE — fresh session (written 17 November 2026, end of day)
+
+**Working branch:** `claude/busy-knuth-bc35ok` (all work is committed and pushed there). Open **one**
+pull request to `alpha`, only when the owner says (rule 6). No pull request exists yet.
+**Version:** left at 1.7.0 on purpose; do not call it 2.0.0 until the owner decides.
+**Read order:** this section, then "Engine progress, 17 November 2026" below, then
+`.claude/CONTEXT.md`, `.claude/MEMORY.md`, `docs/orchestrator/README.md`.
+**Check everything:** `bash scripts/completion-gate.sh` (prints PASS/FAIL). To run the tests by hand:
+`node --test engine/test/*.test.mjs` (use the glob, not the folder) and
+`TMPDIR=<writable folder> bats tests/engine.bats` (install with `npm i -g bats`, `pip install shellcheck-py`).
+**Review status:** nothing built since commit `87c0f70` has had a Codex review (Codex is not in the cloud
+session). Fresh Claude reviewers stood in, so all of it is "not fully reviewed".
+
+### The queue (each item has a tracking issue, linked under #46)
+
+| # | Task | Issue | Needs the owner's machine? |
+| --- | --- | --- | --- |
+| 1 | Codex review of `git diff 87c0f70..HEAD`, fix every finding, repeat until clean | [#50](https://github.com/MWBMPartners/dev-team-plugin/issues/50) | Yes (Codex) |
+| 2 | Hand tests HT-0 to HT-4 in a real Claude Code session | [#51](https://github.com/MWBMPartners/dev-team-plugin/issues/51) | Yes |
+| 3 | Editor hand tests: VS Code/Cursor, Visual Studio, Xcode, JetBrains | [#52](https://github.com/MWBMPartners/dev-team-plugin/issues/52) | Yes |
+| 4 | Wire the engine into skills and commands (route, explain, ask-first, push check, learning) | [#53](https://github.com/MWBMPartners/dev-team-plugin/issues/53) | No |
+| 5 | Increment 10: decomposition, parallelism, integration engineer, provenance (needs HT-4 first) | [#54](https://github.com/MWBMPartners/dev-team-plugin/issues/54) | No, but blocked on #2 |
+| 6 | Increment 8 rest: probes, reliability counters, shadow evaluation, history; use learning in `route`; rate limit | [#55](https://github.com/MWBMPartners/dev-team-plugin/issues/55) | No |
+| 7 | Increment 12 rest: docs topics, README section, CHANGELOG, 2.0.0 decision. Also increment 11 rest (`init --rules`, narrow `HANDOFF.md` opt-in) | [#56](https://github.com/MWBMPartners/dev-team-plugin/issues/56) | No (the version call is the owner's) |
+| 8 | Reword old agent names in skills (DEP-K); remove aliases in 2.1.0 | [#57](https://github.com/MWBMPartners/dev-team-plugin/issues/57) | No |
+| 9 | Check the unverified facts (quota wording, tool outputs, prices, other providers) | [#58](https://github.com/MWBMPartners/dev-team-plugin/issues/58) | Yes |
+| 10 | Signed catalogue service and real public key (other repository) | [#59](https://github.com/MWBMPartners/dev-team-plugin/issues/59) | No |
+| 11 | Owner-side: device-wide rules file (Q5), housekeeping comments, close #41 and #47 only after a clean Codex review | #41, #47 | Yes |
+| 12 | Older open issues still to track: #37 (actionlint CI, from a bot), #42, #44, #48 (built on the branch, not merged), #43 (last step: the pinned `//` example), #45 | — | No |
+
+**Best next step for a session with no owner machine:** item 4, then 6, 7, 8 (in that order).
+**Best next step with the owner's machine:** items 1 to 3 and 9, since they unblock the rest.
+
+### Tracker, wiki and milestones (done and not done)
+
+- **Done:** issues #50 to #59 created and linked as sub-issues of #46.
+- **Not done, because the GitHub tools in the cloud session cannot do it:** creating milestones, the
+  Projects board, and wiki pages. Everything needed is written out in
+  `.claude/plans/tracker-setup.md` and `docs/wiki-drafts/` (four ready pages). The owner, or a session
+  with fuller access, sets them up by following that file. Then record here that it is done.
+
+### Things to know
+
+- A one-session-only item: none are left running. Nothing is scheduled.
+- Departures from the plan: `docs/orchestrator/departures.md` (DEP-A to DEP-L).
+- Do not extend the hand-written YAML reader (`engine/lib/config.mjs`); use a real parser if more is needed.
+- The engine data folder must not sit inside a test repository (it makes the tree look dirty).
+
+**Last updated:** 17 November 2026 — the three open lines of work (#41, #47 and the polish skill) were
+merged into `main` on 9 November. The section straight below ("Current state") is the one to trust; the
+sections after it (the #47 notes, "START HERE", "Detailed history") are the older record and say, in
+places, that things are still waiting that are now done. Where they disagree, this section wins.
+**Working branch:** none in flight. The branch `claude/ledger-file-clashes` and the others named in the
+older sections are **deleted** (see below). Start the next piece of work from `alpha`.
+**Issues:** [#41](https://github.com/MWBMPartners/dev-team-plugin/issues/41),
+[#47](https://github.com/MWBMPartners/dev-team-plugin/issues/47) (both still open on GitHub — see
+"Housekeeping"), [#48](https://github.com/MWBMPartners/dev-team-plugin/issues/48),
 [#46](https://github.com/MWBMPartners/dev-team-plugin/issues/46),
 [#45](https://github.com/MWBMPartners/dev-team-plugin/issues/45).
 
-## Also in flight: `feature/bcp47-language-policy` (issue #47) — added 28 September 2026
+## Current state — 17 November 2026
+
+### Progress later on 17 November (work branch `claude/busy-knuth-bc35ok`)
+
+Owner chose the order: Group A, Group F, then B, C, D, E (groups are named in the task list the
+session gave the owner; see below).
+
+| Group | Task | State |
+| --- | --- | --- |
+| A | #44 guard keys on `.dev-team/loop.lock/` | **Done**, commit `ae2b909` |
+| A | #48 "both guards fail open" wording | **Done**, commit `ae2b909` |
+| A | #42 security findings out of git by default (`features.commit-security`, default off) | **Done**, commit `158f4bc` |
+| F | Comments on #41, #47, #42, #44, #48 | **Done** |
+| F | Clean Codex review of all of `main` | **Blocked: Codex is not installed in this cloud session.** Rule 5 says say so plainly; all work since 9 Nov is **not fully reviewed**. Redo by hand: see `codex-review-prompt-5.md` |
+| B | `deep-architect` to Opus (Q4); `routing.ask-first` (default list chosen by the owner) and `routing.pin`; other AI systems listed | **Done**, commits `9bb5b62`, `d0f5a1d` |
+| C | Shared project document set; "not only software" wording | **Done**, commit `c50b924`. Only a shared rule was added; each skill's own wording was not rewritten |
+| D | `profile: standard`, `local-first`, `cloud-first` (reserved until the engine lands); editor research (first pass, unverified) | **Done as documents**, see `profiles-and-presets.md` and `editor-research-2026-11-17.md`. The editor hand tests are not done |
+| E | Orchestrator engine (#46) | **Started 17 Nov.** Plan hand-locked (owner approved; `plan-contract.orchestrator-v2.v1.json`, hash checked by `hash-contract.mjs`). **Increment 0a done** (launcher, doctor, schema checker, safe store, redaction, CI job). **Increment 1 core done** (catalogue, `route`, config precedence, Ollama discovery). **Not built:** 0b (Claude/Codex discovery, simulator, event log), 1 rest (effort mapping, `explain`, `dry-run`), 2 to 12, increments 1a to 12a beyond the parts above, and hand tests HT-0 to HT-3 (need a real Claude Code session). See "Engine status" below |
+| Q8 | Ask-first list | **Answered:** Fable, Mythos, OpenAI's top flagship, Google's top Gemini, and any unpriced model |
+
+Checks run at `158f4bc`: both audits, smoke test, shellcheck, bats 211 of 211. To run bats here:
+`npm install -g bats` and `pip install shellcheck-py`, then `TMPDIR=<writable folder> bats tests/scripts.bats`.
+
+**Owner's answers to Q6–Q9 (17 Nov, recorded; not yet built):**
+
+| Q | Answer | What it means |
+| --- | --- | --- |
+| Q6 editors | VS Code and Cursor, Visual Studio, Xcode, JetBrains — **all four, in that order** | The editor research covers all four; start with VS Code and Cursor |
+| Q7 route order | **Local first, cloud for hard work or when local is not available.** The plugin also asks once per project and remembers the answer; if never asked (already-running projects), ask the first time. Also create **two profiles**: cloud-first and local-first. A user can also set their **own default per dev device** (a device with local models can default to local first) | A built-in default of local first; a per-project remembered answer; two named profiles; a per-device user setting that sits between the user's general setting and the project's. The addendum's suggested "cloud first" was **not** taken |
+| Q8 ask-first models | **Not decided.** First research which high-quality, expensive models other platforms offer (ChatGPT/Codex, Kimi, Gemini, DeepSeek and the like) and let the owner choose from the list. Local models are never on it (free) | **To do (research):** build that list with current prices, then ask the owner. Until answered, no model is on the list by default |
+| Q9 Copilot | Reviewer first, worker later | As recommended |
+
+### Engine status (17 November 2026, end of session)
+
+- **Where:** `engine/` (code and tests), `scripts/engine.sh` (the launcher), `schemas/engine/` and
+  `schemas/manifest.json`, `docs/orchestrator/`, `tests/engine.bats`, CI job `engine`.
+- **Check it:** `node --test engine/test/*.test.mjs` (69 tests; note Node 22 wants the file glob, not the
+  folder), `bats tests/engine.bats` (13), plus the older checks in `CONTEXT.md`.
+- **How it decides** (`engine/lib/routing.mjs`): tier not name; checking never below tier 3; cheapest
+  qualifying wins; ask-first models held back until approved (local never); pins exact or stop;
+  local-first default, cloud-first on request, order only changes the order tried.
+- **Known departures from the plan** (to list in `docs/orchestrator/departures.md` at increment 12):
+  (1) routing settings (`routing:`, `profile:`) are read from `.dev-team/config.yml`, not only
+  `orchestrator.json`, because the owner asked for them as user-facing settings in Groups B and D;
+  (2) the engine parses a small YAML subset itself rather than using a library (no dependencies);
+  (3) non-Claude catalogue entries are role-level placeholders marked unverified, never real model ids.
+- **Review:** Codex was not available. Under rule 5 the stand-in was fresh Opus agents that did not write
+  the code, one after another: **17 rounds** (each fix was re-reviewed). Rounds 1 to 16 each found real
+  bugs, all fixed with a test (the last real code bugs were: a pin dropped for a tier-4 model, ask-first
+  not matching a pinned version). Round 17 found **no code bugs**, only two documentation gaps, now fixed.
+  One finding was declined with a reason (round 1, #3: an explicit `ask-first` in the user's own
+  `config.yml` replaces the default; only repository instruction files may add). The config reader was
+  made to **fail closed**: anything it cannot understand under `routing:` stops routing
+  (`SETTINGS_INVALID` / `PIN_INVALID`). The lesson: a hand-written YAML reader is a long tail; if the
+  engine ever needs more of YAML, use a real parser instead of extending this one. Still counts as
+  **not fully reviewed** until Codex has looked. Brief for Codex: review `git diff 87c0f70..HEAD -- engine
+  scripts tests/engine.bats`.
+- **Next:** increment 0b, then the rest of increment 1 (`explain`, `dry-run`, effort mapping), then 2,
+  3, 4 in order (`plan.md` section 4). Hand tests HT-0 to HT-3 need the owner's real Claude Code session.
+
+### Engine progress, 17 November 2026 (autonomous run, end of day)
+
+Everything is on `claude/busy-knuth-bc35ok`, pushed (last engine commit `04f2eae`; 205 unit tests, 32 launcher tests, 211 older tests, completion gate all PASS). **No part has had a Codex review** (Codex is not installed in the
+cloud session). Instead every part had 2 to 17 rounds of independent review by fresh Opus agents that did not write it,
+with every real finding fixed and tested, so all of it counts as **not fully reviewed**. Run `bash scripts/completion-gate.sh`
+for the full checklist (it runs every check and says PASS/FAIL).
+
+| Increment | State |
+| --- | --- |
+| 0a launcher, doctor, schemas | Built, reviewed |
+| 0b adapters (Claude Code, Codex, Gemini, Kimi, Grok, Copilot, DeepSeek, Ollama), discovery cache, simulator, events, `autopilot.json` schema (#43) | Built, reviewed |
+| 1 routing, floors, effort, decisions, explain, dry-run, ask-first, pins, local-first/cloud-first | Built, reviewed (17 rounds on the core) |
+| 2 role-named agent files with effort, old names kept as deprecated aliases (DEP-K: old names still appear in skill text) | Built, reviewed |
+| 3 plan lock, drift, evidence gate, attempts, jobs, checkpoints, progress table | Built, reviewed |
+| 4 quota reading, leases, snapshots, pause/resume, fallback, takeover; autopilot recovery rule rewritten for when the engine is present | Built, reviewed (3 rounds) |
+| 5 review independence, finding lifecycle, review contract | Built, reviewed (2 rounds) |
+| 6 action levels, policy packs, invariants, rollback rule, `check-no-lang-ext-urls.sh` | Built, reviewed (2 rounds) |
+| 7 reserves, budgets, cost estimates | Built, reviewed (1 round, fixes in) |
+| 8 learning records, competency, canary stages, health states | Core built and reviewed (2 rounds). **Not built:** probes, tool-reliability counters, shadow evaluation, history views; **not wired into `route`** (competency and canary are not yet used for routing). Known gap: no rate limit on recording |
+| 9 signed remote catalogue (plugin side; pinned key is a placeholder nobody can sign for) | Built, reviewed (1 round) |
+| 10 decomposition, parallelism, integration engineer, provenance | **Not built**: the plan requires hand test HT-4 (can sub-agents spawn sub-agents) first, which needs a real Claude Code session |
+| 11 owner practice bundle | Part built: `git.push-after-task` + `push check`, named-issue and end-of-run rules. **Not wired:** no skill calls `engine.sh push check` yet, so the setting documents the rule and the engine can answer it, but skills still follow their old "never push" text. F2 (`init --rules`) and F15 not built |
+| 12 completion gate, docs, version 2.0.0 | `scripts/completion-gate.sh` built and passing. **Not done:** the 30 documentation topics, README "Orchestrator (2.0)" section, CHANGELOG 2.0.0 finalisation, `plugin.json` version bump (left at 1.7.0 on purpose: do not call this 2.0.0 until 8 and 10 and the hand tests are done, owner's call) |
+
+**Still needs the owner's own machine or session:** a Codex review of `git diff 87c0f70..HEAD`; hand tests HT-0 to HT-4 (a real
+Claude Code session: whether `CLAUDE_PLUGIN_DATA` reaches skills and hooks, resuming an agent by id, whether the spawn-time
+model parameter overrides the agent file and whether `effort:` in an agent file is honoured, whether the ledger guard fires
+for a sub-agent's Write, nested sub-agents); the editor hand tests; the real model-price check for Q8.
+
+**Known unverified assumptions in the code:** quota message wording (synthetic samples only); Claude `auth status --json`
+output; Codex `debug models` shape (synthetic sample); every non-Claude/Codex provider; the `effort:` agent line.
+
+**Lessons recorded:** a hand-written YAML reader is a long tail (it now fails closed, do not extend it); each review round
+that found real bugs also found bugs in the previous round's fixes, so re-review every fix; the engine's data folder must
+never be inside the project in tests (it makes the tree look dirty).
+
+### Added later on 17 November — owner's new requirements (work branch `claude/busy-knuth-bc35ok`)
+
+- The owner asked for: model-per-job delegation, many AI systems (adding Copilot, DeepSeek, Ollama),
+  local-first or cloud-first with a smooth switch, editor support, per-session and per-repository
+  settings, models that need explicit approval, exact version pinning, new models found without a
+  plugin update, one shared set of project documents, tracker as source of truth, and Swagger UI for
+  web projects with an API.
+- **Done in this session:** standing rules 12–15 added to `.claude/CLAUDE.md` and `.OpenAI/AGENTS.md`
+  (same text in both; rule 11 reworded so it covers this repository only). The new requirements and
+  what the existing #46 plan already covers are in
+  `.claude/plans/orchestrator-v2/owner-brief-addendum-2026-11-17.md`, with four new questions
+  (Q6–Q9) that are **open**, each with a suggested answer.
+- **Not done:** no plugin code changed. The addendum is not yet folded into `plan.md`.
+- **Branch note:** this session's working branch is `claude/busy-knuth-bc35ok`, set by the cloud
+  session. It is the single working branch for now (rule 6). The orchestrator work was to go on a
+  fresh branch from `alpha` (Q2); this branch has the same starting point, so use it unless told otherwise.
+- **Next:** see the task list the session gave the owner; the first group is #44 + #48 + the
+  `deep-architect` change.
+
+### What happened on 9 November
+
+| Step | Result |
+| --- | --- |
+| Compared three unmerged branches by reading the real code, not commit titles | `feature/bcp47-language-policy` (112 commits) already contained all of `claude/ledger-file-clashes` (66 commits), so the ledger branch needed no separate step. `claude/gifted-wright-y3ze25` (2 commits, the polish skill) was independent. |
+| Merged them into one new branch and opened **one** pull request, [#49](https://github.com/MWBMPartners/dev-team-plugin/pull/49), straight to `main` | Merged as `00e0b67`. Five files conflicted when the polish branch went in; all were resolved by keeping both sides. |
+| Version numbers | The polish skill had been numbered 1.5.0 on its own branch, which clashed with 1.5.0 (ledger) and 1.6.0 (language policy). It is now **1.7.0**, and `plugin.json` says 1.7.0. |
+| Checks | On the pull request and again on `main` after the merge: `plugin-audit` (audit and test) and `Lint Workflows` all passed. Run by hand beforehand: both audits, smoke test, shellcheck, and bats 207 of 207. |
+| Branches | `alpha` and `beta` were moved forward to the same commit as `main` (`00e0b67`). They had nothing of their own, so nothing was lost. The three old branches and the working branch were then deleted by the owner (this session's connection to GitHub is not allowed to delete branches). |
+
+**Merging straight to `main` was a one-off**, at the owner's request. The standing rule is unchanged
+(`.claude/CLAUDE.md` rule 6, and the owner confirmed it on 9 November): future work goes on **one
+working branch, merged into `alpha` by one pull request**, opened when the owner says.
+
+### The red checks on `main` — what is known
+
+- Since the `actions/checkout` update in [#40](https://github.com/MWBMPartners/dev-team-plugin/pull/40)
+  (23 September), all three checks on `main` failed within about two seconds. The jobs never got a
+  machine to run on (no steps ran), and GitHub had already discarded the logs, so **the real cause was
+  never seen**.
+- The same checkout version passed on the pull request and on `main` on 9 November, so it is **not**
+  a fault in that version. Most likely a temporary GitHub problem on 23 September. This is an
+  inference, not something checked.
+
+### Still true: the review debt
+
+- **Never cleared:** a clean Codex review. The older sections record that #41's fix rounds 3 to 5 and
+  #47's sixth round had **not** had a clean Codex pass when this work was last touched in early
+  October, and nothing in the repository or on GitHub shows one happened afterwards. The 9 November
+  merge did not add a review: it combined work and ran the automatic checks. Under rule 5 this work
+  therefore still counts as **not fully reviewed**.
+- **What to do:** when the Codex allowance is available, run it over the whole of what is now on
+  `main` (the brief and exact command are in
+  `.claude/plans/ledger-file-clashes/codex-review-prompt-5.md`), fix every confirmed finding on a new
+  working branch, and repeat until a round finds nothing. If Codex cannot run, use a fresh, independent
+  Claude reviewer and say so plainly.
+- **Not reviewed at all:** the polish skill (`dev-team-polish`, its command and the SessionStart
+  reminder). It was written on its own branch and no cross-system review is recorded for it.
+
+### Housekeeping to do next
+
+1. **Issues #41 and #47 are still open** and still say their work is "on branch
+   `claude/ledger-file-clashes`" / "`feature/bcp47-language-policy`". Add a comment to each saying it
+   merged in #49 on 9 November (as 1.5.0 and 1.6.0 respectively), and that the review debt above
+   remains. Do not close them until the review is clean — the owner's call.
+2. **Documents still name deleted branches.** `.claude/CONTEXT.md` and `.claude/MEMORY.md` were updated on 17 November.
+   `.OpenAI/CONTEXT.md` has a dated note. The issue texts for #41, #45, #46 and #47 still name
+   `claude/ledger-file-clashes`; the older sections of this file do too, on purpose (history).
+3. **Issue [#48](https://github.com/MWBMPartners/dev-team-plugin/issues/48)** (the conventions text
+   says both guard hooks fail open, which is no longer true of the Bash guard) is a small
+   wording-only fix, ready to do.
+4. **Tidy the record:** the 14 September to 5 October detail below is long. Once the review debt is
+   cleared, fold it into a short summary.
+
+### Owner decisions — answered 17 November 2026 (recorded only; none of this has been built yet)
+
+| # | Question | Owner's answer | What it means for the next session |
+| --- | --- | --- | --- |
+| Q1 | Where `.dev-team/` lives when a session starts in a subfolder | **The subfolder** (as recommended) | Nothing to change in the skills. `/dev-team-move-ledgers` should also look in the subfolder — check it does. |
+| Q2 | #46 D1–D4 (engine language, branch, unverified providers, hand-over after 12+ hours) | **Accept all as recommended** in `.claude/plans/orchestrator-v2/plan.md` | Node engine; a fresh branch from `alpha` (a stated exception to the one-branch rule, approved here); Gemini, Kimi and Grok documented but marked unverified; hand over after 12+ hours of outage. |
+| Q3 | #45: built-in defaults or a preset | **A named preset** (`profile: standard`) | Built-in defaults stay cautious. Which features the preset contains is still open: the four sub-choices in issue #45 (F13 push after each task, F10 Codex replacing or adding to the Claude checker, F5 "one after another" scope, F7/F8 cheaper building default) have **not** been answered. |
+| Q4 | `deep-architect` default model | **Change the default to Opus now** (not the recommended "leave it") | **To do:** change the default in `agents/deep-architect.md` and anything that describes it (model-routing reference, README, CHANGELOG, `.claude/` and `.OpenAI/` notes), then run the model-id audit and bats. This also needs a version/CHANGELOG entry. Do it on the new working branch, not before. |
+| Q5 | Device-wide rules on the owner's computer | **Yes, ask a local session** | The wording is in `.claude/device-wide-rules.md`. It needs a session running on the owner's own computer, because a cloud session cannot reach `~/.claude/CLAUDE.md` or `~/.codex/AGENTS.md`. Not done; the owner runs it. |
+
+The four #45 sub-choices were answered later the same day — see the next table. **No owner question
+is open any more.**
+
+### #45 sub-choices — answered 17 November 2026 (recorded only; none of this has been built yet)
+
+These decide what goes in the `profile: standard` preset chosen in Q3. The feature map with the evidence
+for each is `.claude/plans/owner-standard-features/feature-map.md` (and `feature-map-round-2.md`).
+
+| Item | Question | Owner's answer | What it means for the next session |
+| --- | --- | --- | --- |
+| F13 | Push after each task | **A setting, off by default** | The plugin keeps never pushing on its own unless the setting is on. The `standard` preset turns it on. Needs a new setting in `config-and-toggles.md`, the steps in the skills that say "never push", the README, the CHANGELOG and tests. The guard's rule against pushing to `main` must still apply. |
+| F10 | Codex replacing or adding to the Claude checker | **In addition, when available** | The Claude checker always runs. Codex adds an independent second review where it is installed and has allowance; if it cannot run, say so and treat the work as "not fully reviewed" (rule 5). |
+| F5 | "One after another" scope | **Analysis and planning only; debates stay side by side** | Opus analysis and planning steps run in sequence, each building on or checking the last. Debates keep their side-by-side design so debaters cannot see each other's arguments. |
+| F7/F8 | Cheaper building as default | **Part of the preset only** | The built-in default is unchanged. `profile: standard` picks Sonnet or Haiku for building, Opus only for complex changes. |
+
+All of these belong with #45 and #46 on the new orchestrator branch (Q2); the preset itself is built
+there, not now.
+
+### Follow-up issues #42, #43, #44 — answered 17 November 2026 (recorded only; none of this has been built yet)
+
+| Issue | Question | Owner's answer | What it means for the next session |
+| --- | --- | --- | --- |
+| #42 | Security findings committed under `.dev-team/` are public in a public repository. What should the default be? | **Keep them out of git by default; committing is an opt-in** | **To do:** the security skill writes `.dev-team/SECURITY.md` locally and keeps it out of git unless a project turns committing on (a new setting; add it to `config-and-toggles.md`, with the default "off"). Decide how it is kept out of git (for example by adding it to a `.gitignore` the plugin manages, or by warning) — not yet chosen. Update the security skill, its references, the README, the CHANGELOG and the tests. Check that existing projects that already commit the file are told, not surprised. |
+| #43 | Add a schema for `.dev-team/autopilot.json` and make its documented example valid JSON | **Yes, but later, together with #46** | Do **not** build it now. Write the schema once, when the orchestrator work (#46) settles what the file contains, so it is not written twice. Until then the example in `skills/dev-team-autopilot/references/loop-runtime.md` stays as it is (it contains `//` comments and so cannot be validated). |
+| #44 | What should "a run is in progress" mean for the Bash guard? | **The folder `.dev-team/loop.lock/` exists** | **To do:** change `hooks/guard-dev-team.sh` (line 21 checks `autopilot.json` today) to look for the lock folder instead; update its tests and the `guard` row in `config-and-toggles.md`. The lock folder exists only while a cycle runs and is never committed. Note the ledger guard's Rule 2 already uses this signal. Related: #48 (wording about which guard fails open) touches the same hook text, so do them together. |
+
+Order suggested for the next session: #44 and #48 together (small, one hook and its wording), then #42,
+alongside the `deep-architect` change from Q4. #43 waits for #46.
+
+### Facts that are easy to get wrong
+
+- Version on `main`: **1.7.0**. Verdict schema, ledger guard, language-policy rule and polish skill
+  are all in it.
+- `main`, `alpha` and `beta` were identical at `00e0b67` on 9 November. Check with `git log
+  origin/alpha..origin/main` before assuming that still holds.
+- From a cloud session, deleting branches or moving a branch other than the session's own is blocked
+  at the connection; moving `alpha`/`beta` forward worked, deleting did not. Ask the owner to delete.
+- The `.claude/CLAUDE.md` rules (plain English, handover kept current, a different system reviews the
+  work) were not run through the plugin during #49: the merge was done by hand.
+
+## Older record: `feature/bcp47-language-policy` (issue #47) — added 28 September 2026
+
+> **Superseded 17 November 2026:** this branch was merged into `main` on 9 November (#49) and deleted.
+> What follows is the record as it stood on 5 October; its "next" steps are out of date.
 
 - **What it adds (plugin version 1.6.0):** a shared rule, "Repository instructions and normative
   documents" (first bullet of "Shared discipline" in
@@ -487,7 +757,7 @@ see the section straight below.
   (`dry-run: off`, `gates: hybrid`, …), so a freshly initialised config could overrule a project's
   cautious instruction. Decided by the lead and built in the starter-file commit (above).
 
-## START HERE — for a fresh session with no chat history
+## START HERE — for a fresh session with no chat history (written 23 September; see "Current state" above for what has changed since)
 
 Read, in this order: this section; `.claude/CLAUDE.md` (the standing rules, revised on 23 September);
 `.claude/CONTEXT.md` (what the repository is and how to check it); `.claude/MEMORY.md` (traps already

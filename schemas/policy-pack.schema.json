@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dev-team policy pack",
+  "description": "A named set of extra rules for a kind of project. A pack may raise floors, add reviews, invariants and approval gates; it can never lower a built-in floor or gate.",
+  "type": "object",
+  "required": [
+    "dev-team",
+    "id",
+    "description",
+    "raiseFloors",
+    "mandatoryReviews",
+    "invariants",
+    "gates",
+    "rollbackRequired"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "dev-team": {
+      "description": "Ownership marker.",
+      "type": "string"
+    },
+    "id": {
+      "description": "The pack's name.",
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "description": {
+      "description": "What the pack is for.",
+      "type": "string"
+    },
+    "raiseFloors": {
+      "description": "Task type to a minimum tier (0 to 4), only ever raising the built-in minimum.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 4
+      }
+    },
+    "mandatoryReviews": {
+      "description": "Kinds of review that must happen.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "invariants": {
+      "description": "Rules that must always hold, in plain words.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "gates": {
+      "description": "Action kind to a level; may only be at least as careful as the built-in level.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "enum": [
+          "AUTO",
+          "REQUIRE_HIGH_CONFIDENCE",
+          "REQUIRE_REVIEW",
+          "REQUIRE_HUMAN_APPROVAL",
+          "PROHIBITED"
+        ]
+      }
+    },
+    "rollbackRequired": {
+      "description": "True when a plan under this pack must say how to roll back.",
+      "type": "boolean"
+    }
+  }
+}

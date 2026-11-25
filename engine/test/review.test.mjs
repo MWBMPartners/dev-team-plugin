@@ -1,0 +1,88 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { chooseReviewer, diversityBonus } from '../lib/independence.mjs';
+import { findingId, addFinding, updateFinding, precision } from '../lib/findings.mjs';
+import { planReview, specialistsFor } from '../lib/review.mjs';
+
+const M = (provider, id, tier, canaryStage = 'TRUSTED', extra = {}) => ({ provider, id, tier, canaryStage, availability: 'AVAILABLE', lifecycleStatus: 'ACTIVE', costBand: tier, ...extra });
+const models = [M('claude', 'sonnet', 2), M('claude', 'opus', 3), M('codex', 'gpt-x', 3)];
+const built = { provider: 'claude', model: 'opus' };
+
+test('review ladder: a different provider first; then the same provider\'s other model; then the same model fresh', () => {
+  assert.equal(chooseReviewer({ builtBy: built, risk: 'NORMAL', models }).independence, 'CROSS_PROVIDER');
+  const noOther = chooseReviewer({ builtBy: built, risk: 'NORMAL', models: [M('claude', 'opus', 3), M('claude', 'fable', 4)] });
+  assert.equal(noOther.independence, 'SAME_PROVIDER_DIFFERENT_MODEL'); assert.ok(noOther.warnings.length);
+  const only = chooseReviewer({ builtBy: built, risk: 'LOW', models: [M('claude', 'opus', 3)] });
+  assert.equal(only.independence, 'SAME_MODEL_FRESH_CONTEXT'); assert.equal(only.chosen.id, 'opus');
+  assert.equal(chooseReviewer({ builtBy: built, risk: 'NORMAL', models: [M('claude', 'sonnet', 2)] }).reason, 'NO_REVIEWER_AVAILABLE');
+});
+test('critical work: cross-provider when possible; with the other provider exhausted the next rung is used, the reason is recorded and it never claims cross-provider', () => {
+  assert.equal(chooseReviewer({ builtBy: built, risk: 'CRITICAL', models }).satisfied, true);
+  const r = chooseReviewer({ builtBy: built, risk: 'CRITICAL', models, exhausted: ['codex'] });
+  assert.equal(r.independence, 'SAME_MODEL_FRESH_CONTEXT'); assert.equal(r.satisfied, false); assert.ok(r.skipped.some((s) => s.model === 'codex/gpt-x' && s.reason === 'QUOTA_EXHAUSTED'));
+  const v = chooseReviewer({ builtBy: built, risk: 'CRITICAL', models: [M('claude', 'opus', 3), M('codex', 'gpt-x', 3, 'VALIDATED')] });
+  assert.ok(v.skipped.some((s) => s.reason === 'CANARY_STAGE')); assert.notEqual(v.independence, 'CROSS_PROVIDER');
+  assert.equal(chooseReviewer({ builtBy: built, risk: 'LOW', models: [M('claude', 'opus', 3), M('codex', 'gpt-x', 3, 'PROVISIONAL')] }).independence, 'CROSS_PROVIDER');
+  assert.throws(() => chooseReviewer({ builtBy: built, risk: 'EXTREME', models }), RangeError); assert.throws(() => chooseReviewer({ builtBy: {}, models }), RangeError);
+});
+test('review floor: a model below tier 3 never reviews; retired and unavailable models are skipped', () => {
+  const r = chooseReviewer({ builtBy: built, risk: 'NORMAL', models: [M('codex', 'small', 2), M('codex', 'old', 3, 'TRUSTED', { lifecycleStatus: 'RETIRED' }), M('claude', 'opus', 3)] });
+  assert.deepEqual(r.skipped.map((s) => s.reason).sort(), ['BELOW_REVIEW_FLOOR', 'UNAVAILABLE']); assert.equal(r.independence, 'SAME_MODEL_FRESH_CONTEXT');
+});
+test('diversity bonus: a provider that neither planned nor built is preferred', () => {
+  assert.equal(diversityBonus('claude', 'codex', { provider: 'gemini' }), 1); assert.equal(diversityBonus('claude', 'codex', { provider: 'claude' }), 0);
+});
+test('findings: stable ids; allowed steps only; verified cannot be re-opened without evidence; the raiser cannot verify; counters', () => {
+  const id1 = findingId({ file: 'a.js', rule: 'R1', summary: 'Missing  check' }), id2 = findingId({ file: './a.js', rule: 'r1', summary: 'missing check' });
+  assert.equal(id1, id2); assert.notEqual(id1, findingId({ file: 'A.js', rule: 'R1', summary: 'Missing check' })); // a different case can be a different file
+  assert.equal(findingId({ file: 'a', summary: 'caf\u00e9' }), findingId({ file: 'a', summary: 'cafe\u0301' })); assert.match(id1, /^F-[0-9a-f]{8}$/);
+  let r = addFinding([], { file: 'a.js', rule: 'R1', summary: 'Missing check', severity: 'BLOCKING', reviewer: 'codex' }); let list = r.list;
+  assert.equal(addFinding(list, { file: 'a.js', rule: 'R1', summary: 'Missing check', severity: 'BLOCKING', reviewer: 'codex' }).added, false);
+  assert.throws(() => updateFinding(list, r.id, { status: 'FIXED' }), /cannot go from OPEN to FIXED/);
+  list = updateFinding(list, r.id, { status: 'ACCEPTED', by: 'lead' }); list = updateFinding(list, r.id, { status: 'FIXED', by: 'engineer' });
+  assert.throws(() => updateFinding(list, r.id, { status: 'VERIFIED', by: 'codex' }), /raised/);
+  list = updateFinding(list, r.id, { status: 'VERIFIED', by: 'claude-checker' });
+  assert.throws(() => updateFinding(list, r.id, { status: 'OPEN', by: 'x' }), /new evidence/); assert.throws(() => updateFinding(list, r.id, { status: 'OPEN', by: 'x', evidence: 'short' }), /new evidence/);
+  list = updateFinding(list, r.id, { status: 'OPEN', by: 'x', evidence: 'The check is missing again on the new route.' }); assert.equal(list[0].status, 'OPEN');
+  assert.throws(() => updateFinding(list, 'F-nope', { status: 'OPEN' }), RangeError); assert.throws(() => updateFinding(list, r.id, { status: 'WEIRD' }), RangeError);
+  const l2 = addFinding([], { file: 'b', summary: 'x', severity: 'LOW', reviewer: 'codex' }); const fp = updateFinding(l2.list, l2.id, { status: 'FALSE_POSITIVE', by: 'lead' });
+  assert.deepEqual(precision(fp), { codex: { raised: 1, accepted: 0, rejected: 0, falsePositive: 1 } });
+  assert.throws(() => updateFinding(fp, l2.id, { status: 'ACCEPTED' }), /cannot go/);
+});
+test('review plan: specialists by task type and component, an adversarial pass at high risk, a fresh-context contract and the chosen reviewer', () => {
+  assert.deepEqual(specialistsFor(['SECURITY_REVIEW', 'DATABASE_REVIEW'], 'LOW'), { specialists: ['database', 'security'], adversarial: false });
+  assert.deepEqual(specialistsFor([], 'HIGH', ['payment gateway', 'sql migration']), { specialists: ['database', 'security'], adversarial: true });
+  const p = planReview({ jobId: 'j-aaaaaaaaaaaa', phase: 'verify', risk: 'CRITICAL', files: ['a.js'], taskTypes: ['SECURITY_REVIEW'], builtBy: built, models, invariants: ['no secrets'] });
+  assert.equal(p.contract.freshContext, true); assert.equal(p.contract.adversarial, true); assert.ok(p.contract.instructions.some((x) => /attack/.test(x))); assert.equal(p.reviewer.independence, 'CROSS_PROVIDER');
+  assert.throws(() => planReview({ jobId: 'j', phase: 'v', files: 'x', builtBy: built, models }), RangeError);
+});
+
+test('review never uses an ask-first model without approval; local models are exempt; approval releases it', () => {
+  const ms = [{ ...M('claude', 'opus', 3), alias: 'opus' }, { ...M('claude', 'fable', 4), alias: 'fable', classes: ['fable'] }];
+  const r = chooseReviewer({ builtBy: { provider: 'claude', model: 'opus' }, risk: 'NORMAL', models: ms, askFirst: ['fable'] });
+  assert.ok(r.skipped.some((s) => s.model === 'claude/fable' && s.reason === 'NEEDS_APPROVAL')); assert.equal(r.independence, 'SAME_MODEL_FRESH_CONTEXT');
+  const ok = chooseReviewer({ builtBy: { provider: 'claude', model: 'opus' }, risk: 'NORMAL', models: ms, askFirst: ['fable'], approved: ['fable'] }); assert.equal(ok.chosen.id, 'fable');
+  const loc = chooseReviewer({ builtBy: { provider: 'claude', model: 'opus' }, risk: 'NORMAL', models: [...ms, { ...M('ollama', 'big', 3), local: true }], askFirst: ['unpriced', 'big'] }); assert.ok(!loc.skipped.some((s) => s.model === 'ollama/big'));
+});
+
+// ---- Fixes after the independent review of increment 5 ----
+test('independence: names compare ignoring case; inherited object names are not trust stages; a missing tier never passes the floor', () => {
+  const r = chooseReviewer({ builtBy: { provider: 'Claude', model: 'OPUS' }, risk: 'HIGH', models: [M('claude', 'opus', 3), M('claude', 'sonnet', 3)] });
+  assert.notEqual(r.chosen.id, 'opus'); assert.equal(r.independence, 'SAME_PROVIDER_DIFFERENT_MODEL');
+  const c = chooseReviewer({ builtBy: built, risk: 'CRITICAL', models: [M('claude', 'opus', 3), M('codex', 'gpt-x', 3, 'constructor')] }); assert.ok(c.skipped.some((s) => s.reason === 'CANARY_STAGE'));
+  const t = chooseReviewer({ builtBy: built, risk: 'CRITICAL', models: [M('claude', 'opus', 3), { ...M('codex', 'gpt-x', undefined) }] }); assert.ok(t.skipped.some((s) => s.reason === 'BELOW_REVIEW_FLOOR')); assert.notEqual(t.independence, 'CROSS_PROVIDER');
+  assert.equal(diversityBonus('Claude', 'codex', { provider: 'claude' }), 0);
+});
+test('findings: verifying needs a named verifier whose name differs ignoring case and spaces; duplicate ids are refused; odd reviewer names are only names', () => {
+  const r = addFinding([], { file: 'a', summary: 'x', severity: 'LOW', reviewer: 'Codex' }); let l = updateFinding(r.list, r.id, { status: 'ACCEPTED', by: 'lead' }); l = updateFinding(l, r.id, { status: 'FIXED', by: 'e' });
+  assert.throws(() => updateFinding(l, r.id, { status: 'VERIFIED' }), /named/); assert.throws(() => updateFinding(l, r.id, { status: 'VERIFIED', by: ' codex ' }), /raised/);
+  assert.throws(() => updateFinding([...l, l[0]], r.id, { status: 'VERIFIED', by: 'other' }), /more than one/);
+  const odd = addFinding([], { file: 'a', summary: 'y', severity: 'LOW', reviewer: '__proto__' }); assert.deepEqual(precision(odd.list), { ['__proto__']: { raised: 1, accepted: 0, rejected: 0, falsePositive: 0 } }); assert.equal(({}).raised, undefined);
+});
+test('the review command refuses unknown trust-stage names and bad inputs, and still works with good ones', async () => {
+  const { reviewCommands } = await import('../lib/review-commands.mjs');
+  const { writeFileSync, mkdtempSync } = await import('node:fs'); const { tmpdir } = await import('node:os'); const { join } = await import('node:path');
+  const d = mkdtempSync(join(tmpdir(), 'dt-rv-')); const call = (o) => { const f = join(d, 'i.json'); writeFileSync(f, JSON.stringify({ jobId: 'j-aaaaaaaaaaaa', phase: 'v', risk: 'CRITICAL', files: ['a'], builtBy: built, projectDir: d, ...o })); return reviewCommands.review({ sub: 'plan', flags: { input: f } }); };
+  await assert.rejects(call({ stageOverrides: { codex: 'constructor' } }), /stageOverrides/); await assert.rejects(call({ models: 'x' }), /models/); await assert.rejects(call({ files: [] }), /files/);
+  const ok = await call({ stageOverrides: { codex: 'TRUSTED' } }); assert.equal(ok.result.reviewer.independence, 'CROSS_PROVIDER');
+});

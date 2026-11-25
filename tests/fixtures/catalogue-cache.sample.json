@@ -1,0 +1,58 @@
+{
+  "fetchedAt": "2026-11-17T00:00:00.000Z",
+  "ttlHours": 24,
+  "stale": false,
+  "profiles": [
+    {
+      "provider": "anthropic",
+      "runtime": "claude-code",
+      "providerModelId": "opus",
+      "availability": "UNKNOWN",
+      "lifecycleStatus": "ACTIVE",
+      "contextWindow": "UNKNOWN",
+      "reasoningControls": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "defaultReasoning": "UNKNOWN",
+      "runtimeCapabilities": {
+        "filesystem": true,
+        "shell": true,
+        "git": true,
+        "tests": true,
+        "mcp": true,
+        "subagents": true,
+        "structuredOutput": true,
+        "reasoningControl": true,
+        "contextIsolation": true,
+        "sessionResume": "UNKNOWN",
+        "checkpointResume": true,
+        "network": true,
+        "reviewMode": true
+      },
+      "capabilityTier": 3,
+      "canaryStage": "TRUSTED",
+      "latencyClass": "UNKNOWN",
+      "monetaryCost": "UNKNOWN",
+      "tokenCost": "UNKNOWN",
+      "creditCost": "UNKNOWN",
+      "pricing": "UNKNOWN",
+      "rateLimits": "UNKNOWN",
+      "relativeCostClass": 6,
+      "confidence": 0.8,
+      "lastValidated": "2026-11-17T16:55:17.244Z",
+      "provenance": {
+        "providerModelId": "COMPAT_DATA",
+        "lifecycleStatus": "COMPAT_DATA",
+        "capabilityTier": "HEURISTIC",
+        "reasoningControls": "COMPAT_DATA",
+        "canaryStage": "COMPAT_DATA",
+        "relativeCostClass": "COMPAT_DATA",
+        "lastValidated": "RUNTIME_DISCOVERY"
+      }
+    }
+  ]
+}

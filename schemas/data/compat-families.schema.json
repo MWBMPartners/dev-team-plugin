@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dev-team OpenAI family hints",
+  "description": "Rough strength hints by model-name prefix. Guesses, used until real results exist.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "dev-team",
+    "description",
+    "families"
+  ],
+  "properties": {
+    "dev-team": {
+      "description": "Ownership marker.",
+      "type": [
+        "string"
+      ]
+    },
+    "description": {
+      "description": "What the file is.",
+      "type": [
+        "string"
+      ]
+    },
+    "families": {
+      "description": "One entry per family.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "prefix",
+          "tierHint",
+          "note"
+        ],
+        "properties": {
+          "prefix": {
+            "description": "Start of the model name.",
+            "type": [
+              "string"
+            ]
+          },
+          "tierHint": {
+            "description": "Guessed strength 1 to 4.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "note": {
+            "description": "Why.",
+            "type": [
+              "string"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

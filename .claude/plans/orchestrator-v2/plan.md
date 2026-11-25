@@ -856,3 +856,18 @@ HT-0 plugin data variable in Bash; HT-1 sub-agent resume; HT-2 spawn-time `model
 | What is good | Kept unchanged: the decide-and-record split with I9; the storage rules and markers; the exit-3 shim; quota observations with causes, scope, assumptions and confidence; the paused ≠ crashed idea (trigger corrected); the remote-catalogue design; the runnable gate with the Codex run id; DEP-1..12 and the D1–D4 deltas; the rename as its own increment; 5 depending on 4; Fable re-planning per increment; the audit widening and rewording. |
 
 Nothing in the critique was rejected.
+
+## 11. Increments added 17 November 2026 (from the owner's new requirements)
+
+Source: `owner-brief-addendum-2026-11-17.md` (all questions Q6–Q9 and Q8's list answered).
+**Not yet inside the section 10 plan contract**, which is still unlocked; fold these in before the hand-lock in increment 0a, step 0.
+
+| New increment | Goal | Size | Build | Notes |
+|---|---|---|---|---|
+| 1a — providers and route order | Adapters for Copilot (reviewer first), DeepSeek and Ollama; `routing.order` (local-first default, asked once per project, per-device file `~/.dev-team/device.yml`); the two profiles; the "allowance reached" and "task too hard" switches | M | Sonnet; Opus read-through of the switch rules | Ollama discovery asks the local install what it has (new models appear with no plugin change) |
+| 6a — model approval and pins | Enforce `routing.ask-first` (default list in `model-routing.md`) and `routing.pin` in the engine; "unpriced model" counts as ask-first | S | Sonnet | The documented behaviour already exists as lead instructions; this makes it checkable |
+| 11a — project documents | Engine checks that the handover, goals, requirements and plan documents exist and agree; template check | S | Sonnet | Documents defined in `documentarian-protocol.md` |
+| 12a — tracker and API docs | Sync boards and milestones as well as issues (GitHub, GitLab); a docs-skill check that a web project with an API has a current OpenAPI file and a Swagger UI page | M | Sonnet | Rule 14 and 15 |
+| R-IDE — editor hand tests | VS Code and Cursor, Visual Studio, Xcode, JetBrains, in that order; record what works | M | by hand | `editor-research-2026-11-17.md` is the starting point |
+
+Where the build starts: increment 0a, once the owner approves locking this plan. Nothing in the engine is built yet.

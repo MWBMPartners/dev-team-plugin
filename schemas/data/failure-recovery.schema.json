@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dev-team failure recovery table",
+  "description": "What to do for each kind of failure.",
+  "type": "object",
+  "required": [
+    "dev-team",
+    "description",
+    "classes"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "dev-team": {
+      "description": "Ownership marker.",
+      "type": "string"
+    },
+    "description": {
+      "description": "What the file is.",
+      "type": "string"
+    },
+    "classes": {
+      "description": "Failure class to its recovery.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "action",
+          "escalate",
+          "note"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "description": "What to do.",
+            "type": "string",
+            "enum": [
+              "PAUSE_OR_BLOCK",
+              "SWITCH_MODEL",
+              "RETRY_LATER",
+              "RETRY_ONCE",
+              "ESCALATE_TIER",
+              "REBRIEF",
+              "ASK_OWNER",
+              "SPLIT_TASK"
+            ]
+          },
+          "escalate": {
+            "description": "True when a stronger model tier should be tried.",
+            "type": "boolean"
+          },
+          "note": {
+            "description": "The reason, in plain words.",
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

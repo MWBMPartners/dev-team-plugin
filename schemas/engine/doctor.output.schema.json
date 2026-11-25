@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/MWBMPartners/dev-team-plugin/schemas/engine/doctor.output.schema.json",
+  "title": "dev-team doctor result",
+  "description": "The `result` of the engine's `doctor` command: which tools are present and what the plugin does without the missing ones. It never contains account details.",
+  "type": "object",
+  "required": ["node", "dataDir", "dataDirIsFallback", "dataDirWritable", "tools", "codexLoggedIn", "fallbacks"],
+  "additionalProperties": false,
+  "properties": {
+    "node": { "description": "The Node.js version running the engine.", "type": "string" },
+    "dataDir": { "description": "The folder where the engine keeps its machine-local files, or null if none could be worked out.", "type": ["string", "null"] },
+    "dataDirIsFallback": { "description": "True when no data folder was given and the default under the home folder was used.", "type": "boolean" },
+    "dataDirWritable": { "description": "True when the engine could write to that folder.", "type": "boolean" },
+    "tools": {
+      "description": "For each tool the engine looks for: whether it is present and its first version line.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["present", "version"],
+        "additionalProperties": false,
+        "properties": {
+          "present": { "description": "True when the tool ran.", "type": "boolean" },
+          "version": { "description": "The tool's first version line, or null when absent.", "type": ["string", "null"] }
+        }
+      }
+    },
+    "codexLoggedIn": { "description": "True when Codex is installed and reports a login. No account detail is ever read or shown.", "type": "boolean" },
+    "fallbacks": { "description": "Plain-words notes on what the plugin does without each missing piece.", "type": "array", "items": { "type": "string" } }
+  }
+}

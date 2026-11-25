@@ -1,0 +1,7 @@
+{
+  "dev-team": "ledger=runtime-doc schema=1.0",
+  "id": "gemini-cli",
+  "verified": false,
+  "description": "Not tried against a real account. This file records only what the tool's public documentation is believed to say, so nothing here is relied on until a hand test confirms it.",
+  "supports": { "filesystem": "UNKNOWN", "shell": "UNKNOWN", "git": "UNKNOWN", "tests": "UNKNOWN", "mcp": "UNKNOWN", "subagents": "UNKNOWN", "structuredOutput": "UNKNOWN", "reasoningControl": "UNKNOWN", "contextIsolation": "UNKNOWN", "sessionResume": "UNKNOWN", "checkpointResume": "UNKNOWN", "network": "UNKNOWN", "reviewMode": "UNKNOWN" }
+}

@@ -142,3 +142,22 @@
   Homebrew). Claude Code and Codex are the only AI command-line tools installed.
 - Device-wide rules live in `~/.claude/CLAUDE.md` (Claude Code) and `~/.codex/AGENTS.md` (Codex).
   Suggested wording is kept in `.claude/device-wide-rules.md`.
+
+## After the 9 November 2026 merge
+
+- Merging three branches by hand: read the real diffs first. Here one branch already contained
+  another (check with `git rev-list --count A..B` both ways), and two branches both used version 1.5.0
+  for different work — look for version-number clashes in `plugin.json` and the CHANGELOG.
+- A cloud session cannot delete branches (the connection answers 403); do not try workarounds, ask
+  the owner. Moving `alpha`/`beta` forward with an ordinary push did work.
+- Three checks on `main` failing after about two seconds, with no steps run and logs gone, was not a
+  code fault: the same checkout pin passed on the next run. Look at the run's job list for a missing
+  machine (`runner_id` 0) before suspecting the workflow files.
+
+- 17 Nov 2026: standing rules 12-15 added (many AI systems, shared project documents, tracker as source of truth, Swagger UI for projects with APIs). Requirements: .claude/plans/orchestrator-v2/owner-brief-addendum-2026-11-17.md.
+- 17 Nov 2026: Q6-Q9 answered (see HANDOFF). Built #44, #48, #42 on claude/busy-knuth-bc35ok. bats here needs: npm i -g bats; pip install shellcheck-py. Codex is not installed in the cloud session.
+- 17 Nov 2026: engine lesson: do not extend the hand-written YAML reader (engine/lib/config.mjs) any further; it fails closed on anything it cannot read. Node 22 needs `node --test engine/test/*.test.mjs` (a glob, not the folder).
+
+## Update — 17 November 2026 (end of day)
+
+Full queue and how to resume: `.claude/HANDOFF.md`, "START HERE". Tracking issues #50 to #59 are sub-issues of #46. Milestones, the Projects board and wiki pages could not be made with the cloud session's tools; ready-to-apply drafts are in `.claude/plans/tracker-setup.md` and `docs/wiki-drafts/`. Branch: `claude/busy-knuth-bc35ok`; no pull request yet; version still 1.7.0; nothing has had a Codex review.

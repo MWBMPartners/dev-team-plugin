@@ -1,0 +1,10 @@
+{
+  "dev-team": "ledger=compat-aliases schema=1.0",
+  "description": "Maintained facts about the Claude model aliases, matching skills/dev-team-orchestrator/references/model-routing.md. Context windows are left null because they are not recorded in that file; they become UNKNOWN rather than a guess.",
+  "aliases": [
+    { "alias": "haiku",  "tier": 1, "trust": "maintained", "contextWindow": null, "effortLevels": ["low", "medium", "high"], "relativeCostClass": 1 },
+    { "alias": "sonnet", "tier": 2, "trust": "maintained", "contextWindow": null, "effortLevels": ["low", "medium", "high", "xhigh", "max"], "relativeCostClass": 2 },
+    { "alias": "opus",   "tier": 3, "trust": "maintained", "contextWindow": null, "effortLevels": ["low", "medium", "high", "xhigh", "max"], "relativeCostClass": 6 },
+    { "alias": "fable",  "tier": 4, "trust": "maintained", "contextWindow": null, "effortLevels": ["low", "medium", "high", "xhigh", "max"], "relativeCostClass": 9 }
+  ]
+}

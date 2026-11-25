@@ -1,0 +1,140 @@
+{
+  "dev-team": "ledger=schema-manifest schema=1.0",
+  "description": "Lists every engine schema with a sample file that must pass it. CI checks each pair (node engine/bin/dev-team-engine.mjs schema validate --all).",
+  "entries": [
+    {
+      "schema": "schemas/engine/envelope.schema.json",
+      "fixture": "tests/fixtures/envelope.sample.json"
+    },
+    {
+      "schema": "schemas/engine/doctor.output.schema.json",
+      "fixture": "tests/fixtures/doctor.output.sample.json"
+    },
+    {
+      "schema": "schemas/engine/catalogue.schema.json",
+      "fixture": "engine/data/catalogue.seed.json"
+    },
+    {
+      "schema": "schemas/local/model-capability-profile.schema.json",
+      "fixture": "tests/fixtures/model-capability-profile.sample.json"
+    },
+    {
+      "schema": "schemas/local/catalogue-cache.schema.json",
+      "fixture": "tests/fixtures/catalogue-cache.sample.json"
+    },
+    {
+      "schema": "schemas/local/event.schema.json",
+      "fixture": "tests/fixtures/event.sample.json"
+    },
+    {
+      "schema": "schemas/engine/discover.output.schema.json",
+      "fixture": "tests/fixtures/discover.output.sample.json"
+    },
+    {
+      "schema": "schemas/sim/scenario.schema.json",
+      "fixture": "engine/sim/scenarios/smoke.json"
+    },
+    {
+      "schema": "schemas/data/compat-aliases.schema.json",
+      "fixture": "engine/data/compat/claude-aliases.json"
+    },
+    {
+      "schema": "schemas/data/compat-families.schema.json",
+      "fixture": "engine/data/compat/openai-families.json"
+    },
+    {
+      "schema": "schemas/data/runtime-doc.schema.json",
+      "fixture": "engine/data/runtimes/gemini-cli.json"
+    },
+    {
+      "schema": "schemas/data/codex-debug-models.schema.json",
+      "fixture": "tests/fixtures/codex-debug-models.sample.json"
+    },
+    {
+      "schema": "schemas/autopilot.schema.json",
+      "fixture": "tests/fixtures/autopilot.sample.json"
+    },
+    {
+      "schema": "schemas/plugin-manifest.schema.json",
+      "fixture": ".claude-plugin/plugin.json"
+    },
+    {
+      "schema": "schemas/marketplace-manifest.schema.json",
+      "fixture": ".claude-plugin/marketplace.json"
+    },
+    {
+      "schema": "schemas/hooks.schema.json",
+      "fixture": "hooks/hooks.json"
+    },
+    {
+      "schema": "schemas/data/job-templates.schema.json",
+      "fixture": "engine/data/job-templates.json"
+    },
+    {
+      "schema": "schemas/plan-contract.schema.json",
+      "fixture": ".claude/plans/orchestrator-v2/plan-contract.orchestrator-v2.v1.json"
+    },
+    {
+      "schema": "schemas/data/failure-recovery.schema.json",
+      "fixture": "engine/data/failure-recovery.json"
+    },
+    {
+      "schema": "schemas/data/destructive-actions.schema.json",
+      "fixture": "engine/data/destructive-actions.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/shared-hosting-php.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/native-macos.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/cross-platform-desktop.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/billing-financial.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/security-sensitive.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/public-api.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/database-migration.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/accessibility-critical.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/release-critical.json"
+    },
+    {
+      "schema": "schemas/policy-pack.schema.json",
+      "fixture": "policy-packs/mwbm-standard.json"
+    },
+    {
+      "schema": "schemas/data/cost-bands.schema.json",
+      "fixture": "engine/data/cost-bands.json"
+    },
+    {
+      "schema": "schemas/catalogue.schema.json",
+      "fixture": "tests/fixtures/catalogue-envelope.sample.json"
+    }
+  ],
+  "exceptions": [
+    {
+      "path": "schemas/verdict.schema.json",
+      "reason": "Checked against its own fixtures in tests/scripts.bats (older mechanism, kept as it is)."
+    }
+  ]
+}

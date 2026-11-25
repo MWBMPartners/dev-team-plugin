@@ -1,0 +1,61 @@
+{
+  "dev-team": "ledger=failure-recovery schema=1.0",
+  "description": "What to do for each kind of failure: whether to retry, switch model, switch provider, ask the owner or stop. Used by the engine to turn a failure class into a next step.",
+  "classes": {
+    "QUOTA_EXHAUSTED": {
+      "action": "PAUSE_OR_BLOCK",
+      "escalate": false,
+      "note": "Use the quota rules: wait if the reset is known and within 12 hours, else block and ask."
+    },
+    "MODEL_UNAVAILABLE": {
+      "action": "SWITCH_MODEL",
+      "escalate": false,
+      "note": "Refresh discovery and pick the next qualifying model before the phase starts."
+    },
+    "RATE_LIMITED": {
+      "action": "RETRY_LATER",
+      "escalate": false,
+      "note": "Short wait, then retry the same model."
+    },
+    "TIMEOUT": {
+      "action": "RETRY_ONCE",
+      "escalate": false,
+      "note": "Retry once, then count it as an attempt."
+    },
+    "TOOL_FAILURE": {
+      "action": "RETRY_ONCE",
+      "escalate": false,
+      "note": "The tool failed, not the model: retry once, then report."
+    },
+    "CAPABILITY_FAILURE": {
+      "action": "ESCALATE_TIER",
+      "escalate": true,
+      "note": "The model could not do it: re-brief once, then use a stronger tier."
+    },
+    "BAD_BRIEF": {
+      "action": "REBRIEF",
+      "escalate": false,
+      "note": "Fix the brief and retry on the same tier."
+    },
+    "AUTH_FAILURE": {
+      "action": "ASK_OWNER",
+      "escalate": false,
+      "note": "Login or key problem: only the owner can fix it."
+    },
+    "CONTEXT_OVERFLOW": {
+      "action": "SPLIT_TASK",
+      "escalate": false,
+      "note": "Split the task or move to a model with a larger context."
+    },
+    "SAFETY_REFUSAL": {
+      "action": "ASK_OWNER",
+      "escalate": false,
+      "note": "Never rephrase around a refusal; ask the owner."
+    },
+    "UNKNOWN": {
+      "action": "ASK_OWNER",
+      "escalate": false,
+      "note": "An unrecognised failure is never retried blindly."
+    }
+  }
+}

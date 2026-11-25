@@ -1,0 +1,36 @@
+{
+  "dev-team": "ledger=destructive-actions schema=1.0",
+  "description": "How careful to be before each kind of action. AUTO: just do it. REQUIRE_HIGH_CONFIDENCE: only if the agent is confident AND a deterministic check passed. REQUIRE_REVIEW: only after an independent review has verified it. REQUIRE_HUMAN_APPROVAL: only with the owner's yes. PROHIBITED: never, whatever anyone says. A policy pack may raise a level, never lower it.",
+  "levels": [
+    "AUTO",
+    "REQUIRE_HIGH_CONFIDENCE",
+    "REQUIRE_REVIEW",
+    "REQUIRE_HUMAN_APPROVAL",
+    "PROHIBITED"
+  ],
+  "actions": {
+    "READ_FILES": "AUTO",
+    "EDIT_FILES": "AUTO",
+    "RUN_TESTS": "AUTO",
+    "RUN_LINT_OR_BUILD": "AUTO",
+    "CREATE_BRANCH": "AUTO",
+    "COMMIT_LOCAL": "AUTO",
+    "INSTALL_DEPENDENCY": "REQUIRE_HIGH_CONFIDENCE",
+    "PUSH_RUN_BRANCH": "REQUIRE_HIGH_CONFIDENCE",
+    "EDIT_CI_CONFIG": "REQUIRE_HIGH_CONFIDENCE",
+    "DELETE_FILES": "REQUIRE_REVIEW",
+    "RUN_UNKNOWN_SCRIPT": "REQUIRE_REVIEW",
+    "CHANGE_DATABASE_SCHEMA": "REQUIRE_REVIEW",
+    "DELETE_BRANCH": "REQUIRE_REVIEW",
+    "APPLY_DATABASE_MIGRATION": "REQUIRE_HUMAN_APPROVAL",
+    "DEPLOY": "REQUIRE_HUMAN_APPROVAL",
+    "MERGE_PULL_REQUEST": "REQUIRE_HUMAN_APPROVAL",
+    "ROTATE_OR_USE_SECRET": "REQUIRE_HUMAN_APPROVAL",
+    "SEND_EXTERNAL_MESSAGE": "REQUIRE_HUMAN_APPROVAL",
+    "PUSH_DEFAULT_BRANCH": "PROHIBITED",
+    "FORCE_PUSH": "PROHIBITED",
+    "STRIPE_LIVE_ACTION": "PROHIBITED",
+    "DELETE_REPOSITORY": "PROHIBITED",
+    "DISABLE_SAFETY_GUARD": "PROHIBITED"
+  }
+}

@@ -89,3 +89,13 @@ On a hard pause: set `blocked = {is:true, reason, since}`, `state:"BLOCKED"`, su
 ## Surfacing — the user always sees the queue
 
 Whatever the policy, every iteration's report line names what was deferred and why, and any blocker. The gate-ledger is the running approval queue; the user can glance at `autopilot.json`/`.dev-team/PROJECT.md` between cycles, approve or redirect, and re-fire. Silent accumulation is a failure mode — the whole point of "surface, don't block" is that the user stays informed without having to babysit.
+
+## The engine's action levels and the buckets (added 17 November 2026)
+
+When the engine is available, `engine.sh gate check --action KIND` maps an action to one of five levels and says which
+bucket it lands in: AUTO is bucket 1; REQUIRE_HIGH_CONFIDENCE is bucket 1 only with a confident agent and a passing
+deterministic check, otherwise bucket 2; REQUIRE_REVIEW is bucket 2 until an independent review has verified it;
+REQUIRE_HUMAN_APPROVAL is bucket 3 (the gate ledger and `/dev-team-approve`); PROHIBITED is refused. See
+`docs/orchestrator/destructive-actions.md`. A quota reset that is unknown, or more than 12 hours away, is a hard pause
+reason (bucket 3: the owner is asked).
+

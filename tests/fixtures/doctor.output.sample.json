@@ -1,0 +1,41 @@
+{
+  "node": "v22.23.4",
+  "dataDir": "/example/data",
+  "dataDirIsFallback": true,
+  "dataDirWritable": true,
+  "tools": {
+    "git": {
+      "present": true,
+      "version": "git version 2.43.0"
+    },
+    "jq": {
+      "present": true,
+      "version": "jq-1.7"
+    },
+    "gh": {
+      "present": true,
+      "version": "gh version 2.89.0 (2026-03-26)"
+    },
+    "bats": {
+      "present": true,
+      "version": "Bats 1.13.0"
+    },
+    "claude": {
+      "present": true,
+      "version": "2.1.326 (Claude Code)"
+    },
+    "codex": {
+      "present": false,
+      "version": null
+    },
+    "ollama": {
+      "present": false,
+      "version": null
+    }
+  },
+  "codexLoggedIn": false,
+  "fallbacks": [
+    "Codex is not installed: independent review falls back to a fresh Claude reviewer, and the work is \"not fully reviewed\".",
+    "Ollama is not installed: local models are unavailable, so work starts on cloud models."
+  ]
+}

@@ -1,6 +1,6 @@
 ---
 name: sonnet-builder
-description: Economy build tier (Sonnet). The Sonnet-tier BUILDER used only under the `economy` cost posture (see model-routing.md) — building features and scouting when cost is prioritized over first-pass frontier quality. NOT for verification (that stays on opus-builder) and not the default; balanced/max runs build on opus-builder.
+description: "Deprecated alias for engineer; removed in 2.1.0. Economy build tier (Sonnet). The Sonnet-tier BUILDER used only under the `economy` cost posture (see model-routing.md) — building features and scouting when cost is prioritized over first-pass frontier quality. NOT for verification (that stays on opus-builder) and not the default; balanced/max runs build on opus-builder."
 model: sonnet
 tools: Read, Edit, Write, Bash, Grep, Glob
 ---

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dev-team destructive action levels",
+  "description": "How careful to be before each kind of action.",
+  "type": "object",
+  "required": [
+    "dev-team",
+    "description",
+    "levels",
+    "actions"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "dev-team": {
+      "description": "Ownership marker.",
+      "type": "string"
+    },
+    "description": {
+      "description": "What the file is.",
+      "type": "string"
+    },
+    "levels": {
+      "description": "The five levels, least careful first.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "AUTO",
+          "REQUIRE_HIGH_CONFIDENCE",
+          "REQUIRE_REVIEW",
+          "REQUIRE_HUMAN_APPROVAL",
+          "PROHIBITED"
+        ]
+      }
+    },
+    "actions": {
+      "description": "Action kind to its level.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "enum": [
+          "AUTO",
+          "REQUIRE_HIGH_CONFIDENCE",
+          "REQUIRE_REVIEW",
+          "REQUIRE_HUMAN_APPROVAL",
+          "PROHIBITED"
+        ]
+      }
+    }
+  }
+}
